@@ -94,7 +94,7 @@ authRouter.get('/auth/google', (req: Request, res: Response, next) => {
   passport.authenticate('google', {
     scope: ['profile', 'email'],
     hd: 'jointheleague.org',
-  })(req, res, next);
+  } as any)(req, res, next);
 });
 
 // Google OAuth callback
