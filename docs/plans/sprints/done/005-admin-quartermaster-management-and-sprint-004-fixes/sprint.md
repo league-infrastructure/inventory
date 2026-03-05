@@ -1,10 +1,10 @@
 ---
-id: "005"
-title: "Admin Quartermaster Management and Sprint 004 Fixes"
-status: planning
+id: '005'
+title: Admin Quartermaster Management and Sprint 004 Fixes
+status: done
 branch: sprint/005-admin-quartermaster-management-and-sprint-004-fixes
 use-cases:
-  - UC-4.7
+- UC-4.7
 ---
 
 # Sprint 005: Admin Quartermaster Management and Sprint 004 Fixes
