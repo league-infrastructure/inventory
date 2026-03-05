@@ -1,7 +1,7 @@
 import { useState, useEffect, createContext, useContext } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
-  Home, Monitor, Tags, MapPin, Shield, Menu, X, LogOut, ChevronDown,
+  Home, Monitor, Tags, PackageCheck, MapPin, Shield, Menu, X, LogOut, ChevronDown,
 } from 'lucide-react';
 
 interface AuthUser {
@@ -24,6 +24,7 @@ export function useAuth() {
 const navItems = [
   { to: '/', label: 'Home', icon: Home, roles: null },
   { to: '/kits', label: 'Kits', icon: Tags, roles: null },
+  { to: '/checkouts', label: 'Checked Out', icon: PackageCheck, roles: null },
   { to: '/computers', label: 'Computers', icon: Monitor, roles: ['QUARTERMASTER'],
     children: [{ to: '/hostnames', label: 'Host Names' }],
   },
