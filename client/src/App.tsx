@@ -38,7 +38,6 @@ function App() {
           <Route path="/computers" element={<ComputerList />} />
           <Route path="/computers/new" element={<ComputerForm />} />
           <Route path="/computers/:id" element={<ComputerDetail />} />
-          <Route path="/computers/:id/edit" element={<ComputerForm />} />
           <Route path="/hostnames" element={<HostNameList />} />
           <Route path="/sites" element={<SiteList />} />
           <Route path="/admin" element={<AdminLogin />} />

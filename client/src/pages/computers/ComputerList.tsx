@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Tags } from 'lucide-react';
 
 interface Computer {
@@ -30,6 +30,7 @@ function dispositionClasses(d: string): string {
 }
 
 export default function ComputerList() {
+  const navigate = useNavigate();
   const [computers, setComputers] = useState<Computer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -107,11 +108,13 @@ export default function ComputerList() {
             </thead>
             <tbody>
               {computers.map((c) => (
-                <tr key={c.id} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="px-4 py-3">
-                    <Link to={`/computers/${c.id}`} className="text-primary hover:underline">
-                      {c.hostName?.name || `#${c.id}`}
-                    </Link>
+                <tr
+                  key={c.id}
+                  className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
+                  onClick={() => navigate(`/computers/${c.id}`)}
+                >
+                  <td className="px-4 py-3 font-medium text-gray-900">
+                    {c.hostName?.name || `#${c.id}`}
                   </td>
                   <td className="px-4 py-3 text-gray-600">{c.model || '—'}</td>
                   <td className="px-4 py-3">
@@ -120,8 +123,8 @@ export default function ComputerList() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-gray-600 hidden sm:table-cell">{c.site?.name || '—'}</td>
-                  <td className="px-4 py-3 hidden sm:table-cell">
-                    {c.kit ? <Link to={`/kits/${c.kit.id}`} className="text-primary hover:underline">{c.kit.name}</Link> : '—'}
+                  <td className="px-4 py-3 hidden sm:table-cell text-gray-600">
+                    {c.kit?.name || '—'}
                   </td>
                 </tr>
               ))}

@@ -1,23 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Pencil } from 'lucide-react';
 
-interface ComputerData {
-  id: number;
-  serialNumber: string | null;
-  serviceTag: string | null;
-  model: string | null;
-  defaultUsername: string | null;
-  defaultPassword: string | null;
-  disposition: string;
-  dateReceived: string | null;
-  lastInventoried: string | null;
-  notes: string | null;
-  qrCode: string | null;
-  hostName: { id: number; name: string } | null;
-  site: { id: number; name: string } | null;
-  kit: { id: number; name: string } | null;
-}
+interface Site { id: number; name: string; }
+interface Kit { id: number; name: string; }
+interface HostName { id: number; name: string; computerId: number | null; }
 
 const DISPOSITIONS = [
   'ACTIVE', 'LOANED', 'NEEDS_REPAIR', 'IN_REPAIR',
@@ -37,20 +23,72 @@ function dispositionClasses(d: string): string {
   }
 }
 
-export default function ComputerDetailPage() {
+interface FormState {
+  serialNumber: string;
+  serviceTag: string;
+  model: string;
+  defaultUsername: string;
+  defaultPassword: string;
+  disposition: string;
+  dateReceived: string;
+  notes: string;
+  siteId: number | '';
+  kitId: number | '';
+  hostNameId: number | '';
+}
+
+export default function ComputerDetail() {
   const { id } = useParams();
-  const [computer, setComputer] = useState<ComputerData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [dirty, setDirty] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [qrCode, setQrCode] = useState<string | null>(null);
+
+  const [form, setForm] = useState<FormState>({
+    serialNumber: '', serviceTag: '', model: '', defaultUsername: '',
+    defaultPassword: '', disposition: 'ACTIVE', dateReceived: '',
+    notes: '', siteId: '', kitId: '', hostNameId: '',
+  });
+  const savedForm = useRef<FormState>(form);
+
+  const [sites, setSites] = useState<Site[]>([]);
+  const [kits, setKits] = useState<Kit[]>([]);
+  const [hostNames, setHostNames] = useState<HostName[]>([]);
 
   useEffect(() => {
-    fetch(`/api/computers/${id}`)
-      .then((r) => {
+    Promise.all([
+      fetch(`/api/computers/${id}`).then((r) => {
         if (!r.ok) throw new Error('Computer not found');
         return r.json();
+      }),
+      fetch('/api/sites').then((r) => r.json()),
+      fetch('/api/kits').then((r) => r.json()),
+      fetch('/api/hostnames').then((r) => r.json()),
+    ])
+      .then(([c, s, k, h]) => {
+        const initial: FormState = {
+          serialNumber: c.serialNumber || '',
+          serviceTag: c.serviceTag || '',
+          model: c.model || '',
+          defaultUsername: c.defaultUsername || '',
+          defaultPassword: c.defaultPassword || '',
+          disposition: c.disposition,
+          dateReceived: c.dateReceived ? c.dateReceived.substring(0, 10) : '',
+          notes: c.notes || '',
+          siteId: c.site?.id || '',
+          kitId: c.kit?.id || '',
+          hostNameId: c.hostName?.id || '',
+        };
+        setForm(initial);
+        savedForm.current = initial;
+        setQrCode(c.qrCode || null);
+        setSites(s);
+        setKits(k);
+        setHostNames(h);
       })
-      .then(setComputer)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
 
@@ -60,104 +98,171 @@ export default function ComputerDetailPage() {
       .catch(() => {});
   }, [id]);
 
-  async function handleDispositionChange(disposition: string) {
-    const res = await fetch(`/api/computers/${id}/disposition`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ disposition }),
+  function updateField<K extends keyof FormState>(key: K, value: FormState[K]) {
+    setForm((prev) => {
+      const next = { ...prev, [key]: value };
+      setDirty(JSON.stringify(next) !== JSON.stringify(savedForm.current));
+      return next;
     });
-    if (res.ok) {
-      const updated = await res.json();
-      setComputer((prev) => prev ? { ...prev, disposition: updated.disposition } : prev);
+  }
+
+  const availableHostNames = hostNames.filter(
+    (h) => h.computerId === null || h.computerId === parseInt(id!, 10)
+  );
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const body: Record<string, unknown> = {
+        serialNumber: form.serialNumber || null,
+        serviceTag: form.serviceTag || null,
+        model: form.model || null,
+        defaultUsername: form.defaultUsername || null,
+        defaultPassword: form.defaultPassword || null,
+        disposition: form.disposition,
+        dateReceived: form.dateReceived || null,
+        notes: form.notes || null,
+        siteId: form.siteId || null,
+        kitId: form.kitId || null,
+        hostNameId: form.hostNameId || null,
+      };
+      const res = await fetch(`/api/computers/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to save');
+      }
+      savedForm.current = { ...form };
+      setDirty(false);
+    } catch (e: any) {
+      setSaveError(e.message);
     }
+    setSaving(false);
   }
 
   if (loading) return <p className="text-gray-500 text-sm">Loading...</p>;
   if (error) return <p className="text-red-600 text-sm">{error}</p>;
-  if (!computer) return null;
 
-  const displayName = computer.hostName?.name || computer.model || `Computer #${computer.id}`;
-
-  const fields = [
-    { label: 'Host Name', value: computer.hostName?.name },
-    { label: 'Model', value: computer.model },
-    { label: 'Serial Number', value: computer.serialNumber },
-    { label: 'Service Tag', value: computer.serviceTag },
-    { label: 'Default Username', value: computer.defaultUsername },
-    { label: 'Default Password', value: computer.defaultPassword },
-    { label: 'Site', value: computer.site?.name, link: '/sites' },
-    { label: 'Kit', value: computer.kit?.name, link: computer.kit ? `/kits/${computer.kit.id}` : undefined },
-    { label: 'Date Received', value: computer.dateReceived ? new Date(computer.dateReceived).toLocaleDateString() : null },
-    { label: 'Last Inventoried', value: computer.lastInventoried ? new Date(computer.lastInventoried).toLocaleDateString() : null },
-    { label: 'Notes', value: computer.notes },
-  ];
+  const inputClass = "mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white";
+  const displayName = form.model || `Computer #${id}`;
 
   return (
-    <div className="max-w-3xl">
+    <div className="max-w-lg">
       <Link to="/computers" className="text-sm text-primary hover:underline">
         &larr; Back to Computers
       </Link>
 
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mt-4 mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">{displayName}</h1>
-          <span className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium mt-1 ${dispositionClasses(computer.disposition)}`}>
-            {computer.disposition.replace(/_/g, ' ')}
-          </span>
-        </div>
-        <Link
-          to={`/computers/${computer.id}/edit`}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-primary text-white no-underline hover:bg-primary-hover"
-        >
-          <Pencil size={14} /> Edit
-        </Link>
+      <div className="flex items-center gap-3 mt-4 mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">{displayName}</h1>
+        <span className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium ${dispositionClasses(form.disposition)}`}>
+          {form.disposition.replace(/_/g, ' ')}
+        </span>
       </div>
 
       {qrDataUrl && (
         <div className="flex items-center gap-4 mb-6 p-4 bg-white border border-gray-200 rounded-lg">
           <img src={qrDataUrl} alt="QR Code" className="w-24 h-24" />
-          <code className="text-xs text-gray-500">{computer.qrCode}</code>
+          <code className="text-xs text-gray-500">{qrCode}</code>
         </div>
       )}
 
-      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden mb-8">
-        <table className="w-full text-sm">
-          <tbody>
-            {fields.map((f) => (
-              <tr key={f.label} className="border-b border-gray-100 last:border-b-0">
-                <td className="px-4 py-3 font-medium text-gray-500 w-[35%]">{f.label}</td>
-                <td className="px-4 py-3 text-gray-900">
-                  {f.link && f.value ? (
-                    <Link to={f.link} className="text-primary hover:underline">{f.value}</Link>
-                  ) : (
-                    f.value || <span className="text-gray-400">—</span>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {saveError && <p className="text-red-600 text-sm mb-4">{saveError}</p>}
 
-      <div>
-        <h3 className="text-sm font-semibold text-gray-700 mb-3">Change Disposition</h3>
-        <div className="flex flex-wrap gap-2">
-          {DISPOSITIONS.map((d) => (
-            <button
-              key={d}
-              className={`text-xs px-3 py-1.5 rounded-lg border-none cursor-pointer font-medium transition-colors ${
-                d === computer.disposition
-                  ? dispositionClasses(d)
-                  : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-              }`}
-              onClick={() => handleDispositionChange(d)}
-              disabled={d === computer.disposition}
-            >
-              {d.replace(/_/g, ' ')}
-            </button>
-          ))}
+      <form onSubmit={handleSave} className="space-y-4">
+        <label className="block">
+          <span className="text-sm font-medium text-gray-700">Model</span>
+          <input value={form.model} onChange={(e) => updateField('model', e.target.value)} className={inputClass} />
+        </label>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <label className="block">
+            <span className="text-sm font-medium text-gray-700">Serial Number</span>
+            <input value={form.serialNumber} onChange={(e) => updateField('serialNumber', e.target.value)} className={inputClass} />
+          </label>
+          <label className="block">
+            <span className="text-sm font-medium text-gray-700">Service Tag</span>
+            <input value={form.serviceTag} onChange={(e) => updateField('serviceTag', e.target.value)} className={inputClass} />
+          </label>
         </div>
-      </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <label className="block">
+            <span className="text-sm font-medium text-gray-700">Default Username</span>
+            <input value={form.defaultUsername} onChange={(e) => updateField('defaultUsername', e.target.value)} className={inputClass} />
+          </label>
+          <label className="block">
+            <span className="text-sm font-medium text-gray-700">Default Password</span>
+            <input value={form.defaultPassword} onChange={(e) => updateField('defaultPassword', e.target.value)} className={inputClass} />
+          </label>
+        </div>
+
+        <label className="block">
+          <span className="text-sm font-medium text-gray-700">Disposition</span>
+          <select value={form.disposition} onChange={(e) => updateField('disposition', e.target.value)} className={inputClass}>
+            {DISPOSITIONS.map((d) => (
+              <option key={d} value={d}>{d.replace(/_/g, ' ')}</option>
+            ))}
+          </select>
+        </label>
+
+        <label className="block">
+          <span className="text-sm font-medium text-gray-700">Host Name</span>
+          <select value={form.hostNameId} onChange={(e) => updateField('hostNameId', e.target.value ? parseInt(e.target.value, 10) : '')} className={inputClass}>
+            <option value="">None</option>
+            {availableHostNames.map((h) => (
+              <option key={h.id} value={h.id}>{h.name}</option>
+            ))}
+          </select>
+        </label>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <label className="block">
+            <span className="text-sm font-medium text-gray-700">Site</span>
+            <select value={form.siteId} onChange={(e) => updateField('siteId', e.target.value ? parseInt(e.target.value, 10) : '')} className={inputClass}>
+              <option value="">None</option>
+              {sites.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+          </label>
+          <label className="block">
+            <span className="text-sm font-medium text-gray-700">Kit</span>
+            <select value={form.kitId} onChange={(e) => updateField('kitId', e.target.value ? parseInt(e.target.value, 10) : '')} className={inputClass}>
+              <option value="">None</option>
+              {kits.map((k) => (
+                <option key={k.id} value={k.id}>{k.name}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <label className="block">
+          <span className="text-sm font-medium text-gray-700">Date Received</span>
+          <input type="date" value={form.dateReceived} onChange={(e) => updateField('dateReceived', e.target.value)} className={inputClass} />
+        </label>
+
+        <label className="block">
+          <span className="text-sm font-medium text-gray-700">Notes</span>
+          <textarea value={form.notes} onChange={(e) => updateField('notes', e.target.value)} className={inputClass + " resize-y"} rows={3} />
+        </label>
+
+        {dirty && (
+          <div className="pt-2">
+            <button
+              type="submit"
+              className="px-6 py-2 bg-primary text-white text-sm font-medium rounded-lg border-none cursor-pointer hover:bg-primary-hover disabled:opacity-50"
+              disabled={saving}
+            >
+              {saving ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
+        )}
+      </form>
     </div>
   );
 }
