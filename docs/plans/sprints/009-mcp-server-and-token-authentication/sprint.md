@@ -1,12 +1,12 @@
 ---
-id: "008"
-title: "MCP Server and Token Authentication"
+id: 009
+title: MCP Server and Token Authentication
 status: planning
-branch: sprint/008-mcp-server-and-token-authentication
+branch: sprint/009-mcp-server-and-token-authentication
 use-cases: []
 ---
 
-# Sprint 008: MCP Server and Token Authentication
+# Sprint 009: MCP Server and Token Authentication
 
 ## Goals
 
