@@ -63,9 +63,14 @@ export default function Landing() {
               Kits
             </Link>
             {user.role === 'QUARTERMASTER' && (
-              <Link to="/sites" style={styles.navLink}>
-                Manage Sites
-              </Link>
+              <>
+                <Link to="/computers" style={styles.navLink}>
+                  Computers
+                </Link>
+                <Link to="/sites" style={styles.navLink}>
+                  Manage Sites
+                </Link>
+              </>
             )}
             <Link to="/admin" style={styles.navLink}>
               Admin Dashboard
