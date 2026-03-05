@@ -12,21 +12,22 @@ describe('Checkouts API', () => {
   let kitId: number;
 
   beforeAll(async () => {
-    // Create two sites for checkout/checkin
+    // Create two sites for checkout/checkin (unique names to avoid conflicts)
+    const suffix = Date.now();
     const s1 = await qmAgent
       .post('/api/sites')
-      .send({ name: 'Checkout Test Site 1', address: '123 Main St' });
+      .send({ name: `CO-Test-Site-A-${suffix}`, address: '123 Main St' });
     siteId = s1.body.id;
 
     const s2 = await qmAgent
       .post('/api/sites')
-      .send({ name: 'Checkout Test Site 2', address: '456 Oak Ave' });
+      .send({ name: `CO-Test-Site-B-${suffix}`, address: '456 Oak Ave' });
     site2Id = s2.body.id;
 
     // Create a kit
     const k = await qmAgent
       .post('/api/kits')
-      .send({ name: 'Checkout Test Kit', siteId });
+      .send({ name: `CO-Test-Kit-${suffix}`, siteId });
     kitId = k.body.id;
   });
 
