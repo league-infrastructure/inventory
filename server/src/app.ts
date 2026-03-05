@@ -10,10 +10,10 @@ import { counterRouter } from './routes/counter';
 import { integrationsRouter } from './routes/integrations';
 import { authRouter } from './routes/auth';
 import { pike13Router } from './routes/pike13';
-import { githubRouter } from './routes/github';
 import { adminRouter } from './routes/admin';
 import { errorHandler } from './middleware/errorHandler';
 import { logBuffer } from './services/logBuffer';
+import { prisma } from './services/prisma';
 
 const app = express();
 
@@ -63,12 +63,18 @@ if (process.env.NODE_ENV !== 'test' && process.env.DATABASE_URL) {
 
 app.use(session(sessionConfig));
 
-// Passport authentication
-passport.serializeUser((user: Express.User, done) => {
-  done(null, user);
+// Passport authentication — serialize User database ID to session,
+// deserialize by loading from database.
+passport.serializeUser((user: any, done) => {
+  done(null, user.id);
 });
-passport.deserializeUser((user: Express.User, done) => {
-  done(null, user);
+passport.deserializeUser(async (id: number, done) => {
+  try {
+    const user = await prisma.user.findUnique({ where: { id } });
+    done(null, user);
+  } catch (err) {
+    done(err);
+  }
 });
 app.use(passport.initialize());
 app.use(passport.session());
@@ -79,7 +85,6 @@ app.use('/api', counterRouter);
 app.use('/api', integrationsRouter);
 app.use('/api', authRouter);
 app.use('/api', pike13Router);
-app.use('/api', githubRouter);
 app.use('/api', adminRouter);
 
 app.use(errorHandler);
