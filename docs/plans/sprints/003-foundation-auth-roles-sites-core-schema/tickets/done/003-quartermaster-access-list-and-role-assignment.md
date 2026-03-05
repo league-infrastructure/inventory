@@ -1,9 +1,11 @@
 ---
-id: "003"
-title: "Quartermaster access list and role assignment"
-status: todo
+id: '003'
+title: Quartermaster access list and role assignment
+status: done
 use-cases: []
-depends-on: ["001", "002"]
+depends-on:
+- '001'
+- '002'
 ---
 
 # Quartermaster access list and role assignment

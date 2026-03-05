@@ -1,9 +1,10 @@
 ---
-id: "002"
-title: "Google OAuth domain restriction and User persistence"
-status: todo
+id: '002'
+title: Google OAuth domain restriction and User persistence
+status: done
 use-cases: []
-depends-on: ["001"]
+depends-on:
+- '001'
 ---
 
 # Google OAuth domain restriction and User persistence
