@@ -6,6 +6,16 @@ import { requireAuth, requireQuartermaster } from '../middleware/requireAuth';
 
 export const sitesRouter = Router();
 
+function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // Earth's radius in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 const SITE_FIELDS = ['name', 'address', 'latitude', 'longitude', 'isHomeSite', 'isActive'];
 
 // List all active sites (any authenticated user)
@@ -132,4 +142,49 @@ sitesRouter.patch('/sites/:id/deactivate', requireQuartermaster, async (req: Req
   });
 
   res.json(updated);
+});
+
+// Find nearest active site by GPS coordinates (any authenticated user)
+sitesRouter.post('/sites/nearest', requireAuth, async (req: Request, res: Response) => {
+  const { latitude, longitude } = req.body;
+  if (typeof latitude !== 'number' || isNaN(latitude)) {
+    return res.status(400).json({ error: 'Latitude must be a valid number' });
+  }
+  if (typeof longitude !== 'number' || isNaN(longitude)) {
+    return res.status(400).json({ error: 'Longitude must be a valid number' });
+  }
+
+  const sites = await prisma.site.findMany({
+    where: {
+      isActive: true,
+      latitude: { not: null },
+      longitude: { not: null },
+    },
+  });
+
+  if (sites.length === 0) {
+    return res.status(404).json({ error: 'No sites with coordinates found' });
+  }
+
+  let nearest = sites[0];
+  let minDistance = haversineDistance(latitude, longitude, nearest.latitude!, nearest.longitude!);
+
+  for (let i = 1; i < sites.length; i++) {
+    const dist = haversineDistance(latitude, longitude, sites[i].latitude!, sites[i].longitude!);
+    if (dist < minDistance) {
+      minDistance = dist;
+      nearest = sites[i];
+    }
+  }
+
+  res.json({
+    site: {
+      id: nearest.id,
+      name: nearest.name,
+      address: nearest.address,
+      latitude: nearest.latitude,
+      longitude: nearest.longitude,
+    },
+    distanceKm: Math.round(minDistance * 100) / 100,
+  });
 });
