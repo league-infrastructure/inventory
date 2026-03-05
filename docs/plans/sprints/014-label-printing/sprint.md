@@ -1,13 +1,13 @@
 ---
-id: '013'
+id: '014'
 title: Label Printing
 status: planning
-branch: sprint/013-label-printing
+branch: sprint/014-label-printing
 use-cases:
 - UC-4.8
 ---
 
-# Sprint 013: Label Printing
+# Sprint 014: Label Printing
 
 ## Goals
 

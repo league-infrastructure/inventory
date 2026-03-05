@@ -1,12 +1,12 @@
 ---
-id: 009
+id: '010'
 title: MCP Server and Token Authentication
 status: planning
-branch: sprint/009-mcp-server-and-token-authentication
+branch: sprint/010-mcp-server-and-token-authentication
 use-cases: []
 ---
 
-# Sprint 009: MCP Server and Token Authentication
+# Sprint 010: MCP Server and Token Authentication
 
 ## Goals
 
@@ -63,8 +63,8 @@ authenticate an external model as acting on behalf of a specific user.
 
 ### Out of Scope
 
-- In-app AI chat interface (Sprint 009)
-- Model configuration / API key management (Sprint 009)
+- In-app AI chat interface (Sprint 010)
+- Model configuration / API key management (Sprint 010)
 - Rate limiting on MCP access (future)
 - Dry-run / preview mode for AI changes (future)
 

@@ -1,12 +1,12 @@
 ---
-id: '010'
+id: '011'
 title: AI Chat Interface and Model Integration
 status: planning
-branch: sprint/010-ai-chat-interface-and-model-integration
+branch: sprint/011-ai-chat-interface-and-model-integration
 use-cases: []
 ---
 
-# Sprint 010: AI Chat Interface and Model Integration
+# Sprint 011: AI Chat Interface and Model Integration
 
 ## Goals
 
