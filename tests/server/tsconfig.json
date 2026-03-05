@@ -4,7 +4,12 @@
     "rootDir": "../..",
     "noEmit": true,
     "typeRoots": ["../../server/node_modules/@types"],
-    "types": ["jest", "supertest", "node"]
+    "types": ["jest", "supertest", "node"],
+    "paths": {
+      "@prisma/client": ["../../server/node_modules/@prisma/client"],
+      "@prisma/client/*": ["../../server/node_modules/@prisma/client/*"]
+    },
+    "baseUrl": "."
   },
   "include": [
     "../../server/src/**/*",
