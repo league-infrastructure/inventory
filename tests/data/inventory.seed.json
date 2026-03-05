@@ -1,0 +1,336 @@
+{
+  "sites": [
+    {
+      "name": "Carmel Valley",
+      "address": "3800 Mykonos Ln, San Diego, CA 92130",
+      "latitude": 32.9305,
+      "longitude": -117.2226,
+      "isHomeSite": true
+    },
+    {
+      "name": "Busboom Storage",
+      "address": "4455 Murphy Canyon Rd, San Diego, CA 92123",
+      "latitude": 32.8148,
+      "longitude": -117.1107,
+      "isHomeSite": false
+    }
+  ],
+
+  "hostNames": [
+    { "name": "Turing" },
+    { "name": "Lovelace" },
+    { "name": "Dijkstra" },
+    { "name": "Knuth" },
+    { "name": "Hopper" },
+    { "name": "Boole" },
+    { "name": "Cerf" },
+    { "name": "Brin" },
+    { "name": "Engelbart" },
+    { "name": "Lamport" },
+    { "name": "Ritchie" },
+    { "name": "Thompson" }
+  ],
+
+  "computers": [
+    {
+      "serialNumber": "5CD41234AB",
+      "serviceTag": null,
+      "model": "HP Laptop 17T-cn300",
+      "notes": "2025 purchase batch",
+      "siteIndex": 0,
+      "hostNameIndex": 0,
+      "kitSlug": "bag-14-hp-laptops"
+    },
+    {
+      "serialNumber": "5CD41234CD",
+      "serviceTag": null,
+      "model": "HP Laptop 17T-cn300",
+      "notes": "2025 purchase batch",
+      "siteIndex": 0,
+      "hostNameIndex": 1,
+      "kitSlug": "bag-14-hp-laptops"
+    },
+    {
+      "serialNumber": "5CD41234EF",
+      "serviceTag": null,
+      "model": "HP Laptop 17T-cn300",
+      "notes": "2025 purchase batch",
+      "siteIndex": 0,
+      "hostNameIndex": 2,
+      "kitSlug": "bag-14-hp-laptops"
+    },
+    {
+      "serialNumber": "C02ZX1234GH",
+      "serviceTag": null,
+      "model": "MacBook Air",
+      "notes": "TSDF Level Up 22 grant",
+      "siteIndex": 0,
+      "hostNameIndex": 3,
+      "kitSlug": "bag-8-macbooks"
+    },
+    {
+      "serialNumber": "C02ZX1234IJ",
+      "serviceTag": null,
+      "model": "MacBook Air",
+      "notes": "TSDF Level Up 22 grant",
+      "siteIndex": 0,
+      "hostNameIndex": 4,
+      "kitSlug": "bag-8-macbooks"
+    },
+    {
+      "serialNumber": "DSVN12345",
+      "serviceTag": "JTAG001",
+      "model": "Dell Inspiron 15 3000",
+      "notes": null,
+      "siteIndex": 1,
+      "hostNameIndex": 5,
+      "kitSlug": "bag-2-dell-laptops"
+    },
+    {
+      "serialNumber": "DSVN12346",
+      "serviceTag": "JTAG002",
+      "model": "Dell Inspiron 15 3000",
+      "notes": null,
+      "siteIndex": 1,
+      "hostNameIndex": 6,
+      "kitSlug": "bag-2-dell-laptops"
+    },
+    {
+      "serialNumber": "DSVN12347",
+      "serviceTag": "JTAG003",
+      "model": "Dell Inspiron 15 3000",
+      "notes": null,
+      "siteIndex": 1,
+      "hostNameIndex": 7,
+      "kitSlug": "bag-2-dell-laptops"
+    },
+    {
+      "serialNumber": "LNV0001234",
+      "serviceTag": null,
+      "model": "Lenovo IdeaPad 3",
+      "notes": "Busboom misc laptop",
+      "siteIndex": 1,
+      "hostNameIndex": 8,
+      "kitSlug": "bag-6-lenovo-laptops"
+    },
+    {
+      "serialNumber": "5CD41234ZZ",
+      "serviceTag": null,
+      "model": "HP Laptop 17T-cn300",
+      "notes": "2026 purchase batch",
+      "siteIndex": 1,
+      "hostNameIndex": 9,
+      "kitSlug": "bag-15-hp-laptops"
+    },
+    {
+      "serialNumber": "5CD41234YY",
+      "serviceTag": null,
+      "model": "HP Laptop 17T-cn300",
+      "notes": "2026 purchase batch",
+      "siteIndex": 1,
+      "hostNameIndex": 10,
+      "kitSlug": "bag-15-hp-laptops"
+    },
+    {
+      "serialNumber": "5CD41234XX",
+      "serviceTag": null,
+      "model": "HP Laptop 17T-cn300",
+      "notes": "2026 purchase batch",
+      "siteIndex": 1,
+      "hostNameIndex": 11,
+      "kitSlug": "bag-15-hp-laptops"
+    }
+  ],
+
+  "kits": [
+    {
+      "slug": "bag-14-hp-laptops",
+      "name": "Bag 14 — HP Laptops",
+      "description": "5-slot rolling bag with 2025 HP 17\" laptops, chargers, and mice",
+      "siteIndex": 0,
+      "packs": [
+        {
+          "name": "Laptops",
+          "description": "HP Laptop 17T-cn300 units and chargers",
+          "items": [
+            { "name": "HP Laptop 17T-cn300", "type": "COUNTED", "expectedQuantity": 5 },
+            { "name": "HP 65W USB-C charger", "type": "COUNTED", "expectedQuantity": 5 },
+            { "name": "Wireless mouse", "type": "COUNTED", "expectedQuantity": 5 }
+          ]
+        },
+        {
+          "name": "Accessories",
+          "description": "Spare cables and adapters",
+          "items": [
+            { "name": "USB-A to USB-C cable", "type": "COUNTED", "expectedQuantity": 3 },
+            { "name": "HDMI cable 6ft", "type": "COUNTED", "expectedQuantity": 2 },
+            { "name": "Cable ties", "type": "CONSUMABLE" }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "bag-15-hp-laptops",
+      "name": "Bag 15 — HP Laptops",
+      "description": "5-slot rolling bag with 2026 HP 17\" laptops",
+      "siteIndex": 1,
+      "packs": [
+        {
+          "name": "Laptops",
+          "description": "HP Laptop 17T-cn300 units and chargers",
+          "items": [
+            { "name": "HP Laptop 17T-cn300", "type": "COUNTED", "expectedQuantity": 5 },
+            { "name": "HP 65W USB-C charger", "type": "COUNTED", "expectedQuantity": 5 },
+            { "name": "Wireless mouse", "type": "COUNTED", "expectedQuantity": 5 }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "bag-8-macbooks",
+      "name": "Bag 8 — MacBooks",
+      "description": "Padded bag with MacBook Airs for Carmel Valley sessions",
+      "siteIndex": 0,
+      "packs": [
+        {
+          "name": "MacBooks",
+          "description": "MacBook Air units and chargers",
+          "items": [
+            { "name": "MacBook Air", "type": "COUNTED", "expectedQuantity": 7 },
+            { "name": "MacBook 30W USB-C charger", "type": "COUNTED", "expectedQuantity": 7 }
+          ]
+        },
+        {
+          "name": "Peripherals",
+          "description": "Mice and adapters",
+          "items": [
+            { "name": "Wireless mouse", "type": "COUNTED", "expectedQuantity": 7 },
+            { "name": "USB-C hub (HDMI/USB-A/SD)", "type": "COUNTED", "expectedQuantity": 3 }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "bag-2-dell-laptops",
+      "name": "Bag 2 — Dell Laptops",
+      "description": "5-slot bag with Dell Inspiron 15 laptops",
+      "siteIndex": 1,
+      "packs": [
+        {
+          "name": "Laptops",
+          "description": "Dell Inspiron 15 3000 units and chargers",
+          "items": [
+            { "name": "Dell Inspiron 15 3000", "type": "COUNTED", "expectedQuantity": 5 },
+            { "name": "Dell 45W barrel charger", "type": "COUNTED", "expectedQuantity": 5 }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "bag-6-lenovo-laptops",
+      "name": "Bag 6 — Lenovo Laptops",
+      "description": "Small bag with 3 Lenovo IdeaPad 3 laptops",
+      "siteIndex": 1,
+      "packs": [
+        {
+          "name": "Laptops",
+          "description": "Lenovo IdeaPad 3 units and chargers",
+          "items": [
+            { "name": "Lenovo IdeaPad 3", "type": "COUNTED", "expectedQuantity": 3 },
+            { "name": "Lenovo 45W USB-C charger", "type": "COUNTED", "expectedQuantity": 3 }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "bag-7-microbit-motors",
+      "name": "Bag 7 — Micro:bit Motors",
+      "description": "Bin with micro:bit boards and motor driver kits for robotics lessons",
+      "siteIndex": 1,
+      "packs": [
+        {
+          "name": "Micro:bits",
+          "description": "BBC micro:bit v2 boards",
+          "items": [
+            { "name": "BBC micro:bit v2", "type": "COUNTED", "expectedQuantity": 10 },
+            { "name": "Micro USB cable", "type": "COUNTED", "expectedQuantity": 10 },
+            { "name": "AAA battery pack (2x)", "type": "COUNTED", "expectedQuantity": 10 }
+          ]
+        },
+        {
+          "name": "Motor Kits",
+          "description": "Motor driver boards and DC motors",
+          "items": [
+            { "name": "Motor driver board", "type": "COUNTED", "expectedQuantity": 8 },
+            { "name": "DC hobby motor", "type": "COUNTED", "expectedQuantity": 16 },
+            { "name": "Wheel pair", "type": "COUNTED", "expectedQuantity": 8 },
+            { "name": "Chassis plate", "type": "COUNTED", "expectedQuantity": 8 },
+            { "name": "Jumper wires (bag)", "type": "CONSUMABLE" },
+            { "name": "AAA batteries", "type": "CONSUMABLE" }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "bag-16a-robot-riot",
+      "name": "Bag 16A — Robot Riot",
+      "description": "Bin with micro:bits, Cutebot Pro chassis, and game controllers for Robot Riot activity",
+      "siteIndex": 1,
+      "packs": [
+        {
+          "name": "Micro:bits",
+          "description": "BBC micro:bit v2 boards for robots and controllers",
+          "items": [
+            { "name": "BBC micro:bit v2", "type": "COUNTED", "expectedQuantity": 10 },
+            { "name": "Micro USB cable", "type": "COUNTED", "expectedQuantity": 10 },
+            { "name": "AAA battery pack (2x)", "type": "COUNTED", "expectedQuantity": 10 }
+          ]
+        },
+        {
+          "name": "Robot Chassis",
+          "description": "Cutebot Pro smart car kits",
+          "items": [
+            { "name": "Cutebot Pro chassis", "type": "COUNTED", "expectedQuantity": 5 },
+            { "name": "Cutebot Li-ion battery", "type": "COUNTED", "expectedQuantity": 5 },
+            { "name": "USB-C charging cable", "type": "COUNTED", "expectedQuantity": 5 }
+          ]
+        },
+        {
+          "name": "Controllers",
+          "description": "Joystick controllers for driving robots",
+          "items": [
+            { "name": "Joystick:bit v2 controller", "type": "COUNTED", "expectedQuantity": 5 },
+            { "name": "AAA battery pack (2x)", "type": "COUNTED", "expectedQuantity": 5 }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "bag-24-robot-explorer",
+      "name": "Bag 24 — Robot Explorer A",
+      "description": "Bin with Edison programmable robots for introductory robotics",
+      "siteIndex": 1,
+      "packs": [
+        {
+          "name": "Edison Robots",
+          "description": "Edison V3 programmable robots",
+          "items": [
+            { "name": "Edison V3 robot", "type": "COUNTED", "expectedQuantity": 10 },
+            { "name": "EdComm programming cable", "type": "COUNTED", "expectedQuantity": 10 },
+            { "name": "Barcode sheet set", "type": "COUNTED", "expectedQuantity": 10 },
+            { "name": "AAA batteries", "type": "CONSUMABLE" }
+          ]
+        },
+        {
+          "name": "LEGO Parts",
+          "description": "LEGO Technic parts for Edison attachments",
+          "items": [
+            { "name": "LEGO Technic beam assortment", "type": "COUNTED", "expectedQuantity": 5 },
+            { "name": "LEGO axle and pin bag", "type": "CONSUMABLE" },
+            { "name": "LEGO wheel set", "type": "COUNTED", "expectedQuantity": 5 }
+          ]
+        }
+      ]
+    }
+  ]
+}

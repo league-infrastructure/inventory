@@ -11,6 +11,7 @@ import { ItemService } from './item.service';
 import { CheckoutService } from './checkout.service';
 
 export class ServiceRegistry {
+  readonly prisma: PrismaClient;
   readonly audit: AuditService;
   readonly qr: QrService;
   readonly sites: SiteService;
@@ -22,6 +23,7 @@ export class ServiceRegistry {
   readonly checkouts: CheckoutService;
 
   private constructor(prisma: PrismaClient) {
+    this.prisma = prisma;
     this.audit = new AuditService(prisma);
     this.qr = new QrService(prisma);
     this.sites = new SiteService(prisma, this.audit);
@@ -35,5 +37,26 @@ export class ServiceRegistry {
 
   static create(prisma?: PrismaClient): ServiceRegistry {
     return new ServiceRegistry(prisma ?? defaultPrisma);
+  }
+
+  /**
+   * Delete all business data from the database in FK-safe order.
+   * Preserves users and system tables (Counter, Config, Session).
+   */
+  async clearAll(): Promise<void> {
+    const p = this.prisma;
+    await p.inventoryCheckLine.deleteMany();
+    await p.inventoryCheck.deleteMany();
+    await p.issue.deleteMany();
+    await p.checkout.deleteMany();
+    await p.item.deleteMany();
+    await p.pack.deleteMany();
+    await p.hostName.updateMany({ data: { computerId: null } });
+    await p.computer.deleteMany();
+    await p.kit.deleteMany();
+    await p.hostName.deleteMany();
+    await p.site.deleteMany();
+    await p.auditLog.deleteMany();
+    await p.quartermasterPattern.deleteMany();
   }
 }

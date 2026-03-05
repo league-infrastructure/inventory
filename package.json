@@ -26,6 +26,7 @@
     "test:db": "cd server && npx jest --config ../tests/db/jest.config.js",
     "test:server": "cd server && npx jest --config ../tests/server/jest.config.js",
     "test:coverage": "cd server && npx jest --config ../tests/server/jest.config.js --coverage",
+    "test:inventory": "cd server && npx jest --config ../tests/server/jest.inventory.config.js",
     "test:client": "cd client && npx vitest run",
     "test:e2e": "npx playwright test"
   },
