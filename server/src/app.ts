@@ -67,9 +67,14 @@ app.use(session(sessionConfig));
 passport.serializeUser((user: any, done) => {
   done(null, user.id);
 });
-passport.deserializeUser(async (id: number, done) => {
+passport.deserializeUser(async (serialized: any, done) => {
   try {
-    const user = await prisma.user.findUnique({ where: { id } });
+    // Handle legacy sessions that stored the full user object
+    const userId = typeof serialized === 'number' ? serialized : serialized?.id;
+    if (typeof userId !== 'number') {
+      return done(null, false);
+    }
+    const user = await prisma.user.findUnique({ where: { id: userId } });
     done(null, user);
   } catch (err) {
     done(err);
