@@ -1,7 +1,7 @@
 ---
-id: "008"
-title: "Service Layer and Data Contracts"
-status: planning
+id: 008
+title: Service Layer and Data Contracts
+status: done
 branch: sprint/008-service-layer-and-data-contracts
 use-cases: []
 ---
