@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { Plus } from 'lucide-react';
 
 interface Kit {
   id: number;
@@ -29,21 +30,25 @@ export default function KitList() {
   }, [statusFilter]);
 
   return (
-    <div style={styles.container}>
-      <div style={styles.header}>
-        <h1>Kits</h1>
-        <Link to="/kits/new" style={styles.btn}>
-          + New Kit
+    <div className="max-w-4xl">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Kits</h1>
+        <Link
+          to="/kits/new"
+          className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg no-underline hover:bg-primary-hover transition-colors"
+        >
+          <Plus size={16} />
+          New Kit
         </Link>
       </div>
 
-      <div style={styles.filterRow}>
-        <label>
+      <div className="mb-4">
+        <label className="text-sm text-gray-600">
           Status:{' '}
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            style={styles.select}
+            className="ml-1 px-2 py-1.5 border border-gray-300 rounded-md text-sm bg-white"
           >
             <option value="">All</option>
             <option value="ACTIVE">Active</option>
@@ -52,109 +57,49 @@ export default function KitList() {
         </label>
       </div>
 
-      {loading && <p style={styles.hint}>Loading...</p>}
-      {error && <p style={styles.error}>{error}</p>}
+      {loading && <p className="text-gray-500 text-sm">Loading...</p>}
+      {error && <p className="text-red-600 text-sm">{error}</p>}
 
       {!loading && kits.length === 0 && (
-        <p style={styles.hint}>No kits found.</p>
+        <p className="text-gray-500 text-sm">No kits found.</p>
       )}
 
       {kits.length > 0 && (
-        <table style={styles.table}>
-          <thead>
-            <tr>
-              <th style={styles.th}>Name</th>
-              <th style={styles.th}>Site</th>
-              <th style={styles.th}>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {kits.map((kit) => (
-              <tr key={kit.id}>
-                <td style={styles.td}>
-                  <Link to={`/kits/${kit.id}`}>{kit.name}</Link>
-                </td>
-                <td style={styles.td}>{kit.site.name}</td>
-                <td style={styles.td}>
-                  <span
-                    style={{
-                      ...styles.badge,
-                      background:
-                        kit.status === 'ACTIVE' ? '#22c55e' : '#9ca3af',
-                    }}
-                  >
-                    {kit.status}
-                  </span>
-                </td>
+        <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-200">
+                <th className="text-left px-4 py-3 font-semibold text-gray-700">Name</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-700">Site</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-700">Status</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {kits.map((kit) => (
+                <tr key={kit.id} className="border-b border-gray-100 hover:bg-gray-50">
+                  <td className="px-4 py-3">
+                    <Link to={`/kits/${kit.id}`} className="text-primary hover:underline">
+                      {kit.name}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-3 text-gray-600">{kit.site.name}</td>
+                  <td className="px-4 py-3">
+                    <span
+                      className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium ${
+                        kit.status === 'ACTIVE'
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-gray-100 text-gray-600'
+                      }`}
+                    >
+                      {kit.status}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
-
-      <div style={{ marginTop: '2rem' }}>
-        <Link to="/" style={styles.backLink}>
-          Back to Home
-        </Link>
-      </div>
     </div>
   );
 }
-
-const styles: Record<string, React.CSSProperties> = {
-  container: {
-    maxWidth: 800,
-    margin: '40px auto',
-    padding: '0 1rem',
-    fontFamily: 'system-ui, -apple-system, sans-serif',
-  },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '1rem',
-  },
-  filterRow: {
-    marginBottom: '1rem',
-  },
-  select: {
-    padding: '0.3em 0.6em',
-    borderRadius: 4,
-    border: '1px solid #ccc',
-  },
-  btn: {
-    display: 'inline-block',
-    fontSize: '0.9rem',
-    padding: '0.5em 1.25em',
-    border: 'none',
-    borderRadius: 8,
-    background: '#4f46e5',
-    color: 'white',
-    textDecoration: 'none',
-  },
-  table: {
-    width: '100%',
-    borderCollapse: 'collapse' as const,
-    fontSize: '0.9rem',
-  },
-  th: {
-    textAlign: 'left' as const,
-    padding: '0.5rem',
-    borderBottom: '2px solid #ddd',
-    fontWeight: 600,
-  },
-  td: {
-    padding: '0.5rem',
-    borderBottom: '1px solid #eee',
-  },
-  badge: {
-    display: 'inline-block',
-    fontSize: '0.7rem',
-    padding: '0.15em 0.5em',
-    color: 'white',
-    borderRadius: 4,
-  },
-  hint: { color: '#888', fontSize: '0.85rem' },
-  error: { color: '#dc2626' },
-  backLink: { color: '#4f46e5', textDecoration: 'none' },
-};

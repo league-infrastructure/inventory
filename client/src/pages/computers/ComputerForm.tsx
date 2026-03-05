@@ -1,21 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 
-interface Site {
-  id: number;
-  name: string;
-}
-
-interface Kit {
-  id: number;
-  name: string;
-}
-
-interface HostName {
-  id: number;
-  name: string;
-  computerId: number | null;
-}
+interface Site { id: number; name: string; }
+interface Kit { id: number; name: string; }
+interface HostName { id: number; name: string; computerId: number | null; }
 
 const DISPOSITIONS = [
   'ACTIVE', 'LOANED', 'NEEDS_REPAIR', 'IN_REPAIR',
@@ -51,11 +39,7 @@ export default function ComputerForm() {
       fetch('/api/kits').then((r) => r.json()),
       fetch('/api/hostnames').then((r) => r.json()),
     ])
-      .then(([s, k, h]) => {
-        setSites(s);
-        setKits(k);
-        setHostNames(h);
-      })
+      .then(([s, k, h]) => { setSites(s); setKits(k); setHostNames(h); })
       .catch(() => {});
   }, []);
 
@@ -80,7 +64,6 @@ export default function ComputerForm() {
     }
   }, [id, isEdit]);
 
-  // Available host names: unassigned ones + the one currently assigned to this computer
   const availableHostNames = hostNames.filter(
     (h) => h.computerId === null || (isEdit && h.computerId === parseInt(id!, 10))
   );
@@ -125,53 +108,59 @@ export default function ComputerForm() {
     setSaving(false);
   }
 
+  const inputClass = "mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white";
+
   return (
-    <div style={styles.container}>
-      <Link to={isEdit ? `/computers/${id}` : '/computers'} style={styles.backLink}>
-        Back
+    <div className="max-w-lg">
+      <Link to={isEdit ? `/computers/${id}` : '/computers'} className="text-sm text-primary hover:underline">
+        &larr; Back
       </Link>
-      <h1>{isEdit ? 'Edit Computer' : 'New Computer'}</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mt-4 mb-6">
+        {isEdit ? 'Edit Computer' : 'New Computer'}
+      </h1>
 
-      {error && <p style={styles.error}>{error}</p>}
+      {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
 
-      <form onSubmit={handleSubmit} style={styles.form}>
-        <label style={styles.label}>
-          Model
-          <input value={model} onChange={(e) => setModel(e.target.value)} style={styles.input} />
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <label className="block">
+          <span className="text-sm font-medium text-gray-700">Model</span>
+          <input value={model} onChange={(e) => setModel(e.target.value)} className={inputClass} />
         </label>
 
-        <label style={styles.label}>
-          Serial Number
-          <input value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} style={styles.input} />
-        </label>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <label className="block">
+            <span className="text-sm font-medium text-gray-700">Serial Number</span>
+            <input value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} className={inputClass} />
+          </label>
+          <label className="block">
+            <span className="text-sm font-medium text-gray-700">Service Tag</span>
+            <input value={serviceTag} onChange={(e) => setServiceTag(e.target.value)} className={inputClass} />
+          </label>
+        </div>
 
-        <label style={styles.label}>
-          Service Tag
-          <input value={serviceTag} onChange={(e) => setServiceTag(e.target.value)} style={styles.input} />
-        </label>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <label className="block">
+            <span className="text-sm font-medium text-gray-700">Default Username</span>
+            <input value={defaultUsername} onChange={(e) => setDefaultUsername(e.target.value)} className={inputClass} />
+          </label>
+          <label className="block">
+            <span className="text-sm font-medium text-gray-700">Default Password</span>
+            <input value={defaultPassword} onChange={(e) => setDefaultPassword(e.target.value)} className={inputClass} />
+          </label>
+        </div>
 
-        <label style={styles.label}>
-          Default Username
-          <input value={defaultUsername} onChange={(e) => setDefaultUsername(e.target.value)} style={styles.input} />
-        </label>
-
-        <label style={styles.label}>
-          Default Password
-          <input value={defaultPassword} onChange={(e) => setDefaultPassword(e.target.value)} style={styles.input} />
-        </label>
-
-        <label style={styles.label}>
-          Disposition
-          <select value={disposition} onChange={(e) => setDisposition(e.target.value)} style={styles.input}>
+        <label className="block">
+          <span className="text-sm font-medium text-gray-700">Disposition</span>
+          <select value={disposition} onChange={(e) => setDisposition(e.target.value)} className={inputClass}>
             {DISPOSITIONS.map((d) => (
               <option key={d} value={d}>{d.replace(/_/g, ' ')}</option>
             ))}
           </select>
         </label>
 
-        <label style={styles.label}>
-          Host Name
-          <select value={hostNameId} onChange={(e) => setHostNameId(e.target.value ? parseInt(e.target.value, 10) : '')} style={styles.input}>
+        <label className="block">
+          <span className="text-sm font-medium text-gray-700">Host Name</span>
+          <select value={hostNameId} onChange={(e) => setHostNameId(e.target.value ? parseInt(e.target.value, 10) : '')} className={inputClass}>
             <option value="">None</option>
             {availableHostNames.map((h) => (
               <option key={h.id} value={h.id}>{h.name}</option>
@@ -179,38 +168,43 @@ export default function ComputerForm() {
           </select>
         </label>
 
-        <label style={styles.label}>
-          Site
-          <select value={siteId} onChange={(e) => setSiteId(e.target.value ? parseInt(e.target.value, 10) : '')} style={styles.input}>
-            <option value="">None</option>
-            {sites.map((s) => (
-              <option key={s.id} value={s.id}>{s.name}</option>
-            ))}
-          </select>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <label className="block">
+            <span className="text-sm font-medium text-gray-700">Site</span>
+            <select value={siteId} onChange={(e) => setSiteId(e.target.value ? parseInt(e.target.value, 10) : '')} className={inputClass}>
+              <option value="">None</option>
+              {sites.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+          </label>
+          <label className="block">
+            <span className="text-sm font-medium text-gray-700">Kit</span>
+            <select value={kitId} onChange={(e) => setKitId(e.target.value ? parseInt(e.target.value, 10) : '')} className={inputClass}>
+              <option value="">None</option>
+              {kits.map((k) => (
+                <option key={k.id} value={k.id}>{k.name}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <label className="block">
+          <span className="text-sm font-medium text-gray-700">Date Received</span>
+          <input type="date" value={dateReceived} onChange={(e) => setDateReceived(e.target.value)} className={inputClass} />
         </label>
 
-        <label style={styles.label}>
-          Kit
-          <select value={kitId} onChange={(e) => setKitId(e.target.value ? parseInt(e.target.value, 10) : '')} style={styles.input}>
-            <option value="">None</option>
-            {kits.map((k) => (
-              <option key={k.id} value={k.id}>{k.name}</option>
-            ))}
-          </select>
+        <label className="block">
+          <span className="text-sm font-medium text-gray-700">Notes</span>
+          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} className={inputClass + " resize-y"} rows={3} />
         </label>
 
-        <label style={styles.label}>
-          Date Received
-          <input type="date" value={dateReceived} onChange={(e) => setDateReceived(e.target.value)} style={styles.input} />
-        </label>
-
-        <label style={styles.label}>
-          Notes
-          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} style={styles.textarea} rows={3} />
-        </label>
-
-        <div style={styles.actions}>
-          <button type="submit" style={styles.btn} disabled={saving}>
+        <div className="pt-2">
+          <button
+            type="submit"
+            className="px-6 py-2 bg-primary text-white text-sm font-medium rounded-lg border-none cursor-pointer hover:bg-primary-hover disabled:opacity-50"
+            disabled={saving}
+          >
             {saving ? 'Saving...' : isEdit ? 'Update Computer' : 'Create Computer'}
           </button>
         </div>
@@ -218,15 +212,3 @@ export default function ComputerForm() {
     </div>
   );
 }
-
-const styles: Record<string, React.CSSProperties> = {
-  container: { maxWidth: 500, margin: '40px auto', padding: '0 1rem', fontFamily: 'system-ui, -apple-system, sans-serif' },
-  form: { display: 'flex', flexDirection: 'column', gap: '1rem' },
-  label: { display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.9rem', fontWeight: 500 },
-  input: { padding: '0.5em', borderRadius: 6, border: '1px solid #ccc', fontSize: '0.9rem' },
-  textarea: { padding: '0.5em', borderRadius: 6, border: '1px solid #ccc', fontSize: '0.9rem', resize: 'vertical' as const },
-  actions: { display: 'flex', gap: '0.5rem', marginTop: '0.5rem' },
-  btn: { fontSize: '0.9rem', padding: '0.5em 1.5em', border: 'none', borderRadius: 8, background: '#4f46e5', color: 'white', cursor: 'pointer' },
-  error: { color: '#dc2626', marginBottom: '0.5rem' },
-  backLink: { color: '#4f46e5', textDecoration: 'none', fontSize: '0.85rem' },
-};

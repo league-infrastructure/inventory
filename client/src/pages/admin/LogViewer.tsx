@@ -13,8 +13,13 @@ const LEVEL_LABELS: Record<number, string> = {
   10: 'TRACE', 20: 'DEBUG', 30: 'INFO', 40: 'WARN', 50: 'ERROR', 60: 'FATAL',
 };
 
-const LEVEL_COLORS: Record<number, string> = {
-  10: '#999', 20: '#666', 30: '#1a73e8', 40: '#e65100', 50: '#c5221f', 60: '#b71c1c',
+const LEVEL_CLASSES: Record<number, string> = {
+  10: 'bg-gray-100 text-gray-500',
+  20: 'bg-gray-100 text-gray-600',
+  30: 'bg-blue-50 text-blue-600',
+  40: 'bg-amber-50 text-amber-600',
+  50: 'bg-red-50 text-red-600',
+  60: 'bg-red-100 text-red-700',
 };
 
 const FILTER_OPTIONS = [
@@ -36,118 +41,97 @@ export default function LogViewer() {
     const params = level ? `?level=${level}` : '';
     fetch(`/api/admin/logs${params}`)
       .then((r) => r.json())
-      .then((data) => {
-        setEntries(data.entries);
-        setTotal(data.total);
-        setLoading(false);
-      })
+      .then((data) => { setEntries(data.entries); setTotal(data.total); setLoading(false); })
       .catch(() => { setError('Failed to load logs'); setLoading(false); });
   };
 
   useEffect(() => { loadLogs(); }, [level]);
 
-  if (error) return <div style={{ color: 'red' }}>{error}</div>;
-
-  const levelBadge = (lvl: number) => {
-    const label = LEVEL_LABELS[lvl] || `L${lvl}`;
-    const color = LEVEL_COLORS[lvl] || '#666';
-    return (
-      <span style={{
-        fontSize: 11,
-        padding: '1px 6px',
-        borderRadius: 3,
-        background: color + '18',
-        color,
-        fontWeight: 600,
-        fontFamily: 'monospace',
-      }}>
-        {label}
-      </span>
-    );
-  };
+  if (error) return <p className="text-red-600 text-sm">{error}</p>;
 
   const formatTime = (ts: string) => {
     try {
-      const d = new Date(ts);
-      return d.toLocaleTimeString(undefined, { hour12: false, fractionalSecondDigits: 3 });
-    } catch {
-      return ts;
-    }
+      return new Date(ts).toLocaleTimeString(undefined, { hour12: false, fractionalSecondDigits: 3 });
+    } catch { return ts; }
   };
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1>Logs</h1>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+        <h1 className="text-xl font-bold text-gray-900">Logs</h1>
+        <div className="flex items-center gap-2">
           <select
             value={level}
             onChange={(e) => setLevel(e.target.value)}
-            style={{ padding: '4px 8px' }}
+            className="px-2 py-1.5 border border-gray-300 rounded-md text-sm bg-white"
           >
             {FILTER_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
           </select>
-          <button onClick={loadLogs} disabled={loading} style={{ padding: '4px 12px', cursor: 'pointer' }}>
-            {loading ? 'Loading...' : 'Refresh'}
+          <button
+            onClick={loadLogs}
+            disabled={loading}
+            className="px-3 py-1.5 text-sm border border-gray-300 rounded-md bg-white cursor-pointer hover:bg-gray-50 disabled:opacity-50"
+          >
+            {loading ? '...' : 'Refresh'}
           </button>
-          <span style={{ color: '#666', fontSize: 12 }}>{total} entries in buffer</span>
+          <span className="text-gray-400 text-xs">{total} entries</span>
         </div>
       </div>
 
       {entries.length === 0 ? (
-        <p style={{ color: '#666' }}>No log entries{level ? ' at this level' : ''}.</p>
+        <p className="text-gray-500 text-sm">No log entries{level ? ' at this level' : ''}.</p>
       ) : (
-        <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 13 }}>
-          <thead>
-            <tr>
-              <th style={{ textAlign: 'left', padding: '6px 10px', borderBottom: '2px solid #ddd', whiteSpace: 'nowrap' }}>Time</th>
-              <th style={{ textAlign: 'left', padding: '6px 10px', borderBottom: '2px solid #ddd' }}>Level</th>
-              <th style={{ textAlign: 'left', padding: '6px 10px', borderBottom: '2px solid #ddd' }}>Message</th>
-              <th style={{ textAlign: 'left', padding: '6px 10px', borderBottom: '2px solid #ddd' }}>Request</th>
-            </tr>
-          </thead>
-          <tbody>
-            {entries.map((entry, i) => (
-              <tr key={i} style={{ borderBottom: '1px solid #eee' }}>
-                <td style={{ padding: '4px 10px', whiteSpace: 'nowrap', fontFamily: 'monospace', fontSize: 12, color: '#666' }}>
-                  {formatTime(entry.timestamp)}
-                </td>
-                <td style={{ padding: '4px 10px' }}>
-                  {levelBadge(entry.level)}
-                </td>
-                <td style={{ padding: '4px 10px' }}>
-                  {entry.msg}
-                  {entry.err && (
-                    <details style={{ marginTop: 4 }}>
-                      <summary style={{ cursor: 'pointer', color: '#c5221f', fontSize: 12 }}>
-                        {entry.err.message}
-                      </summary>
-                      {entry.err.stack && (
-                        <pre style={{ fontSize: 11, color: '#666', overflow: 'auto', maxWidth: 600 }}>
-                          {entry.err.stack}
-                        </pre>
-                      )}
-                    </details>
-                  )}
-                </td>
-                <td style={{ padding: '4px 10px', whiteSpace: 'nowrap', fontFamily: 'monospace', fontSize: 12, color: '#666' }}>
-                  {entry.req && (
-                    <span>
-                      {entry.req.method} {entry.req.url}
-                      {entry.res && (
-                        <span style={{ marginLeft: 6, color: entry.res.statusCode >= 400 ? '#c5221f' : '#34a853' }}>
-                          {entry.res.statusCode}
-                        </span>
-                      )}
-                    </span>
-                  )}
-                </td>
+        <div className="bg-white border border-gray-200 rounded-lg overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-gray-200">
+                <th className="text-left px-3 py-2 font-semibold text-gray-700 whitespace-nowrap">Time</th>
+                <th className="text-left px-3 py-2 font-semibold text-gray-700">Level</th>
+                <th className="text-left px-3 py-2 font-semibold text-gray-700">Message</th>
+                <th className="text-left px-3 py-2 font-semibold text-gray-700">Request</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {entries.map((entry, i) => (
+                <tr key={i} className="border-b border-gray-100">
+                  <td className="px-3 py-1.5 whitespace-nowrap font-mono text-gray-500">
+                    {formatTime(entry.timestamp)}
+                  </td>
+                  <td className="px-3 py-1.5">
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold font-mono ${LEVEL_CLASSES[entry.level] || 'bg-gray-100 text-gray-600'}`}>
+                      {LEVEL_LABELS[entry.level] || `L${entry.level}`}
+                    </span>
+                  </td>
+                  <td className="px-3 py-1.5">
+                    {entry.msg}
+                    {entry.err && (
+                      <details className="mt-1">
+                        <summary className="cursor-pointer text-red-600 text-[11px]">{entry.err.message}</summary>
+                        {entry.err.stack && (
+                          <pre className="text-[10px] text-gray-500 overflow-auto max-w-xl mt-1">{entry.err.stack}</pre>
+                        )}
+                      </details>
+                    )}
+                  </td>
+                  <td className="px-3 py-1.5 whitespace-nowrap font-mono text-gray-500">
+                    {entry.req && (
+                      <span>
+                        {entry.req.method} {entry.req.url}
+                        {entry.res && (
+                          <span className={`ml-1.5 ${entry.res.statusCode >= 400 ? 'text-red-600' : 'text-green-600'}`}>
+                            {entry.res.statusCode}
+                          </span>
+                        )}
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { Plus, Tags } from 'lucide-react';
 
 interface Computer {
   id: number;
@@ -15,16 +16,16 @@ const DISPOSITIONS = [
   'SCRAPPED', 'LOST', 'DECOMMISSIONED',
 ];
 
-function dispositionColor(d: string): string {
+function dispositionClasses(d: string): string {
   switch (d) {
-    case 'ACTIVE': return '#22c55e';
-    case 'LOANED': return '#3b82f6';
-    case 'NEEDS_REPAIR': return '#f59e0b';
-    case 'IN_REPAIR': return '#f97316';
-    case 'SCRAPPED': return '#6b7280';
-    case 'LOST': return '#dc2626';
-    case 'DECOMMISSIONED': return '#9ca3af';
-    default: return '#6b7280';
+    case 'ACTIVE': return 'bg-green-100 text-green-700';
+    case 'LOANED': return 'bg-blue-100 text-blue-700';
+    case 'NEEDS_REPAIR': return 'bg-amber-100 text-amber-700';
+    case 'IN_REPAIR': return 'bg-orange-100 text-orange-700';
+    case 'SCRAPPED': return 'bg-gray-100 text-gray-600';
+    case 'LOST': return 'bg-red-100 text-red-700';
+    case 'DECOMMISSIONED': return 'bg-gray-100 text-gray-500';
+    default: return 'bg-gray-100 text-gray-600';
   }
 }
 
@@ -48,26 +49,34 @@ export default function ComputerList() {
   }, [dispositionFilter]);
 
   return (
-    <div style={styles.container}>
-      <div style={styles.header}>
-        <h1>Computers</h1>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <Link to="/hostnames" style={{ ...styles.btn, background: '#6b7280' }}>
-            Manage Host Names
+    <div className="max-w-5xl">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Computers</h1>
+        <div className="flex gap-2">
+          <Link
+            to="/hostnames"
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-lg no-underline hover:bg-gray-700 transition-colors"
+          >
+            <Tags size={16} />
+            Host Names
           </Link>
-          <Link to="/computers/new" style={styles.btn}>
-            + New Computer
+          <Link
+            to="/computers/new"
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg no-underline hover:bg-primary-hover transition-colors"
+          >
+            <Plus size={16} />
+            New Computer
           </Link>
         </div>
       </div>
 
-      <div style={styles.filterRow}>
-        <label>
+      <div className="mb-4">
+        <label className="text-sm text-gray-600">
           Disposition:{' '}
           <select
             value={dispositionFilter}
             onChange={(e) => setDispositionFilter(e.target.value)}
-            style={styles.select}
+            className="ml-1 px-2 py-1.5 border border-gray-300 rounded-md text-sm bg-white"
           >
             <option value="">All</option>
             {DISPOSITIONS.map((d) => (
@@ -77,66 +86,49 @@ export default function ComputerList() {
         </label>
       </div>
 
-      {loading && <p style={styles.hint}>Loading...</p>}
-      {error && <p style={styles.error}>{error}</p>}
+      {loading && <p className="text-gray-500 text-sm">Loading...</p>}
+      {error && <p className="text-red-600 text-sm">{error}</p>}
 
       {!loading && computers.length === 0 && (
-        <p style={styles.hint}>No computers found.</p>
+        <p className="text-gray-500 text-sm">No computers found.</p>
       )}
 
       {computers.length > 0 && (
-        <table style={styles.table}>
-          <thead>
-            <tr>
-              <th style={styles.th}>Host Name</th>
-              <th style={styles.th}>Model</th>
-              <th style={styles.th}>Disposition</th>
-              <th style={styles.th}>Site</th>
-              <th style={styles.th}>Kit</th>
-            </tr>
-          </thead>
-          <tbody>
-            {computers.map((c) => (
-              <tr key={c.id}>
-                <td style={styles.td}>
-                  <Link to={`/computers/${c.id}`}>
-                    {c.hostName?.name || `#${c.id}`}
-                  </Link>
-                </td>
-                <td style={styles.td}>{c.model || '—'}</td>
-                <td style={styles.td}>
-                  <span style={{ ...styles.badge, background: dispositionColor(c.disposition) }}>
-                    {c.disposition.replace(/_/g, ' ')}
-                  </span>
-                </td>
-                <td style={styles.td}>{c.site?.name || '—'}</td>
-                <td style={styles.td}>
-                  {c.kit ? <Link to={`/kits/${c.kit.id}`}>{c.kit.name}</Link> : '—'}
-                </td>
+        <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-200">
+                <th className="text-left px-4 py-3 font-semibold text-gray-700">Host Name</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-700">Model</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-700">Disposition</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-700 hidden sm:table-cell">Site</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-700 hidden sm:table-cell">Kit</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {computers.map((c) => (
+                <tr key={c.id} className="border-b border-gray-100 hover:bg-gray-50">
+                  <td className="px-4 py-3">
+                    <Link to={`/computers/${c.id}`} className="text-primary hover:underline">
+                      {c.hostName?.name || `#${c.id}`}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-3 text-gray-600">{c.model || '—'}</td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium ${dispositionClasses(c.disposition)}`}>
+                      {c.disposition.replace(/_/g, ' ')}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-gray-600 hidden sm:table-cell">{c.site?.name || '—'}</td>
+                  <td className="px-4 py-3 hidden sm:table-cell">
+                    {c.kit ? <Link to={`/kits/${c.kit.id}`} className="text-primary hover:underline">{c.kit.name}</Link> : '—'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
-
-      <div style={{ marginTop: '2rem' }}>
-        <Link to="/" style={styles.backLink}>Back to Home</Link>
-      </div>
     </div>
   );
 }
-
-const styles: Record<string, React.CSSProperties> = {
-  container: { maxWidth: 900, margin: '40px auto', padding: '0 1rem', fontFamily: 'system-ui, -apple-system, sans-serif' },
-  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' },
-  filterRow: { marginBottom: '1rem' },
-  select: { padding: '0.3em 0.6em', borderRadius: 4, border: '1px solid #ccc' },
-  btn: { display: 'inline-block', fontSize: '0.9rem', padding: '0.5em 1.25em', border: 'none', borderRadius: 8, background: '#4f46e5', color: 'white', textDecoration: 'none' },
-  table: { width: '100%', borderCollapse: 'collapse' as const, fontSize: '0.9rem' },
-  th: { textAlign: 'left' as const, padding: '0.5rem', borderBottom: '2px solid #ddd', fontWeight: 600 },
-  td: { padding: '0.5rem', borderBottom: '1px solid #eee' },
-  badge: { display: 'inline-block', fontSize: '0.7rem', padding: '0.15em 0.5em', color: 'white', borderRadius: 4 },
-  hint: { color: '#888', fontSize: '0.85rem' },
-  error: { color: '#dc2626' },
-  backLink: { color: '#4f46e5', textDecoration: 'none' },
-};

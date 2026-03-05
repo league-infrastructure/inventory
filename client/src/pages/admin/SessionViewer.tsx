@@ -23,97 +23,75 @@ export default function SessionViewer() {
 
   useEffect(() => { loadSessions(); }, []);
 
-  if (error) return <div style={{ color: 'red' }}>{error}</div>;
+  if (error) return <p className="text-red-600 text-sm">{error}</p>;
 
   const isExpiringSoon = (expire: string) => {
     const diff = new Date(expire).getTime() - Date.now();
-    return diff > 0 && diff < 60 * 60 * 1000; // within 1 hour
-  };
-
-  const formatExpiry = (expire: string) => {
-    const d = new Date(expire);
-    return d.toLocaleString();
+    return diff > 0 && diff < 60 * 60 * 1000;
   };
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1>Sessions</h1>
-        <button onClick={loadSessions} disabled={loading} style={{ padding: '4px 12px', cursor: 'pointer' }}>
-          {loading ? 'Loading...' : 'Refresh'}
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-xl font-bold text-gray-900">Sessions</h1>
+        <button
+          onClick={loadSessions}
+          disabled={loading}
+          className="px-3 py-1.5 text-sm border border-gray-300 rounded-md bg-white cursor-pointer hover:bg-gray-50 disabled:opacity-50"
+        >
+          {loading ? '...' : 'Refresh'}
         </button>
       </div>
 
       {sessions.length === 0 ? (
-        <p style={{ color: '#666' }}>No active sessions.</p>
+        <p className="text-gray-500 text-sm">No active sessions.</p>
       ) : (
         <>
-          <p style={{ color: '#666', fontSize: 13 }}>{sessions.length} active session{sessions.length !== 1 ? 's' : ''}</p>
-          <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 13 }}>
-            <thead>
-              <tr>
-                <th style={{ textAlign: 'left', padding: '6px 10px', borderBottom: '2px solid #ddd' }}>Session ID</th>
-                <th style={{ textAlign: 'left', padding: '6px 10px', borderBottom: '2px solid #ddd' }}>Admin</th>
-                <th style={{ textAlign: 'left', padding: '6px 10px', borderBottom: '2px solid #ddd' }}>User</th>
-                <th style={{ textAlign: 'left', padding: '6px 10px', borderBottom: '2px solid #ddd' }}>Expires</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sessions.map((s) => (
-                <tr
-                  key={s.sid}
-                  style={{
-                    borderBottom: '1px solid #eee',
-                    background: isExpiringSoon(s.expire) ? '#fff8e1' : 'transparent',
-                  }}
-                >
-                  <td style={{ padding: '6px 10px', fontFamily: 'monospace' }}>{s.sid}...</td>
-                  <td style={{ padding: '6px 10px' }}>
-                    {s.isAdmin && (
-                      <span style={{
-                        fontSize: 11,
-                        padding: '1px 6px',
-                        borderRadius: 3,
-                        background: '#e8f0fe',
-                        color: '#1a73e8',
-                        fontWeight: 600,
-                      }}>
-                        admin
-                      </span>
-                    )}
-                  </td>
-                  <td style={{ padding: '6px 10px' }}>
-                    {s.hasUser ? (
-                      <span>
-                        {s.provider && (
-                          <span style={{
-                            fontSize: 11,
-                            padding: '1px 6px',
-                            borderRadius: 3,
-                            background: '#e6f4ea',
-                            color: '#1e7e34',
-                            fontWeight: 600,
-                            marginRight: 4,
-                          }}>
-                            {s.provider}
-                          </span>
-                        )}
-                        Authenticated
-                      </span>
-                    ) : (
-                      <span style={{ color: '#999' }}>Anonymous</span>
-                    )}
-                  </td>
-                  <td style={{ padding: '6px 10px', color: isExpiringSoon(s.expire) ? '#e65100' : '#333' }}>
-                    {formatExpiry(s.expire)}
-                    {isExpiringSoon(s.expire) && (
-                      <span style={{ marginLeft: 6, fontSize: 11, color: '#e65100' }}>expiring soon</span>
-                    )}
-                  </td>
+          <p className="text-gray-500 text-xs mb-3">{sessions.length} active session{sessions.length !== 1 ? 's' : ''}</p>
+          <div className="bg-white border border-gray-200 rounded-lg overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="text-left px-4 py-2 font-semibold text-gray-700">Session ID</th>
+                  <th className="text-left px-4 py-2 font-semibold text-gray-700">Admin</th>
+                  <th className="text-left px-4 py-2 font-semibold text-gray-700">User</th>
+                  <th className="text-left px-4 py-2 font-semibold text-gray-700">Expires</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {sessions.map((s) => (
+                  <tr key={s.sid} className={`border-b border-gray-100 ${isExpiringSoon(s.expire) ? 'bg-amber-50' : ''}`}>
+                    <td className="px-4 py-2 font-mono text-xs text-gray-500">{s.sid}...</td>
+                    <td className="px-4 py-2">
+                      {s.isAdmin && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 font-semibold">admin</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-2">
+                      {s.hasUser ? (
+                        <span>
+                          {s.provider && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-50 text-green-600 font-semibold mr-1">
+                              {s.provider}
+                            </span>
+                          )}
+                          Authenticated
+                        </span>
+                      ) : (
+                        <span className="text-gray-400">Anonymous</span>
+                      )}
+                    </td>
+                    <td className={`px-4 py-2 text-xs ${isExpiringSoon(s.expire) ? 'text-amber-600' : 'text-gray-600'}`}>
+                      {new Date(s.expire).toLocaleString()}
+                      {isExpiringSoon(s.expire) && (
+                        <span className="ml-1.5 text-[10px] text-amber-600">expiring soon</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </>
       )}
     </div>

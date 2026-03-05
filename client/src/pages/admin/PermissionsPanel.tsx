@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Plus, Trash2 } from 'lucide-react';
 
 interface Pattern {
   id: number;
@@ -55,103 +56,77 @@ export default function PermissionsPanel() {
     }
   }
 
-  if (error) return <div style={{ color: 'red' }}>{error}</div>;
+  if (error) return <p className="text-red-600 text-sm">{error}</p>;
 
   return (
     <div>
-      <h1>Permissions</h1>
-      <p style={{ color: '#666', marginBottom: 16 }}>
-        Email addresses or regex patterns that grant <strong>Quartermaster</strong> role
-        on Google OAuth login. Users matching any pattern get elevated permissions.
+      <h1 className="text-xl font-bold text-gray-900 mb-2">Permissions</h1>
+      <p className="text-gray-500 text-sm mb-6">
+        Email addresses or regex patterns that grant <strong>Quartermaster</strong> role on Google OAuth login.
         Changes take effect on next login.
       </p>
 
-      <div style={{
-        border: '1px solid #ddd',
-        borderRadius: 8,
-        padding: 16,
-        marginBottom: 16,
-      }}>
-        <h3 style={{ marginTop: 0 }}>Quartermaster Patterns</h3>
+      <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4">
+        <h3 className="text-sm font-semibold text-gray-700 mb-3">Quartermaster Patterns</h3>
 
-        <form onSubmit={handleAdd} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 16 }}>
+        <form onSubmit={handleAdd} className="flex flex-wrap gap-2 items-center mb-4">
           <input
             placeholder="email@jointheleague.org or regex pattern"
             value={newPattern}
             onChange={(e) => setNewPattern(e.target.value)}
-            style={{ flex: 1, padding: '6px 8px', fontFamily: 'monospace', fontSize: 13 }}
+            className="flex-1 min-w-[200px] px-3 py-1.5 font-mono text-xs border border-gray-300 rounded-md"
             required
           />
-          <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, whiteSpace: 'nowrap' }}>
-            <input
-              type="checkbox"
-              checked={isRegex}
-              onChange={(e) => setIsRegex(e.target.checked)}
-            />
+          <label className="flex items-center gap-1.5 text-xs text-gray-600 whitespace-nowrap">
+            <input type="checkbox" checked={isRegex} onChange={(e) => setIsRegex(e.target.checked)} />
             Regex
           </label>
           <button
             type="submit"
             disabled={saving}
-            style={{ padding: '6px 16px', cursor: 'pointer' }}
+            className="inline-flex items-center gap-1 px-3 py-1.5 text-sm bg-primary text-white rounded-md border-none cursor-pointer hover:bg-primary-hover disabled:opacity-50"
           >
+            <Plus size={14} />
             {saving ? 'Adding...' : 'Add'}
           </button>
         </form>
 
         {formError && (
-          <div style={{
-            padding: '8px 12px',
-            marginBottom: 12,
-            borderRadius: 4,
-            background: '#fce8e6',
-            color: '#c5221f',
-            border: '1px solid #ea4335',
-            fontSize: 13,
-          }}>
+          <div className="px-3 py-2 mb-3 rounded bg-red-50 text-red-700 text-sm border border-red-200">
             {formError}
           </div>
         )}
 
         {loading ? (
-          <p style={{ color: '#999' }}>Loading...</p>
+          <p className="text-gray-400 text-sm">Loading...</p>
         ) : patterns.length === 0 ? (
-          <p style={{ color: '#999', fontSize: 13 }}>
-            No patterns configured. All users will log in as Instructors.
-          </p>
+          <p className="text-gray-400 text-sm">No patterns configured. All users will log in as Instructors.</p>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <table className="w-full text-sm">
             <thead>
-              <tr style={{ borderBottom: '2px solid #ddd' }}>
-                <th style={{ textAlign: 'left', padding: '8px 0', fontWeight: 600 }}>Pattern</th>
-                <th style={{ textAlign: 'left', padding: '8px 0', fontWeight: 600, width: 80 }}>Type</th>
-                <th style={{ width: 80 }}></th>
+              <tr className="border-b border-gray-200">
+                <th className="text-left py-2 font-semibold text-gray-700">Pattern</th>
+                <th className="text-left py-2 font-semibold text-gray-700 w-20">Type</th>
+                <th className="w-12"></th>
               </tr>
             </thead>
             <tbody>
               {patterns.map((p) => (
-                <tr key={p.id} style={{ borderBottom: '1px solid #eee' }}>
-                  <td style={{ padding: '8px 0', fontFamily: 'monospace', fontSize: 13 }}>
-                    {p.pattern}
-                  </td>
-                  <td style={{ padding: '8px 0' }}>
-                    <span style={{
-                      fontSize: 11,
-                      padding: '2px 6px',
-                      borderRadius: 3,
-                      background: p.isRegex ? '#e8f0fe' : '#e6f4ea',
-                      color: p.isRegex ? '#1a73e8' : '#34a853',
-                      fontWeight: 600,
-                    }}>
+                <tr key={p.id} className="border-b border-gray-100">
+                  <td className="py-2 font-mono text-xs">{p.pattern}</td>
+                  <td className="py-2">
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${
+                      p.isRegex ? 'bg-blue-50 text-blue-600' : 'bg-green-50 text-green-600'
+                    }`}>
                       {p.isRegex ? 'regex' : 'exact'}
                     </span>
                   </td>
-                  <td style={{ padding: '8px 0', textAlign: 'right' }}>
+                  <td className="py-2 text-right">
                     <button
                       onClick={() => handleDelete(p.id)}
-                      style={{ cursor: 'pointer', color: '#c5221f', background: 'none', border: 'none', fontSize: 13 }}
+                      className="text-red-500 hover:text-red-700 bg-transparent border-none cursor-pointer p-1"
                     >
-                      Delete
+                      <Trash2 size={14} />
                     </button>
                   </td>
                 </tr>
@@ -161,9 +136,8 @@ export default function PermissionsPanel() {
         )}
       </div>
 
-      <p style={{ color: '#666', fontSize: 12 }}>
-        Exact patterns match the full email address (case-insensitive).
-        Regex patterns are tested with the <code>i</code> flag.
+      <p className="text-gray-500 text-xs">
+        Exact patterns match the full email address (case-insensitive). Regex patterns are tested with the <code>i</code> flag.
       </p>
     </div>
   );

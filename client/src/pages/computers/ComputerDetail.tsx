@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { Pencil } from 'lucide-react';
 
-interface ComputerDetail {
+interface ComputerData {
   id: number;
   serialNumber: string | null;
   serviceTag: string | null;
@@ -23,22 +24,22 @@ const DISPOSITIONS = [
   'SCRAPPED', 'LOST', 'DECOMMISSIONED',
 ];
 
-function dispositionColor(d: string): string {
+function dispositionClasses(d: string): string {
   switch (d) {
-    case 'ACTIVE': return '#22c55e';
-    case 'LOANED': return '#3b82f6';
-    case 'NEEDS_REPAIR': return '#f59e0b';
-    case 'IN_REPAIR': return '#f97316';
-    case 'SCRAPPED': return '#6b7280';
-    case 'LOST': return '#dc2626';
-    case 'DECOMMISSIONED': return '#9ca3af';
-    default: return '#6b7280';
+    case 'ACTIVE': return 'bg-green-100 text-green-700';
+    case 'LOANED': return 'bg-blue-100 text-blue-700';
+    case 'NEEDS_REPAIR': return 'bg-amber-100 text-amber-700';
+    case 'IN_REPAIR': return 'bg-orange-100 text-orange-700';
+    case 'SCRAPPED': return 'bg-gray-100 text-gray-600';
+    case 'LOST': return 'bg-red-100 text-red-700';
+    case 'DECOMMISSIONED': return 'bg-gray-100 text-gray-500';
+    default: return 'bg-gray-100 text-gray-600';
   }
 }
 
 export default function ComputerDetailPage() {
   const { id } = useParams();
-  const [computer, setComputer] = useState<ComputerDetail | null>(null);
+  const [computer, setComputer] = useState<ComputerData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
@@ -71,62 +72,84 @@ export default function ComputerDetailPage() {
     }
   }
 
-  if (loading) return <div style={styles.container}><p>Loading...</p></div>;
-  if (error) return <div style={styles.container}><p style={styles.error}>{error}</p></div>;
+  if (loading) return <p className="text-gray-500 text-sm">Loading...</p>;
+  if (error) return <p className="text-red-600 text-sm">{error}</p>;
   if (!computer) return null;
 
   const displayName = computer.hostName?.name || computer.model || `Computer #${computer.id}`;
 
-  return (
-    <div style={styles.container}>
-      <Link to="/computers" style={styles.backLink}>Back to Computers</Link>
+  const fields = [
+    { label: 'Host Name', value: computer.hostName?.name },
+    { label: 'Model', value: computer.model },
+    { label: 'Serial Number', value: computer.serialNumber },
+    { label: 'Service Tag', value: computer.serviceTag },
+    { label: 'Default Username', value: computer.defaultUsername },
+    { label: 'Default Password', value: computer.defaultPassword },
+    { label: 'Site', value: computer.site?.name, link: '/sites' },
+    { label: 'Kit', value: computer.kit?.name, link: computer.kit ? `/kits/${computer.kit.id}` : undefined },
+    { label: 'Date Received', value: computer.dateReceived ? new Date(computer.dateReceived).toLocaleDateString() : null },
+    { label: 'Last Inventoried', value: computer.lastInventoried ? new Date(computer.lastInventoried).toLocaleDateString() : null },
+    { label: 'Notes', value: computer.notes },
+  ];
 
-      <div style={styles.header}>
+  return (
+    <div className="max-w-3xl">
+      <Link to="/computers" className="text-sm text-primary hover:underline">
+        &larr; Back to Computers
+      </Link>
+
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mt-4 mb-6">
         <div>
-          <h1>{displayName}</h1>
-          <span style={{ ...styles.badge, background: dispositionColor(computer.disposition) }}>
+          <h1 className="text-2xl font-bold text-gray-900">{displayName}</h1>
+          <span className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium mt-1 ${dispositionClasses(computer.disposition)}`}>
             {computer.disposition.replace(/_/g, ' ')}
           </span>
         </div>
-        <div style={styles.actions}>
-          <Link to={`/computers/${computer.id}/edit`} style={styles.btn}>Edit</Link>
-        </div>
+        <Link
+          to={`/computers/${computer.id}/edit`}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-primary text-white no-underline hover:bg-primary-hover"
+        >
+          <Pencil size={14} /> Edit
+        </Link>
       </div>
 
       {qrDataUrl && (
-        <div style={styles.qrSection}>
-          <img src={qrDataUrl} alt="QR Code" style={{ width: 120, height: 120 }} />
-          <code style={{ marginLeft: '1rem' }}>{computer.qrCode}</code>
+        <div className="flex items-center gap-4 mb-6 p-4 bg-white border border-gray-200 rounded-lg">
+          <img src={qrDataUrl} alt="QR Code" className="w-24 h-24" />
+          <code className="text-xs text-gray-500">{computer.qrCode}</code>
         </div>
       )}
 
-      <table style={styles.detailTable}>
-        <tbody>
-          <tr><td style={styles.labelCell}>Host Name</td><td style={styles.valueCell}>{computer.hostName?.name || '—'}</td></tr>
-          <tr><td style={styles.labelCell}>Model</td><td style={styles.valueCell}>{computer.model || '—'}</td></tr>
-          <tr><td style={styles.labelCell}>Serial Number</td><td style={styles.valueCell}>{computer.serialNumber || '—'}</td></tr>
-          <tr><td style={styles.labelCell}>Service Tag</td><td style={styles.valueCell}>{computer.serviceTag || '—'}</td></tr>
-          <tr><td style={styles.labelCell}>Default Username</td><td style={styles.valueCell}>{computer.defaultUsername || '—'}</td></tr>
-          <tr><td style={styles.labelCell}>Default Password</td><td style={styles.valueCell}>{computer.defaultPassword || '—'}</td></tr>
-          <tr><td style={styles.labelCell}>Site</td><td style={styles.valueCell}>{computer.site ? <Link to={`/sites`}>{computer.site.name}</Link> : '—'}</td></tr>
-          <tr><td style={styles.labelCell}>Kit</td><td style={styles.valueCell}>{computer.kit ? <Link to={`/kits/${computer.kit.id}`}>{computer.kit.name}</Link> : '—'}</td></tr>
-          <tr><td style={styles.labelCell}>Date Received</td><td style={styles.valueCell}>{computer.dateReceived ? new Date(computer.dateReceived).toLocaleDateString() : '—'}</td></tr>
-          <tr><td style={styles.labelCell}>Last Inventoried</td><td style={styles.valueCell}>{computer.lastInventoried ? new Date(computer.lastInventoried).toLocaleDateString() : '—'}</td></tr>
-          <tr><td style={styles.labelCell}>Notes</td><td style={styles.valueCell}>{computer.notes || '—'}</td></tr>
-        </tbody>
-      </table>
+      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden mb-8">
+        <table className="w-full text-sm">
+          <tbody>
+            {fields.map((f) => (
+              <tr key={f.label} className="border-b border-gray-100 last:border-b-0">
+                <td className="px-4 py-3 font-medium text-gray-500 w-[35%]">{f.label}</td>
+                <td className="px-4 py-3 text-gray-900">
+                  {f.link && f.value ? (
+                    <Link to={f.link} className="text-primary hover:underline">{f.value}</Link>
+                  ) : (
+                    f.value || <span className="text-gray-400">—</span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
-      <div style={styles.section}>
-        <h3>Change Disposition</h3>
-        <div style={styles.dispositionRow}>
+      <div>
+        <h3 className="text-sm font-semibold text-gray-700 mb-3">Change Disposition</h3>
+        <div className="flex flex-wrap gap-2">
           {DISPOSITIONS.map((d) => (
             <button
               key={d}
-              style={{
-                ...styles.dispositionBtn,
-                background: d === computer.disposition ? dispositionColor(d) : '#e5e7eb',
-                color: d === computer.disposition ? 'white' : '#333',
-              }}
+              className={`text-xs px-3 py-1.5 rounded-lg border-none cursor-pointer font-medium transition-colors ${
+                d === computer.disposition
+                  ? dispositionClasses(d)
+                  : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+              }`}
               onClick={() => handleDispositionChange(d)}
               disabled={d === computer.disposition}
             >
@@ -138,20 +161,3 @@ export default function ComputerDetailPage() {
     </div>
   );
 }
-
-const styles: Record<string, React.CSSProperties> = {
-  container: { maxWidth: 800, margin: '40px auto', padding: '0 1rem', fontFamily: 'system-ui, -apple-system, sans-serif' },
-  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' },
-  actions: { display: 'flex', gap: '0.5rem' },
-  btn: { display: 'inline-block', fontSize: '0.85rem', padding: '0.4em 1em', border: 'none', borderRadius: 8, background: '#4f46e5', color: 'white', cursor: 'pointer', textDecoration: 'none' },
-  badge: { display: 'inline-block', fontSize: '0.7rem', padding: '0.15em 0.5em', color: 'white', borderRadius: 4, marginLeft: '0.5rem' },
-  qrSection: { display: 'flex', alignItems: 'center', marginBottom: '1.5rem', padding: '1rem', background: '#f5f5f5', borderRadius: 8 },
-  detailTable: { width: '100%', borderCollapse: 'collapse' as const, marginBottom: '2rem' },
-  labelCell: { padding: '0.5rem', fontWeight: 600, width: '35%', borderBottom: '1px solid #eee', fontSize: '0.9rem', color: '#555' },
-  valueCell: { padding: '0.5rem', borderBottom: '1px solid #eee', fontSize: '0.9rem' },
-  section: { marginTop: '1.5rem' },
-  dispositionRow: { display: 'flex', flexWrap: 'wrap' as const, gap: '0.5rem' },
-  dispositionBtn: { fontSize: '0.75rem', padding: '0.3em 0.8em', border: 'none', borderRadius: 6, cursor: 'pointer' },
-  error: { color: '#dc2626' },
-  backLink: { color: '#4f46e5', textDecoration: 'none', fontSize: '0.85rem' },
-};

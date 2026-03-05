@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import AppLayout from './components/AppLayout';
 import Landing from './pages/Landing';
 import KitList from './pages/kits/KitList';
 import KitDetail from './pages/kits/KitDetail';
@@ -21,27 +22,32 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Landing />} />
-        <Route path="/kits" element={<KitList />} />
-        <Route path="/kits/new" element={<KitForm />} />
-        <Route path="/kits/:id" element={<KitDetail />} />
-        <Route path="/kits/:id/edit" element={<KitForm />} />
+        {/* Standalone pages (no sidebar) */}
         <Route path="/k/:id" element={<QrLanding />} />
         <Route path="/p/:id" element={<QrLanding />} />
         <Route path="/c/:id" element={<QrLanding />} />
-        <Route path="/computers" element={<ComputerList />} />
-        <Route path="/computers/new" element={<ComputerForm />} />
-        <Route path="/computers/:id" element={<ComputerDetail />} />
-        <Route path="/computers/:id/edit" element={<ComputerForm />} />
-        <Route path="/hostnames" element={<HostNameList />} />
-        <Route path="/admin" element={<AdminLogin />} />
-        <Route element={<AdminLayout />}>
-          <Route path="/admin/env" element={<EnvironmentInfo />} />
-          <Route path="/admin/db" element={<DatabaseViewer />} />
-          <Route path="/admin/config" element={<ConfigPanel />} />
-          <Route path="/admin/logs" element={<LogViewer />} />
-          <Route path="/admin/sessions" element={<SessionViewer />} />
-          <Route path="/admin/permissions" element={<PermissionsPanel />} />
+
+        {/* Main app with sidebar layout */}
+        <Route element={<AppLayout />}>
+          <Route path="/" element={<Landing />} />
+          <Route path="/kits" element={<KitList />} />
+          <Route path="/kits/new" element={<KitForm />} />
+          <Route path="/kits/:id" element={<KitDetail />} />
+          <Route path="/kits/:id/edit" element={<KitForm />} />
+          <Route path="/computers" element={<ComputerList />} />
+          <Route path="/computers/new" element={<ComputerForm />} />
+          <Route path="/computers/:id" element={<ComputerDetail />} />
+          <Route path="/computers/:id/edit" element={<ComputerForm />} />
+          <Route path="/hostnames" element={<HostNameList />} />
+          <Route path="/admin" element={<AdminLogin />} />
+          <Route element={<AdminLayout />}>
+            <Route path="/admin/env" element={<EnvironmentInfo />} />
+            <Route path="/admin/db" element={<DatabaseViewer />} />
+            <Route path="/admin/config" element={<ConfigPanel />} />
+            <Route path="/admin/logs" element={<LogViewer />} />
+            <Route path="/admin/sessions" element={<SessionViewer />} />
+            <Route path="/admin/permissions" element={<PermissionsPanel />} />
+          </Route>
         </Route>
       </Routes>
     </BrowserRouter>
