@@ -11,6 +11,7 @@ import { integrationsRouter } from './routes/integrations';
 import { authRouter } from './routes/auth';
 import { pike13Router } from './routes/pike13';
 import { adminRouter } from './routes/admin';
+import { sitesRouter } from './routes/sites';
 import { errorHandler } from './middleware/errorHandler';
 import { logBuffer } from './services/logBuffer';
 import { prisma } from './services/prisma';
@@ -85,6 +86,7 @@ app.use('/api', counterRouter);
 app.use('/api', integrationsRouter);
 app.use('/api', authRouter);
 app.use('/api', pike13Router);
+app.use('/api', sitesRouter);
 app.use('/api', adminRouter);
 
 app.use(errorHandler);
