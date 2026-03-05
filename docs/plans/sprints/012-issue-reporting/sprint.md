@@ -1,15 +1,15 @@
 ---
-id: 009
+id: '012'
 title: Issue Reporting
 status: planning
-branch: sprint/009-issue-reporting
+branch: sprint/012-issue-reporting
 use-cases:
 - UC-3.1
 - UC-3.2
 - UC-3.3
 ---
 
-# Sprint 009: Issue Reporting
+# Sprint 012: Issue Reporting
 
 ## Goals
 

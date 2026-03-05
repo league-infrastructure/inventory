@@ -1,15 +1,15 @@
 ---
-id: 008
+id: '011'
 title: Inventory Checks
 status: planning
-branch: sprint/008-inventory-checks
+branch: sprint/011-inventory-checks
 use-cases:
 - UC-2.1
 - UC-2.2
 - UC-2.3
 ---
 
-# Sprint 008: Inventory Checks
+# Sprint 011: Inventory Checks
 
 ## Goals
 

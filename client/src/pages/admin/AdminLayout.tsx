@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { LogOut } from 'lucide-react';
 
 const NAV_ITEMS = [
   { to: '/admin/env', label: 'Environment' },
@@ -32,68 +33,57 @@ export default function AdminLayout() {
   if (checking) return null;
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh' }}>
-      <nav
-        style={{
-          width: 200,
-          flexShrink: 0,
-          background: '#1a1a2e',
-          color: '#eee',
-          padding: '16px 0',
-          display: 'flex',
-          flexDirection: 'column',
-        }}
-      >
-        <div style={{ padding: '0 16px 16px', fontWeight: 'bold', fontSize: 18 }}>
-          Admin
-        </div>
-        <Link
-          to="/"
-          style={{
-            display: 'block',
-            padding: '10px 16px',
-            color: '#aaa',
-            textDecoration: 'none',
-            borderBottom: '1px solid #2a2a4e',
-            marginBottom: 4,
-          }}
-        >
-          &larr; Home
-        </Link>
+    <div className="flex gap-6">
+      {/* Admin sub-nav */}
+      <nav className="hidden sm:flex flex-col w-48 shrink-0">
+        <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Admin Panels</h3>
         {NAV_ITEMS.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
-            style={({ isActive }) => ({
-              display: 'block',
-              padding: '10px 16px',
-              color: isActive ? '#fff' : '#aaa',
-              background: isActive ? '#16213e' : 'transparent',
-              textDecoration: 'none',
-            })}
+            className={({ isActive }) =>
+              `block px-3 py-2 rounded-lg text-sm no-underline transition-colors mb-0.5 ${
+                isActive
+                  ? 'bg-primary/10 text-primary font-medium'
+                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+              }`
+            }
           >
             {item.label}
           </NavLink>
         ))}
-        <div style={{ marginTop: 'auto', padding: '16px' }}>
-          <button
-            onClick={handleLogout}
-            style={{
-              width: '100%',
-              padding: '8px',
-              background: 'transparent',
-              color: '#aaa',
-              border: '1px solid #444',
-              cursor: 'pointer',
-            }}
-          >
-            Logout
-          </button>
-        </div>
+        <button
+          onClick={handleLogout}
+          className="mt-4 flex items-center gap-2 px-3 py-2 text-sm text-gray-500 hover:text-gray-700 bg-transparent border-none cursor-pointer"
+        >
+          <LogOut size={14} />
+          Admin Logout
+        </button>
       </nav>
-      <main style={{ flex: 1, padding: 24, minWidth: 0, overflow: 'auto' }}>
+
+      {/* Mobile admin nav */}
+      <div className="sm:hidden mb-4 flex flex-wrap gap-1">
+        {NAV_ITEMS.map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            className={({ isActive }) =>
+              `px-3 py-1 rounded-full text-xs no-underline ${
+                isActive
+                  ? 'bg-primary text-white'
+                  : 'bg-gray-100 text-gray-600'
+              }`
+            }
+          >
+            {item.label}
+          </NavLink>
+        ))}
+      </div>
+
+      {/* Panel content */}
+      <div className="flex-1 min-w-0">
         <Outlet />
-      </main>
+      </div>
     </div>
   );
 }

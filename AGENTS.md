@@ -13,6 +13,7 @@ procedures that are already documented here.
 | [docs/deployment.md](docs/deployment.md) | Production builds, Swarm deployment, rolling updates, rollback |
 | [docs/secrets.md](docs/secrets.md) | SOPS + age setup, onboarding new developers, adding/rotating secrets, Swarm secret loading |
 | [docs/api-integrations.md](docs/api-integrations.md) | GitHub OAuth, Google OAuth, Pike 13 API — setup, endpoints, callback URLs |
+| [docs/testing.md](docs/testing.md) | Test pyramid, auth bypass for tests, database/API/E2E test setup, test helpers |
 
 <!-- CLASI:START -->
 ## CLASI Software Engineering Process

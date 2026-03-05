@@ -44,71 +44,52 @@ export default function EnvironmentInfo() {
       .catch(() => setError('Failed to load environment info'));
   }, []);
 
-  if (error) return <div style={{ color: 'red' }}>{error}</div>;
-  if (!data) return <div>Loading...</div>;
-
-  const cardStyle: React.CSSProperties = {
-    border: '1px solid #ddd',
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 16,
-  };
+  if (error) return <p className="text-red-600 text-sm">{error}</p>;
+  if (!data) return <p className="text-gray-500 text-sm">Loading...</p>;
 
   return (
     <div>
-      <h1>Environment</h1>
+      <h1 className="text-xl font-bold text-gray-900 mb-6">Environment</h1>
 
-      <div style={cardStyle}>
-        <h3>Runtime</h3>
-        <table>
-          <tbody>
-            <tr><td><strong>Node.js</strong></td><td style={{ paddingLeft: 16 }}>{data.node}</td></tr>
-            <tr><td><strong>Uptime</strong></td><td style={{ paddingLeft: 16 }}>{formatUptime(data.uptime)}</td></tr>
-            <tr><td><strong>Deployment</strong></td><td style={{ paddingLeft: 16 }}>{data.deployment}</td></tr>
-          </tbody>
-        </table>
+      <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4">
+        <h3 className="text-sm font-semibold text-gray-700 mb-3">Runtime</h3>
+        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+          <dt className="font-medium text-gray-500">Node.js</dt><dd>{data.node}</dd>
+          <dt className="font-medium text-gray-500">Uptime</dt><dd>{formatUptime(data.uptime)}</dd>
+          <dt className="font-medium text-gray-500">Deployment</dt><dd>{data.deployment}</dd>
+        </dl>
       </div>
 
-      <div style={cardStyle}>
-        <h3>Memory</h3>
-        <table>
-          <tbody>
-            <tr><td><strong>RSS</strong></td><td style={{ paddingLeft: 16 }}>{formatMB(data.memory.rss)}</td></tr>
-            <tr><td><strong>Heap Used</strong></td><td style={{ paddingLeft: 16 }}>{formatMB(data.memory.heapUsed)}</td></tr>
-            <tr><td><strong>Heap Total</strong></td><td style={{ paddingLeft: 16 }}>{formatMB(data.memory.heapTotal)}</td></tr>
-          </tbody>
-        </table>
+      <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4">
+        <h3 className="text-sm font-semibold text-gray-700 mb-3">Memory</h3>
+        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+          <dt className="font-medium text-gray-500">RSS</dt><dd>{formatMB(data.memory.rss)}</dd>
+          <dt className="font-medium text-gray-500">Heap Used</dt><dd>{formatMB(data.memory.heapUsed)}</dd>
+          <dt className="font-medium text-gray-500">Heap Total</dt><dd>{formatMB(data.memory.heapTotal)}</dd>
+        </dl>
       </div>
 
-      <div style={cardStyle}>
-        <h3>Database</h3>
-        <span style={{
-          color: data.database === 'connected' ? 'green' : 'red',
-          fontWeight: 'bold',
-        }}>
+      <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4">
+        <h3 className="text-sm font-semibold text-gray-700 mb-3">Database</h3>
+        <span className={`text-sm font-semibold ${data.database === 'connected' ? 'text-green-600' : 'text-red-600'}`}>
           {data.database === 'connected' ? 'Connected' : 'Disconnected'}
         </span>
       </div>
 
-      <div style={cardStyle}>
-        <h3>Integrations</h3>
-        <table>
-          <tbody>
-            {Object.entries(data.integrations).map(([key, val]) => (
-              <tr key={key}>
-                <td><strong>{INTEGRATION_LABELS[key] || key}</strong></td>
-                <td style={{ paddingLeft: 16 }}>
-                  <span style={{
-                    color: val.configured ? 'green' : '#999',
-                    fontWeight: 'bold',
-                  }}>
-                    {val.configured ? 'Configured' : 'Not set'}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="bg-white border border-gray-200 rounded-lg p-4">
+        <h3 className="text-sm font-semibold text-gray-700 mb-3">Integrations</h3>
+        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+          {Object.entries(data.integrations).map(([key, val]) => (
+            <div key={key} className="contents">
+              <dt className="font-medium text-gray-500">{INTEGRATION_LABELS[key] || key}</dt>
+              <dd>
+                <span className={`font-semibold ${val.configured ? 'text-green-600' : 'text-gray-400'}`}>
+                  {val.configured ? 'Configured' : 'Not set'}
+                </span>
+              </dd>
+            </div>
+          ))}
+        </dl>
       </div>
     </div>
   );

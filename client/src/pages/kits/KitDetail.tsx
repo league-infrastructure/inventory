@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
+import { Copy, Trash2, Plus, X } from 'lucide-react';
 
 interface Item {
   id: number;
@@ -23,24 +24,33 @@ interface Computer {
   hostName: { name: string } | null;
 }
 
-interface Kit {
-  id: number;
+interface Site { id: number; name: string; }
+
+interface FormState {
   name: string;
-  description: string | null;
-  status: string;
-  qrCode: string | null;
-  site: { id: number; name: string };
-  packs: Pack[];
-  computers: Computer[];
+  description: string;
+  siteId: number | '';
 }
 
 export default function KitDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [kit, setKit] = useState<Kit | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [dirty, setDirty] = useState(false);
   const [cloning, setCloning] = useState(false);
+
+  const [form, setForm] = useState<FormState>({ name: '', description: '', siteId: '' });
+  const savedForm = useRef<FormState>(form);
+
+  const [status, setStatus] = useState('ACTIVE');
+  const [qrCode, setQrCode] = useState<string | null>(null);
+  const [packs, setPacks] = useState<Pack[]>([]);
+  const [computers, setComputers] = useState<Computer[]>([]);
+  const [sites, setSites] = useState<Site[]>([]);
+
   const [showPackForm, setShowPackForm] = useState(false);
   const [packName, setPackName] = useState('');
   const [packDesc, setPackDesc] = useState('');
@@ -48,15 +58,64 @@ export default function KitDetail() {
   const [newItem, setNewItem] = useState({ name: '', type: 'COUNTED', expectedQuantity: 1 });
 
   useEffect(() => {
-    fetch(`/api/kits/${id}`)
-      .then((r) => {
+    Promise.all([
+      fetch(`/api/kits/${id}`).then((r) => {
         if (!r.ok) throw new Error('Kit not found');
         return r.json();
+      }),
+      fetch('/api/sites').then((r) => r.json()),
+    ])
+      .then(([kit, s]) => {
+        const initial: FormState = {
+          name: kit.name,
+          description: kit.description || '',
+          siteId: kit.site.id,
+        };
+        setForm(initial);
+        savedForm.current = initial;
+        setStatus(kit.status);
+        setQrCode(kit.qrCode || null);
+        setPacks(kit.packs);
+        setComputers(kit.computers);
+        setSites(s);
       })
-      .then(setKit)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, [id]);
+
+  function updateField<K extends keyof FormState>(key: K, value: FormState[K]) {
+    setForm((prev) => {
+      const next = { ...prev, [key]: value };
+      setDirty(JSON.stringify(next) !== JSON.stringify(savedForm.current));
+      return next;
+    });
+  }
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const res = await fetch(`/api/kits/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: form.name,
+          description: form.description || null,
+          siteId: form.siteId,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to save');
+      }
+      savedForm.current = { ...form };
+      setDirty(false);
+    } catch (e: any) {
+      setSaveError(e.message);
+    }
+    setSaving(false);
+  }
 
   async function handleClone() {
     setCloning(true);
@@ -75,7 +134,7 @@ export default function KitDetail() {
     const res = await fetch(`/api/kits/${id}/retire`, { method: 'PATCH' });
     if (res.ok) {
       const updated = await res.json();
-      setKit((prev) => (prev ? { ...prev, status: updated.status } : prev));
+      setStatus(updated.status);
     }
   }
 
@@ -88,7 +147,7 @@ export default function KitDetail() {
     });
     if (res.ok) {
       const pack = await res.json();
-      setKit((prev) => prev ? { ...prev, packs: [...prev.packs, { ...pack, items: [] }] } : prev);
+      setPacks((prev) => [...prev, { ...pack, items: [] }]);
       setPackName('');
       setPackDesc('');
       setShowPackForm(false);
@@ -103,15 +162,9 @@ export default function KitDetail() {
     });
     if (res.ok) {
       const item = await res.json();
-      setKit((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          packs: prev.packs.map((p) =>
-            p.id === packId ? { ...p, items: [...p.items, item] } : p
-          ),
-        };
-      });
+      setPacks((prev) =>
+        prev.map((p) => p.id === packId ? { ...p, items: [...p.items, item] } : p)
+      );
       setNewItem({ name: '', type: 'COUNTED', expectedQuantity: 1 });
       setItemForms((prev) => ({ ...prev, [packId]: false }));
     }
@@ -120,49 +173,55 @@ export default function KitDetail() {
   async function handleDeletePack(packId: number) {
     const res = await fetch(`/api/packs/${packId}`, { method: 'DELETE' });
     if (res.ok) {
-      setKit((prev) => prev ? { ...prev, packs: prev.packs.filter((p) => p.id !== packId) } : prev);
+      setPacks((prev) => prev.filter((p) => p.id !== packId));
     }
   }
 
   async function handleDeleteItem(packId: number, itemId: number) {
     const res = await fetch(`/api/items/${itemId}`, { method: 'DELETE' });
     if (res.ok) {
-      setKit((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          packs: prev.packs.map((p) =>
-            p.id === packId ? { ...p, items: p.items.filter((i) => i.id !== itemId) } : p
-          ),
-        };
-      });
+      setPacks((prev) =>
+        prev.map((p) => p.id === packId ? { ...p, items: p.items.filter((i) => i.id !== itemId) } : p)
+      );
     }
   }
 
-  if (loading) return <div style={styles.container}><p>Loading...</p></div>;
-  if (error) return <div style={styles.container}><p style={styles.error}>{error}</p></div>;
-  if (!kit) return null;
+  if (loading) return <p className="text-gray-500 text-sm">Loading...</p>;
+  if (error) return <p className="text-red-600 text-sm">{error}</p>;
+
+  const inputClass = "mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white";
 
   return (
-    <div style={styles.container}>
-      <Link to="/kits" style={styles.backLink}>Back to Kits</Link>
+    <div className="max-w-4xl">
+      <Link to="/kits" className="text-sm text-primary hover:underline">
+        &larr; Back to Kits
+      </Link>
 
-      <div style={styles.header}>
-        <div>
-          <h1>{kit.name}</h1>
-          <span style={{ ...styles.badge, background: kit.status === 'ACTIVE' ? '#22c55e' : '#9ca3af' }}>
-            {kit.status}
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mt-4 mb-6">
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-gray-900">{form.name || 'Kit'}</h1>
+          <span
+            className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+              status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
+            }`}
+          >
+            {status}
           </span>
-          <span style={styles.siteLabel}>{kit.site.name}</span>
         </div>
-        <div style={styles.actions}>
-          <Link to={`/kits/${kit.id}/edit`} style={styles.btn}>Edit</Link>
-          {kit.status === 'ACTIVE' && (
+        <div className="flex gap-2">
+          {status === 'ACTIVE' && (
             <>
-              <button style={styles.btn} onClick={handleClone} disabled={cloning}>
-                {cloning ? 'Cloning...' : 'Clone Kit'}
+              <button
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-gray-600 text-white border-none cursor-pointer hover:bg-gray-700"
+                onClick={handleClone}
+                disabled={cloning}
+              >
+                <Copy size={14} /> {cloning ? 'Cloning...' : 'Clone'}
               </button>
-              <button style={{ ...styles.btn, background: '#dc2626' }} onClick={handleRetire}>
+              <button
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-red-600 text-white border-none cursor-pointer hover:bg-red-700"
+                onClick={handleRetire}
+              >
                 Retire
               </button>
             </>
@@ -170,74 +229,131 @@ export default function KitDetail() {
         </div>
       </div>
 
-      {kit.description && <p style={styles.description}>{kit.description}</p>}
-
-      {kit.qrCode && (
-        <div style={styles.qrSection}>
-          <strong>QR Code:</strong> <code>{kit.qrCode}</code>
+      {qrCode && (
+        <div className="mb-6 px-4 py-2 bg-gray-50 rounded-lg text-sm">
+          <strong>QR Code:</strong> <code className="text-xs">{qrCode}</code>
         </div>
       )}
 
+      {saveError && <p className="text-red-600 text-sm mb-4">{saveError}</p>}
+
+      {/* Editable kit fields */}
+      <form onSubmit={handleSave} className="space-y-4 mb-8">
+        <label className="block">
+          <span className="text-sm font-medium text-gray-700">Name *</span>
+          <input value={form.name} onChange={(e) => updateField('name', e.target.value)} className={inputClass} required />
+        </label>
+
+        <label className="block">
+          <span className="text-sm font-medium text-gray-700">Description</span>
+          <textarea value={form.description} onChange={(e) => updateField('description', e.target.value)} className={inputClass + " resize-y"} rows={3} />
+        </label>
+
+        <label className="block">
+          <span className="text-sm font-medium text-gray-700">Site *</span>
+          <select
+            value={form.siteId}
+            onChange={(e) => updateField('siteId', parseInt(e.target.value, 10))}
+            className={inputClass}
+            required
+          >
+            <option value="">Select a site...</option>
+            {sites.map((s) => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </select>
+        </label>
+
+        {dirty && (
+          <div className="pt-2">
+            <button
+              type="submit"
+              className="px-6 py-2 bg-primary text-white text-sm font-medium rounded-lg border-none cursor-pointer hover:bg-primary-hover disabled:opacity-50"
+              disabled={saving}
+            >
+              {saving ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
+        )}
+      </form>
+
       {/* Packs */}
-      <div style={styles.section}>
-        <div style={styles.sectionHeader}>
-          <h2>Packs ({kit.packs.length})</h2>
-          <button style={styles.btnSmall} onClick={() => setShowPackForm(!showPackForm)}>
-            + Add Pack
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-gray-900">Packs ({packs.length})</h2>
+          <button
+            className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-lg bg-primary text-white border-none cursor-pointer hover:bg-primary-hover"
+            onClick={() => setShowPackForm(!showPackForm)}
+          >
+            <Plus size={14} /> Add Pack
           </button>
         </div>
 
         {showPackForm && (
-          <form onSubmit={handleAddPack} style={styles.inlineForm}>
+          <form onSubmit={handleAddPack} className="flex flex-wrap gap-2 mb-4 items-center">
             <input
               placeholder="Pack name"
               value={packName}
               onChange={(e) => setPackName(e.target.value)}
-              style={styles.input}
+              className="px-3 py-1.5 border border-gray-300 rounded-md text-sm flex-1 min-w-[150px]"
               required
             />
             <input
               placeholder="Description (optional)"
               value={packDesc}
               onChange={(e) => setPackDesc(e.target.value)}
-              style={styles.input}
+              className="px-3 py-1.5 border border-gray-300 rounded-md text-sm flex-1 min-w-[150px]"
             />
-            <button type="submit" style={styles.btnSmall}>Save</button>
-            <button type="button" style={styles.btnSmallSecondary} onClick={() => setShowPackForm(false)}>Cancel</button>
+            <button type="submit" className="px-3 py-1.5 text-sm font-medium rounded-md bg-primary text-white border-none cursor-pointer">
+              Save
+            </button>
+            <button
+              type="button"
+              className="px-3 py-1.5 text-sm font-medium rounded-md bg-gray-500 text-white border-none cursor-pointer"
+              onClick={() => setShowPackForm(false)}
+            >
+              Cancel
+            </button>
           </form>
         )}
 
-        {kit.packs.map((pack) => (
-          <div key={pack.id} style={styles.packCard}>
-            <div style={styles.packHeader}>
+        {packs.map((pack) => (
+          <div key={pack.id} className="bg-white border border-gray-200 rounded-lg p-4 mb-3">
+            <div className="flex items-center justify-between mb-2">
               <div>
-                <strong>{pack.name}</strong>
-                {pack.description && <span style={styles.hint}> — {pack.description}</span>}
-                {pack.qrCode && <code style={styles.qrBadge}>{pack.qrCode}</code>}
+                <strong className="text-gray-900">{pack.name}</strong>
+                {pack.description && <span className="text-gray-500 text-sm ml-2">— {pack.description}</span>}
+                {pack.qrCode && <code className="ml-2 text-xs bg-gray-100 px-1.5 py-0.5 rounded">{pack.qrCode}</code>}
               </div>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <button style={styles.btnSmall} onClick={() => setItemForms((prev) => ({ ...prev, [pack.id]: true }))}>
-                  + Item
+              <div className="flex gap-2">
+                <button
+                  className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded bg-primary text-white border-none cursor-pointer"
+                  onClick={() => setItemForms((prev) => ({ ...prev, [pack.id]: true }))}
+                >
+                  <Plus size={12} /> Item
                 </button>
-                <button style={{ ...styles.btnSmall, background: '#dc2626' }} onClick={() => handleDeletePack(pack.id)}>
-                  Delete
+                <button
+                  className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded bg-red-600 text-white border-none cursor-pointer"
+                  onClick={() => handleDeletePack(pack.id)}
+                >
+                  <Trash2 size={12} />
                 </button>
               </div>
             </div>
 
             {itemForms[pack.id] && (
-              <div style={styles.inlineForm}>
+              <div className="flex flex-wrap gap-2 mb-3 items-center">
                 <input
                   placeholder="Item name"
                   value={newItem.name}
                   onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
-                  style={styles.input}
+                  className="px-2 py-1 border border-gray-300 rounded text-sm min-w-[120px]"
                   required
                 />
                 <select
                   value={newItem.type}
                   onChange={(e) => setNewItem({ ...newItem, type: e.target.value })}
-                  style={styles.select}
+                  className="px-2 py-1 border border-gray-300 rounded text-sm"
                 >
                   <option value="COUNTED">Counted</option>
                   <option value="CONSUMABLE">Consumable</option>
@@ -249,96 +365,89 @@ export default function KitDetail() {
                     placeholder="Qty"
                     value={newItem.expectedQuantity}
                     onChange={(e) => setNewItem({ ...newItem, expectedQuantity: parseInt(e.target.value) || 1 })}
-                    style={{ ...styles.input, width: 60 }}
+                    className="px-2 py-1 border border-gray-300 rounded text-sm w-16"
                   />
                 )}
-                <button style={styles.btnSmall} onClick={() => handleAddItem(pack.id)}>Save</button>
-                <button style={styles.btnSmallSecondary} onClick={() => setItemForms((prev) => ({ ...prev, [pack.id]: false }))}>Cancel</button>
+                <button
+                  className="px-2 py-1 text-xs rounded bg-primary text-white border-none cursor-pointer"
+                  onClick={() => handleAddItem(pack.id)}
+                >
+                  Save
+                </button>
+                <button
+                  className="px-2 py-1 text-xs rounded bg-gray-500 text-white border-none cursor-pointer"
+                  onClick={() => setItemForms((prev) => ({ ...prev, [pack.id]: false }))}
+                >
+                  Cancel
+                </button>
               </div>
             )}
 
             {pack.items.length > 0 ? (
-              <table style={styles.itemTable}>
+              <table className="w-full text-sm">
                 <thead>
-                  <tr>
-                    <th style={styles.itemTh}>Item</th>
-                    <th style={styles.itemTh}>Type</th>
-                    <th style={styles.itemTh}>Qty</th>
-                    <th style={styles.itemTh}></th>
+                  <tr className="border-b border-gray-200">
+                    <th className="text-left py-1.5 px-2 text-xs font-semibold text-gray-500">Item</th>
+                    <th className="text-left py-1.5 px-2 text-xs font-semibold text-gray-500">Type</th>
+                    <th className="text-left py-1.5 px-2 text-xs font-semibold text-gray-500">Qty</th>
+                    <th className="py-1.5 px-2 w-8"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {pack.items.map((item) => (
-                    <tr key={item.id}>
-                      <td style={styles.itemTd}>{item.name}</td>
-                      <td style={styles.itemTd}>{item.type}</td>
-                      <td style={styles.itemTd}>{item.expectedQuantity ?? '—'}</td>
-                      <td style={styles.itemTd}>
-                        <button style={styles.deleteBtn} onClick={() => handleDeleteItem(pack.id, item.id)}>x</button>
+                    <tr key={item.id} className="border-b border-gray-100">
+                      <td className="py-1.5 px-2">{item.name}</td>
+                      <td className="py-1.5 px-2 text-gray-500">{item.type}</td>
+                      <td className="py-1.5 px-2 text-gray-500">{item.expectedQuantity ?? '—'}</td>
+                      <td className="py-1.5 px-2">
+                        <button
+                          className="text-red-500 hover:text-red-700 bg-transparent border-none cursor-pointer"
+                          onClick={() => handleDeleteItem(pack.id, item.id)}
+                        >
+                          <X size={14} />
+                        </button>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             ) : (
-              <p style={styles.hint}>No items in this pack.</p>
+              <p className="text-gray-400 text-sm">No items in this pack.</p>
             )}
           </div>
         ))}
       </div>
 
       {/* Computers */}
-      {kit.computers.length > 0 && (
-        <div style={styles.section}>
-          <h2>Computers ({kit.computers.length})</h2>
-          <table style={styles.itemTable}>
-            <thead>
-              <tr>
-                <th style={styles.itemTh}>Host Name</th>
-                <th style={styles.itemTh}>Model</th>
-                <th style={styles.itemTh}>Serial</th>
-              </tr>
-            </thead>
-            <tbody>
-              {kit.computers.map((c) => (
-                <tr key={c.id}>
-                  <td style={styles.itemTd}>{c.hostName?.name || '—'}</td>
-                  <td style={styles.itemTd}>{c.model || '—'}</td>
-                  <td style={styles.itemTd}>{c.serialNumber || '—'}</td>
+      {computers.length > 0 && (
+        <div className="mt-8">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Computers ({computers.length})</h2>
+          <div className="bg-white border border-gray-200 rounded-lg overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500">Host Name</th>
+                  <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500">Model</th>
+                  <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500">Serial</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {computers.map((c) => (
+                  <tr key={c.id} className="border-b border-gray-100">
+                    <td className="px-4 py-2">
+                      <Link to={`/computers/${c.id}`} className="text-primary hover:underline">
+                        {c.hostName?.name || '—'}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-2 text-gray-600">{c.model || '—'}</td>
+                    <td className="px-4 py-2 text-gray-600">{c.serialNumber || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>
   );
 }
-
-const styles: Record<string, React.CSSProperties> = {
-  container: { maxWidth: 800, margin: '40px auto', padding: '0 1rem', fontFamily: 'system-ui, -apple-system, sans-serif' },
-  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' },
-  actions: { display: 'flex', gap: '0.5rem' },
-  btn: { display: 'inline-block', fontSize: '0.85rem', padding: '0.4em 1em', border: 'none', borderRadius: 8, background: '#4f46e5', color: 'white', cursor: 'pointer', textDecoration: 'none' },
-  btnSmall: { fontSize: '0.8rem', padding: '0.3em 0.8em', border: 'none', borderRadius: 6, background: '#4f46e5', color: 'white', cursor: 'pointer' },
-  btnSmallSecondary: { fontSize: '0.8rem', padding: '0.3em 0.8em', border: 'none', borderRadius: 6, background: '#6b7280', color: 'white', cursor: 'pointer' },
-  badge: { display: 'inline-block', fontSize: '0.7rem', padding: '0.15em 0.5em', color: 'white', borderRadius: 4, marginLeft: '0.5rem' },
-  siteLabel: { marginLeft: '0.75rem', color: '#666', fontSize: '0.9rem' },
-  description: { color: '#555', marginBottom: '1rem' },
-  qrSection: { marginBottom: '1rem', padding: '0.5rem', background: '#f5f5f5', borderRadius: 6, fontSize: '0.85rem' },
-  section: { marginTop: '2rem' },
-  sectionHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' },
-  packCard: { border: '1px solid #e0e0e0', borderRadius: 8, padding: '1rem', marginBottom: '1rem', background: '#fafafa' },
-  packHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' },
-  qrBadge: { marginLeft: '0.5rem', fontSize: '0.75rem', background: '#e5e7eb', padding: '0.1em 0.4em', borderRadius: 4 },
-  inlineForm: { display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap' as const },
-  input: { padding: '0.3em 0.6em', borderRadius: 4, border: '1px solid #ccc', fontSize: '0.85rem' },
-  select: { padding: '0.3em 0.6em', borderRadius: 4, border: '1px solid #ccc', fontSize: '0.85rem' },
-  itemTable: { width: '100%', borderCollapse: 'collapse' as const, fontSize: '0.85rem' },
-  itemTh: { textAlign: 'left' as const, padding: '0.3rem 0.5rem', borderBottom: '1px solid #ddd', fontWeight: 600, fontSize: '0.8rem' },
-  itemTd: { padding: '0.3rem 0.5rem', borderBottom: '1px solid #eee' },
-  deleteBtn: { border: 'none', background: 'none', color: '#dc2626', cursor: 'pointer', fontWeight: 'bold' },
-  hint: { color: '#888', fontSize: '0.85rem' },
-  error: { color: '#dc2626' },
-  backLink: { color: '#4f46e5', textDecoration: 'none', fontSize: '0.85rem' },
-};

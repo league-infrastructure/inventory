@@ -14,6 +14,8 @@ import { kitsRouter } from './routes/kits';
 import { packsRouter } from './routes/packs';
 import { itemsRouter } from './routes/items';
 import { qrRouter } from './routes/qr';
+import { computersRouter } from './routes/computers';
+import { hostnamesRouter } from './routes/hostnames';
 import { errorHandler } from './middleware/errorHandler';
 import { logBuffer } from './services/logBuffer';
 import { prisma } from './services/prisma';
@@ -96,7 +98,17 @@ app.use('/api', kitsRouter);
 app.use('/api', packsRouter);
 app.use('/api', itemsRouter);
 app.use('/api', qrRouter);
+app.use('/api', computersRouter);
+app.use('/api', hostnamesRouter);
 app.use('/api', adminRouter);
+
+// Test-only auth bypass: allows automated tests to create sessions
+// without going through Google OAuth. Never loaded in production.
+if (process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'e2e') {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { testAuthRouter } = require('./routes/testAuth');
+  app.use('/api', testAuthRouter);
+}
 
 app.use(errorHandler);
 
