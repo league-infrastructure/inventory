@@ -9,6 +9,7 @@ import ComputerList from './pages/computers/ComputerList';
 import ComputerDetail from './pages/computers/ComputerDetail';
 import ComputerForm from './pages/computers/ComputerForm';
 import HostNameList from './pages/computers/HostNameList';
+import SiteList from './pages/sites/SiteList';
 import AdminLogin from './pages/admin/AdminLogin';
 import AdminLayout from './pages/admin/AdminLayout';
 import EnvironmentInfo from './pages/admin/EnvironmentInfo';
@@ -39,6 +40,7 @@ function App() {
           <Route path="/computers/:id" element={<ComputerDetail />} />
           <Route path="/computers/:id/edit" element={<ComputerForm />} />
           <Route path="/hostnames" element={<HostNameList />} />
+          <Route path="/sites" element={<SiteList />} />
           <Route path="/admin" element={<AdminLogin />} />
           <Route element={<AdminLayout />}>
             <Route path="/admin/env" element={<EnvironmentInfo />} />
