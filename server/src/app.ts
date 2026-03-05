@@ -16,6 +16,7 @@ import { itemsRouter } from './routes/items';
 import { qrRouter } from './routes/qr';
 import { computersRouter } from './routes/computers';
 import { hostnamesRouter } from './routes/hostnames';
+import { checkoutsRouter } from './routes/checkouts';
 import { errorHandler } from './middleware/errorHandler';
 import { logBuffer } from './services/logBuffer';
 import { prisma } from './services/prisma';
@@ -100,6 +101,7 @@ app.use('/api', itemsRouter);
 app.use('/api', qrRouter);
 app.use('/api', computersRouter);
 app.use('/api', hostnamesRouter);
+app.use('/api', checkoutsRouter);
 app.use('/api', adminRouter);
 
 // Test-only auth bypass: allows automated tests to create sessions
