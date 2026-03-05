@@ -1,7 +1,7 @@
 ---
 id: '003'
 title: "Foundation \u2014 Auth, Roles, Sites, Core Schema"
-status: active
+status: done
 branch: sprint/003-foundation-auth-roles-sites-core-schema
 use-cases: []
 ---
