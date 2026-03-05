@@ -51,9 +51,14 @@ export default function ComputerList() {
     <div style={styles.container}>
       <div style={styles.header}>
         <h1>Computers</h1>
-        <Link to="/computers/new" style={styles.btn}>
-          + New Computer
-        </Link>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <Link to="/hostnames" style={{ ...styles.btn, background: '#6b7280' }}>
+            Manage Host Names
+          </Link>
+          <Link to="/computers/new" style={styles.btn}>
+            + New Computer
+          </Link>
+        </div>
       </div>
 
       <div style={styles.filterRow}>
