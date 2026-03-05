@@ -1,0 +1,87 @@
+{
+  "sites": [
+    {
+      "name": "Main Campus",
+      "address": "100 University Ave",
+      "latitude": 37.7749,
+      "longitude": -122.4194,
+      "isHomeSite": true
+    },
+    {
+      "name": "East Branch",
+      "address": "200 Oak Street",
+      "latitude": 37.8044,
+      "longitude": -122.2712,
+      "isHomeSite": false
+    }
+  ],
+  "hostNames": [
+    { "name": "lab-pc-001" },
+    { "name": "lab-pc-002" },
+    { "name": "lab-pc-003" }
+  ],
+  "computers": [
+    {
+      "serialNumber": "SN-SEED-001",
+      "model": "ThinkPad T14",
+      "notes": "Primary lab computer",
+      "siteIndex": 0,
+      "hostNameIndex": 0
+    },
+    {
+      "serialNumber": "SN-SEED-002",
+      "model": "ThinkPad X1",
+      "notes": null,
+      "siteIndex": 0,
+      "hostNameIndex": 1
+    },
+    {
+      "serialNumber": "SN-SEED-003",
+      "model": "Dell Latitude 5540",
+      "notes": "East branch spare",
+      "siteIndex": 1,
+      "hostNameIndex": 2
+    }
+  ],
+  "kits": [
+    {
+      "name": "Networking Kit A",
+      "description": "Standard networking equipment",
+      "siteIndex": 0,
+      "packs": [
+        {
+          "name": "Cables Pack",
+          "description": "Network cables",
+          "items": [
+            { "name": "Ethernet Cable 6ft", "type": "COUNTED", "expectedQuantity": 5 },
+            { "name": "Ethernet Cable 15ft", "type": "COUNTED", "expectedQuantity": 3 },
+            { "name": "Cable ties", "type": "CONSUMABLE" }
+          ]
+        },
+        {
+          "name": "Tools Pack",
+          "description": "Hand tools",
+          "items": [
+            { "name": "Crimping tool", "type": "COUNTED", "expectedQuantity": 1 },
+            { "name": "Wire stripper", "type": "COUNTED", "expectedQuantity": 1 }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Presentation Kit B",
+      "description": "AV equipment for presentations",
+      "siteIndex": 1,
+      "packs": [
+        {
+          "name": "Adapter Pack",
+          "description": "Video adapters",
+          "items": [
+            { "name": "HDMI to VGA adapter", "type": "COUNTED", "expectedQuantity": 2 },
+            { "name": "USB-C to HDMI", "type": "COUNTED", "expectedQuantity": 2 }
+          ]
+        }
+      ]
+    }
+  ]
+}

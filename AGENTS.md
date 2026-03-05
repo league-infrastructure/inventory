@@ -14,6 +14,27 @@ procedures that are already documented here.
 | [docs/secrets.md](docs/secrets.md) | SOPS + age setup, onboarding new developers, adding/rotating secrets, Swarm secret loading |
 | [docs/api-integrations.md](docs/api-integrations.md) | GitHub OAuth, Google OAuth, Pike 13 API — setup, endpoints, callback URLs |
 | [docs/testing.md](docs/testing.md) | Test pyramid, auth bypass for tests, database/API/E2E test setup, test helpers |
+| [docs/contracts.md](docs/contracts.md) | Data contract types for all domain entities, canonical JSON wire formats |
+
+## Architecture Rules
+
+### Service Layer
+
+All database access and business logic MUST go through the service
+layer (`server/src/services/`). Route handlers, MCP tools, import/export,
+and the AI chat interface are consumers of the service layer — they
+MUST NOT call Prisma directly or contain business logic.
+
+Route handlers must be thin HTTP adapters:
+1. Parse and validate HTTP inputs (params, body, query).
+2. Call the appropriate service function.
+3. Return the result (which is already a contract type).
+4. Pass errors to `next(err)` — the error handler maps `ServiceError`
+   subclasses to HTTP status codes automatically.
+
+Data contracts (`server/src/contracts/`) define the canonical JSON shapes.
+Service functions accept contract input types and return contract record
+types. This decouples the API surface from the database schema.
 
 <!-- CLASI:START -->
 ## CLASI Software Engineering Process
