@@ -1,11 +1,11 @@
 ---
 id: '002'
 title: BaseService abstract class
-status: pending
+status: done
 use-cases:
-  - SUC-001
+- SUC-001
 depends-on:
-  - '001'
+- '001'
 ---
 
 # BaseService abstract class
