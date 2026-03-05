@@ -67,18 +67,21 @@ export default function AppLayout() {
     (item) => !item.roles || (user && item.roles.includes(user.role))
   );
 
+  const showSidebar = !loading && !!user;
+
   return (
     <AuthContext.Provider value={{ user, loading }}>
       <div className="flex h-screen bg-gray-50">
         {/* Mobile overlay */}
-        {sidebarOpen && (
+        {showSidebar && sidebarOpen && (
           <div
             className="fixed inset-0 z-40 bg-black/50 lg:hidden"
             onClick={() => setSidebarOpen(false)}
           />
         )}
 
-        {/* Sidebar */}
+        {/* Sidebar — only shown when authenticated */}
+        {showSidebar && (
         <aside
           className={`
             fixed inset-y-0 left-0 z-50 w-64 bg-sidebar text-sidebar-text
@@ -123,17 +126,20 @@ export default function AppLayout() {
             })}
           </nav>
         </aside>
+        )}
 
         {/* Main content area */}
         <div className="flex-1 flex flex-col min-w-0">
           {/* Top header bar */}
           <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 shrink-0">
-            <button
-              className="lg:hidden text-gray-500 hover:text-gray-700 bg-transparent border-none p-1"
-              onClick={() => setSidebarOpen(true)}
-            >
-              <Menu size={24} />
-            </button>
+            {showSidebar && (
+              <button
+                className="lg:hidden text-gray-500 hover:text-gray-700 bg-transparent border-none p-1"
+                onClick={() => setSidebarOpen(true)}
+              >
+                <Menu size={24} />
+              </button>
+            )}
 
             <div className="lg:hidden" /> {/* spacer */}
 
