@@ -1,7 +1,7 @@
 ---
 id: '001'
 title: Admin Quartermaster pattern management panel
-status: in-progress
+status: done
 use-cases:
 - SUC-001
 depends-on: []
@@ -17,15 +17,15 @@ for managing which email addresses get Quartermaster role.
 
 ## Acceptance Criteria
 
-- [ ] `GET /api/admin/quartermasters` returns all patterns (requireAdmin)
-- [ ] `POST /api/admin/quartermasters` adds a pattern with regex validation and duplicate check (requireAdmin)
-- [ ] `DELETE /api/admin/quartermasters/:id` removes a pattern (requireAdmin)
-- [ ] Admin dashboard nav includes "Permissions" link
-- [ ] Permissions panel lists all patterns with pattern text, type (Exact/Regex), and delete button
-- [ ] Add form with text input and regex checkbox
-- [ ] Invalid regex shows error message
-- [ ] Duplicate pattern shows error message
-- [ ] App.tsx has route `/admin/permissions` pointing to PermissionsPanel
+- [x] `GET /api/admin/quartermasters` returns all patterns (requireAdmin)
+- [x] `POST /api/admin/quartermasters` adds a pattern with regex validation and duplicate check (requireAdmin)
+- [x] `DELETE /api/admin/quartermasters/:id` removes a pattern (requireAdmin)
+- [x] Admin dashboard nav includes "Permissions" link
+- [x] Permissions panel lists all patterns with pattern text, type (Exact/Regex), and delete button
+- [x] Add form with text input and regex checkbox
+- [x] Invalid regex shows error message
+- [x] Duplicate pattern shows error message
+- [x] App.tsx has route `/admin/permissions` pointing to PermissionsPanel
 
 ## Testing
 
