@@ -1,10 +1,12 @@
 ---
-id: "005"
-title: "Site CRUD with audit logging"
-status: todo
+id: '005'
+title: Site CRUD with audit logging
+status: done
 use-cases:
-  - UC-4.7
-depends-on: ["001", "004"]
+- UC-4.7
+depends-on:
+- '001'
+- '004'
 ---
 
 # Site CRUD with audit logging
