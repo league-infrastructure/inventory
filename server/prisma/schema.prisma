@@ -7,6 +7,8 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ─── Template models ───────────────────────────────────────────────
+
 model Counter {
   id    Int    @id @default(autoincrement())
   name  String @unique
@@ -29,4 +31,264 @@ model Session {
 
   @@index([expire])
   @@map("session")
+}
+
+// ─── Inventory models ─────────────────────────────────────────────
+
+enum UserRole {
+  INSTRUCTOR
+  QUARTERMASTER
+}
+
+model User {
+  id          Int      @id @default(autoincrement())
+  googleId    String   @unique
+  email       String   @unique
+  displayName String
+  avatar      String?
+  role        UserRole @default(INSTRUCTOR)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  checkouts       Checkout[]
+  reportedIssues  Issue[]          @relation("IssueReporter")
+  resolvedIssues  Issue[]          @relation("IssueResolver")
+  inventoryChecks InventoryCheck[]
+  auditLogs       AuditLog[]
+}
+
+model Site {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  address   String?
+  latitude  Float?
+  longitude Float?
+  isHomeSite Boolean @default(false)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  kits                Kit[]
+  computers           Computer[]
+  checkoutDestinations Checkout[] @relation("CheckoutDestination")
+  checkoutReturns     Checkout[] @relation("CheckoutReturn")
+}
+
+enum KitStatus {
+  ACTIVE
+  RETIRED
+}
+
+model Kit {
+  id          Int       @id @default(autoincrement())
+  name        String
+  description String?
+  status      KitStatus @default(ACTIVE)
+  qrCode      String?   @unique
+  siteId      Int
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  site      Site       @relation(fields: [siteId], references: [id])
+  packs     Pack[]
+  computers Computer[]
+  checkouts Checkout[]
+  inventoryChecks InventoryCheck[] @relation("KitInventoryCheck")
+
+  @@index([siteId])
+}
+
+model Pack {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?
+  qrCode      String?  @unique
+  kitId       Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  kit   Kit    @relation(fields: [kitId], references: [id], onDelete: Cascade)
+  items Item[]
+  issues Issue[]
+  inventoryChecks InventoryCheck[] @relation("PackInventoryCheck")
+
+  @@index([kitId])
+}
+
+enum ItemType {
+  COUNTED
+  CONSUMABLE
+}
+
+model Item {
+  id               Int      @id @default(autoincrement())
+  name             String
+  type             ItemType
+  expectedQuantity Int?
+  packId           Int
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  pack   Pack   @relation(fields: [packId], references: [id], onDelete: Cascade)
+  issues Issue[]
+
+  @@index([packId])
+}
+
+enum ComputerDisposition {
+  ACTIVE
+  LOANED
+  NEEDS_REPAIR
+  IN_REPAIR
+  SCRAPPED
+  LOST
+  DECOMMISSIONED
+}
+
+model Computer {
+  id              Int                 @id @default(autoincrement())
+  serialNumber    String?
+  serviceTag      String?
+  model           String?
+  defaultUsername String?
+  defaultPassword String?
+  disposition     ComputerDisposition @default(ACTIVE)
+  dateReceived    DateTime?
+  lastInventoried DateTime?
+  notes           String?
+  qrCode          String?             @unique
+  siteId          Int?
+  kitId           Int?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  site     Site?     @relation(fields: [siteId], references: [id])
+  kit      Kit?      @relation(fields: [kitId], references: [id])
+  hostName HostName?
+
+  @@index([siteId])
+  @@index([kitId])
+}
+
+model HostName {
+  id         Int      @id @default(autoincrement())
+  name       String   @unique
+  computerId Int?     @unique
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  computer Computer? @relation(fields: [computerId], references: [id])
+}
+
+model Checkout {
+  id                Int       @id @default(autoincrement())
+  kitId             Int
+  userId            Int
+  destinationSiteId Int
+  returnSiteId      Int?
+  checkedOutAt      DateTime  @default(now())
+  checkedInAt       DateTime?
+
+  kit             Kit  @relation(fields: [kitId], references: [id])
+  user            User @relation(fields: [userId], references: [id])
+  destinationSite Site @relation("CheckoutDestination", fields: [destinationSiteId], references: [id])
+  returnSite      Site? @relation("CheckoutReturn", fields: [returnSiteId], references: [id])
+
+  @@index([kitId])
+  @@index([userId])
+}
+
+enum IssueType {
+  MISSING_ITEM
+  REPLENISHMENT
+}
+
+enum IssueStatus {
+  OPEN
+  RESOLVED
+}
+
+model Issue {
+  id         Int         @id @default(autoincrement())
+  type       IssueType
+  status     IssueStatus @default(OPEN)
+  packId     Int
+  itemId     Int
+  reporterId Int
+  resolverId Int?
+  notes      String?
+  resolvedAt DateTime?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  pack     Pack  @relation(fields: [packId], references: [id])
+  item     Item  @relation(fields: [itemId], references: [id])
+  reporter User  @relation("IssueReporter", fields: [reporterId], references: [id])
+  resolver User? @relation("IssueResolver", fields: [resolverId], references: [id])
+
+  @@index([packId])
+  @@index([status])
+}
+
+model InventoryCheck {
+  id        Int      @id @default(autoincrement())
+  kitId     Int?
+  packId    Int?
+  userId    Int
+  notes     String?
+  createdAt DateTime @default(now())
+
+  kit   Kit?  @relation("KitInventoryCheck", fields: [kitId], references: [id])
+  pack  Pack? @relation("PackInventoryCheck", fields: [packId], references: [id])
+  user  User  @relation(fields: [userId], references: [id])
+  lines InventoryCheckLine[]
+
+  @@index([kitId])
+  @@index([packId])
+}
+
+model InventoryCheckLine {
+  id               Int     @id @default(autoincrement())
+  inventoryCheckId Int
+  objectType       String
+  objectId         Int
+  expectedValue    String?
+  actualValue      String?
+  hasDiscrepancy   Boolean @default(false)
+
+  inventoryCheck InventoryCheck @relation(fields: [inventoryCheckId], references: [id], onDelete: Cascade)
+
+  @@index([inventoryCheckId])
+}
+
+enum AuditSource {
+  UI
+  IMPORT
+  API
+}
+
+model AuditLog {
+  id         Int         @id @default(autoincrement())
+  userId     Int?
+  objectType String
+  objectId   Int
+  field      String
+  oldValue   String?
+  newValue   String?
+  source     AuditSource @default(UI)
+  createdAt  DateTime    @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([objectType, objectId])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model QuartermasterPattern {
+  id        Int      @id @default(autoincrement())
+  pattern   String
+  isRegex   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

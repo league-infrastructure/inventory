@@ -6,14 +6,13 @@ import pino from 'pino';
 import pinoHttp from 'pino-http';
 import { Writable } from 'stream';
 import { healthRouter } from './routes/health';
-import { counterRouter } from './routes/counter';
-import { integrationsRouter } from './routes/integrations';
 import { authRouter } from './routes/auth';
-import { pike13Router } from './routes/pike13';
-import { githubRouter } from './routes/github';
 import { adminRouter } from './routes/admin';
+import { sitesRouter } from './routes/sites';
+import { quartermasterRouter } from './routes/quartermasters';
 import { errorHandler } from './middleware/errorHandler';
 import { logBuffer } from './services/logBuffer';
+import { prisma } from './services/prisma';
 
 const app = express();
 
@@ -63,23 +62,32 @@ if (process.env.NODE_ENV !== 'test' && process.env.DATABASE_URL) {
 
 app.use(session(sessionConfig));
 
-// Passport authentication
-passport.serializeUser((user: Express.User, done) => {
-  done(null, user);
+// Passport authentication — serialize User database ID to session,
+// deserialize by loading from database.
+passport.serializeUser((user: any, done) => {
+  done(null, user.id);
 });
-passport.deserializeUser((user: Express.User, done) => {
-  done(null, user);
+passport.deserializeUser(async (serialized: any, done) => {
+  try {
+    // Handle legacy sessions that stored the full user object
+    const userId = typeof serialized === 'number' ? serialized : serialized?.id;
+    if (typeof userId !== 'number') {
+      return done(null, false);
+    }
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    done(null, user);
+  } catch (err) {
+    done(err);
+  }
 });
 app.use(passport.initialize());
 app.use(passport.session());
 
 // Routes
 app.use('/api', healthRouter);
-app.use('/api', counterRouter);
-app.use('/api', integrationsRouter);
 app.use('/api', authRouter);
-app.use('/api', pike13Router);
-app.use('/api', githubRouter);
+app.use('/api', sitesRouter);
+app.use('/api', quartermasterRouter);
 app.use('/api', adminRouter);
 
 app.use(errorHandler);

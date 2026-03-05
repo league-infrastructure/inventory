@@ -1,65 +1,11 @@
 import { Router, Request, Response } from 'express';
 import passport from 'passport';
+import { prisma } from '../services/prisma';
 
 export const authRouter = Router();
 
-// --- GitHub OAuth Strategy ---
-// Register only if credentials are configured.
-// Docs: https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app
-if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
-  const GitHubStrategy = require('passport-github2').Strategy;
-  passport.use(new GitHubStrategy(
-    {
-      clientID: process.env.GITHUB_CLIENT_ID,
-      clientSecret: process.env.GITHUB_CLIENT_SECRET,
-      callbackURL: process.env.GITHUB_CALLBACK_URL || '/api/auth/github/callback',
-      proxy: true,
-      scope: ['read:user', 'user:email'],
-    },
-    (_accessToken: string, _refreshToken: string, profile: any, done: any) => {
-      const user = {
-        provider: 'github' as const,
-        id: profile.id,
-        displayName: profile.displayName || profile.username,
-        email: profile.emails?.[0]?.value || '',
-        avatar: profile.photos?.[0]?.value || '',
-        accessToken: _accessToken,
-      };
-      done(null, user);
-    },
-  ));
-  if (process.env.NODE_ENV !== 'test') console.log('GitHub OAuth strategy registered');
-} else {
-  if (process.env.NODE_ENV !== 'test') console.log('GitHub OAuth not configured — set GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET');
-}
-
-// GitHub OAuth initiation
-authRouter.get('/auth/github', (req: Request, res: Response, next) => {
-  if (!(passport as any)._strategy('github')) {
-    return res.status(501).json({
-      error: 'GitHub OAuth not configured',
-      docs: 'https://github.com/settings/developers',
-    });
-  }
-  passport.authenticate('github', { scope: ['read:user', 'user:email'] })(req, res, next);
-});
-
-// GitHub OAuth callback
-authRouter.get('/auth/github/callback',
-  (req: Request, res: Response, next) => {
-    if (!(passport as any)._strategy('github')) {
-      return res.status(501).json({ error: 'GitHub OAuth not configured' });
-    }
-    passport.authenticate('github', { failureRedirect: '/' })(req, res, next);
-  },
-  (_req: Request, res: Response) => {
-    res.redirect('/');
-  },
-);
-
 // --- Google OAuth Strategy ---
-// Register only if credentials are configured.
-// Docs: https://developers.google.com/identity/protocols/oauth2/web-server
+// Restricted to jointheleague.org domain.
 if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
   const GoogleStrategy = require('passport-google-oauth20').Strategy;
   passport.use(new GoogleStrategy(
@@ -69,25 +15,75 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
       callbackURL: process.env.GOOGLE_CALLBACK_URL || '/api/auth/google/callback',
       proxy: true,
       scope: ['profile', 'email'],
+      hd: 'jointheleague.org',
     },
-    (_accessToken: string, _refreshToken: string, profile: any, done: any) => {
-      const user = {
-        provider: 'google' as const,
-        id: profile.id,
-        displayName: profile.displayName || '',
-        email: profile.emails?.[0]?.value || '',
-        avatar: profile.photos?.[0]?.value || '',
-      };
-      done(null, user);
+    async (_accessToken: string, _refreshToken: string, profile: any, done: any) => {
+      try {
+        const email = profile.emails?.[0]?.value || '';
+
+        // Defense in depth: validate domain even though hd param restricts it
+        if (!email.endsWith('@jointheleague.org')) {
+          return done(null, false, { message: 'Only jointheleague.org accounts are allowed' });
+        }
+
+        // Upsert user in database
+        const user = await prisma.user.upsert({
+          where: { googleId: profile.id },
+          update: {
+            displayName: profile.displayName || '',
+            avatar: profile.photos?.[0]?.value || null,
+            email,
+          },
+          create: {
+            googleId: profile.id,
+            email,
+            displayName: profile.displayName || '',
+            avatar: profile.photos?.[0]?.value || null,
+          },
+        });
+
+        // Check Quartermaster patterns to determine role
+        const patterns = await prisma.quartermasterPattern.findMany();
+        let role: 'INSTRUCTOR' | 'QUARTERMASTER' = 'INSTRUCTOR';
+        for (const p of patterns) {
+          if (p.isRegex) {
+            try {
+              if (new RegExp(p.pattern, 'i').test(email)) {
+                role = 'QUARTERMASTER';
+                break;
+              }
+            } catch {
+              // Invalid regex — skip
+            }
+          } else {
+            if (email.toLowerCase() === p.pattern.toLowerCase()) {
+              role = 'QUARTERMASTER';
+              break;
+            }
+          }
+        }
+
+        // Update role if changed
+        if (user.role !== role) {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { role },
+          });
+          user.role = role;
+        }
+
+        done(null, user);
+      } catch (err) {
+        done(err);
+      }
     },
   ));
-  if (process.env.NODE_ENV !== 'test') console.log('Google OAuth strategy registered');
+  if (process.env.NODE_ENV !== 'test') console.log('Google OAuth strategy registered (jointheleague.org)');
 } else {
   if (process.env.NODE_ENV !== 'test') console.log('Google OAuth not configured — set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET');
 }
 
 // Google OAuth initiation
-// Setup: https://console.cloud.google.com/apis/credentials
 authRouter.get('/auth/google', (req: Request, res: Response, next) => {
   if (!(passport as any)._strategy('google')) {
     return res.status(501).json({
@@ -95,7 +91,10 @@ authRouter.get('/auth/google', (req: Request, res: Response, next) => {
       docs: 'https://console.cloud.google.com/apis/credentials',
     });
   }
-  passport.authenticate('google', { scope: ['profile', 'email'] })(req, res, next);
+  passport.authenticate('google', {
+    scope: ['profile', 'email'],
+    hd: 'jointheleague.org',
+  })(req, res, next);
 });
 
 // Google OAuth callback
@@ -104,7 +103,7 @@ authRouter.get('/auth/google/callback',
     if (!(passport as any)._strategy('google')) {
       return res.status(501).json({ error: 'Google OAuth not configured' });
     }
-    passport.authenticate('google', { failureRedirect: '/' })(req, res, next);
+    passport.authenticate('google', { failureRedirect: '/?error=auth_failed' })(req, res, next);
   },
   (_req: Request, res: Response) => {
     res.redirect('/');
@@ -118,7 +117,14 @@ authRouter.get('/auth/me', (req: Request, res: Response) => {
   if (!req.user) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
-  res.json(req.user);
+  const user = req.user as any;
+  res.json({
+    id: user.id,
+    email: user.email,
+    displayName: user.displayName,
+    avatar: user.avatar,
+    role: user.role,
+  });
 });
 
 // Logout
