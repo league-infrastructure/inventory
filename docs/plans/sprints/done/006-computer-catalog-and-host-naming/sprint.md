@@ -1,7 +1,7 @@
 ---
 id: '006'
 title: Computer Catalog and Host Naming
-status: planning
+status: done
 branch: sprint/006-computer-catalog-and-host-naming
 use-cases:
 - UC-4.3
