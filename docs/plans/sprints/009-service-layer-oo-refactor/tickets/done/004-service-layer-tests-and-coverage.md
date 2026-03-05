@@ -1,7 +1,7 @@
 ---
 id: '004'
 title: Service layer tests and coverage
-status: pending
+status: done
 use-cases:
   - SUC-004
 depends-on:
