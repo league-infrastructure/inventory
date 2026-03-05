@@ -1,7 +1,7 @@
 ---
 id: '002'
 title: Host Name API endpoints
-status: todo
+status: done
 use-cases:
 - SUC-004
 depends-on: []

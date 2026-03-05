@@ -1,7 +1,7 @@
 ---
 id: '001'
 title: Computer CRUD API endpoints
-status: todo
+status: done
 use-cases:
 - SUC-001
 - SUC-002
