@@ -1,7 +1,7 @@
 ---
 id: '006'
 title: Cleanup and verification
-status: pending
+status: done
 use-cases:
   - SUC-002
   - SUC-004
