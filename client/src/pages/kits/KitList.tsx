@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 
 interface Kit {
@@ -11,6 +11,7 @@ interface Kit {
 }
 
 export default function KitList() {
+  const navigate = useNavigate();
   const [kits, setKits] = useState<Kit[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -76,12 +77,12 @@ export default function KitList() {
             </thead>
             <tbody>
               {kits.map((kit) => (
-                <tr key={kit.id} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="px-4 py-3">
-                    <Link to={`/kits/${kit.id}`} className="text-primary hover:underline">
-                      {kit.name}
-                    </Link>
-                  </td>
+                <tr
+                  key={kit.id}
+                  className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
+                  onClick={() => navigate(`/kits/${kit.id}`)}
+                >
+                  <td className="px-4 py-3 font-medium text-gray-900">{kit.name}</td>
                   <td className="px-4 py-3 text-gray-600">{kit.site.name}</td>
                   <td className="px-4 py-3">
                     <span

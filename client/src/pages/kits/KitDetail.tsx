@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Pencil, Copy, Trash2, Plus, X } from 'lucide-react';
+import { Copy, Trash2, Plus, X } from 'lucide-react';
 
 interface Item {
   id: number;
@@ -24,24 +24,33 @@ interface Computer {
   hostName: { name: string } | null;
 }
 
-interface Kit {
-  id: number;
+interface Site { id: number; name: string; }
+
+interface FormState {
   name: string;
-  description: string | null;
-  status: string;
-  qrCode: string | null;
-  site: { id: number; name: string };
-  packs: Pack[];
-  computers: Computer[];
+  description: string;
+  siteId: number | '';
 }
 
 export default function KitDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [kit, setKit] = useState<Kit | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [dirty, setDirty] = useState(false);
   const [cloning, setCloning] = useState(false);
+
+  const [form, setForm] = useState<FormState>({ name: '', description: '', siteId: '' });
+  const savedForm = useRef<FormState>(form);
+
+  const [status, setStatus] = useState('ACTIVE');
+  const [qrCode, setQrCode] = useState<string | null>(null);
+  const [packs, setPacks] = useState<Pack[]>([]);
+  const [computers, setComputers] = useState<Computer[]>([]);
+  const [sites, setSites] = useState<Site[]>([]);
+
   const [showPackForm, setShowPackForm] = useState(false);
   const [packName, setPackName] = useState('');
   const [packDesc, setPackDesc] = useState('');
@@ -49,15 +58,64 @@ export default function KitDetail() {
   const [newItem, setNewItem] = useState({ name: '', type: 'COUNTED', expectedQuantity: 1 });
 
   useEffect(() => {
-    fetch(`/api/kits/${id}`)
-      .then((r) => {
+    Promise.all([
+      fetch(`/api/kits/${id}`).then((r) => {
         if (!r.ok) throw new Error('Kit not found');
         return r.json();
+      }),
+      fetch('/api/sites').then((r) => r.json()),
+    ])
+      .then(([kit, s]) => {
+        const initial: FormState = {
+          name: kit.name,
+          description: kit.description || '',
+          siteId: kit.site.id,
+        };
+        setForm(initial);
+        savedForm.current = initial;
+        setStatus(kit.status);
+        setQrCode(kit.qrCode || null);
+        setPacks(kit.packs);
+        setComputers(kit.computers);
+        setSites(s);
       })
-      .then(setKit)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, [id]);
+
+  function updateField<K extends keyof FormState>(key: K, value: FormState[K]) {
+    setForm((prev) => {
+      const next = { ...prev, [key]: value };
+      setDirty(JSON.stringify(next) !== JSON.stringify(savedForm.current));
+      return next;
+    });
+  }
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const res = await fetch(`/api/kits/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: form.name,
+          description: form.description || null,
+          siteId: form.siteId,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to save');
+      }
+      savedForm.current = { ...form };
+      setDirty(false);
+    } catch (e: any) {
+      setSaveError(e.message);
+    }
+    setSaving(false);
+  }
 
   async function handleClone() {
     setCloning(true);
@@ -76,7 +134,7 @@ export default function KitDetail() {
     const res = await fetch(`/api/kits/${id}/retire`, { method: 'PATCH' });
     if (res.ok) {
       const updated = await res.json();
-      setKit((prev) => (prev ? { ...prev, status: updated.status } : prev));
+      setStatus(updated.status);
     }
   }
 
@@ -89,7 +147,7 @@ export default function KitDetail() {
     });
     if (res.ok) {
       const pack = await res.json();
-      setKit((prev) => prev ? { ...prev, packs: [...prev.packs, { ...pack, items: [] }] } : prev);
+      setPacks((prev) => [...prev, { ...pack, items: [] }]);
       setPackName('');
       setPackDesc('');
       setShowPackForm(false);
@@ -104,15 +162,9 @@ export default function KitDetail() {
     });
     if (res.ok) {
       const item = await res.json();
-      setKit((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          packs: prev.packs.map((p) =>
-            p.id === packId ? { ...p, items: [...p.items, item] } : p
-          ),
-        };
-      });
+      setPacks((prev) =>
+        prev.map((p) => p.id === packId ? { ...p, items: [...p.items, item] } : p)
+      );
       setNewItem({ name: '', type: 'COUNTED', expectedQuantity: 1 });
       setItemForms((prev) => ({ ...prev, [packId]: false }));
     }
@@ -121,28 +173,23 @@ export default function KitDetail() {
   async function handleDeletePack(packId: number) {
     const res = await fetch(`/api/packs/${packId}`, { method: 'DELETE' });
     if (res.ok) {
-      setKit((prev) => prev ? { ...prev, packs: prev.packs.filter((p) => p.id !== packId) } : prev);
+      setPacks((prev) => prev.filter((p) => p.id !== packId));
     }
   }
 
   async function handleDeleteItem(packId: number, itemId: number) {
     const res = await fetch(`/api/items/${itemId}`, { method: 'DELETE' });
     if (res.ok) {
-      setKit((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          packs: prev.packs.map((p) =>
-            p.id === packId ? { ...p, items: p.items.filter((i) => i.id !== itemId) } : p
-          ),
-        };
-      });
+      setPacks((prev) =>
+        prev.map((p) => p.id === packId ? { ...p, items: p.items.filter((i) => i.id !== itemId) } : p)
+      );
     }
   }
 
   if (loading) return <p className="text-gray-500 text-sm">Loading...</p>;
   if (error) return <p className="text-red-600 text-sm">{error}</p>;
-  if (!kit) return null;
+
+  const inputClass = "mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white";
 
   return (
     <div className="max-w-4xl">
@@ -151,29 +198,18 @@ export default function KitDetail() {
       </Link>
 
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mt-4 mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">{kit.name}</h1>
-          <div className="flex items-center gap-2 mt-1">
-            <span
-              className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                kit.status === 'ACTIVE'
-                  ? 'bg-green-100 text-green-700'
-                  : 'bg-gray-100 text-gray-600'
-              }`}
-            >
-              {kit.status}
-            </span>
-            <span className="text-sm text-gray-500">{kit.site.name}</span>
-          </div>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-gray-900">{form.name || 'Kit'}</h1>
+          <span
+            className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+              status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
+            }`}
+          >
+            {status}
+          </span>
         </div>
         <div className="flex gap-2">
-          <Link
-            to={`/kits/${kit.id}/edit`}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-primary text-white no-underline hover:bg-primary-hover"
-          >
-            <Pencil size={14} /> Edit
-          </Link>
-          {kit.status === 'ACTIVE' && (
+          {status === 'ACTIVE' && (
             <>
               <button
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-gray-600 text-white border-none cursor-pointer hover:bg-gray-700"
@@ -193,18 +229,58 @@ export default function KitDetail() {
         </div>
       </div>
 
-      {kit.description && <p className="text-gray-600 mb-4">{kit.description}</p>}
-
-      {kit.qrCode && (
+      {qrCode && (
         <div className="mb-6 px-4 py-2 bg-gray-50 rounded-lg text-sm">
-          <strong>QR Code:</strong> <code className="text-xs">{kit.qrCode}</code>
+          <strong>QR Code:</strong> <code className="text-xs">{qrCode}</code>
         </div>
       )}
 
+      {saveError && <p className="text-red-600 text-sm mb-4">{saveError}</p>}
+
+      {/* Editable kit fields */}
+      <form onSubmit={handleSave} className="space-y-4 mb-8">
+        <label className="block">
+          <span className="text-sm font-medium text-gray-700">Name *</span>
+          <input value={form.name} onChange={(e) => updateField('name', e.target.value)} className={inputClass} required />
+        </label>
+
+        <label className="block">
+          <span className="text-sm font-medium text-gray-700">Description</span>
+          <textarea value={form.description} onChange={(e) => updateField('description', e.target.value)} className={inputClass + " resize-y"} rows={3} />
+        </label>
+
+        <label className="block">
+          <span className="text-sm font-medium text-gray-700">Site *</span>
+          <select
+            value={form.siteId}
+            onChange={(e) => updateField('siteId', parseInt(e.target.value, 10))}
+            className={inputClass}
+            required
+          >
+            <option value="">Select a site...</option>
+            {sites.map((s) => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </select>
+        </label>
+
+        {dirty && (
+          <div className="pt-2">
+            <button
+              type="submit"
+              className="px-6 py-2 bg-primary text-white text-sm font-medium rounded-lg border-none cursor-pointer hover:bg-primary-hover disabled:opacity-50"
+              disabled={saving}
+            >
+              {saving ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
+        )}
+      </form>
+
       {/* Packs */}
-      <div className="mt-8">
+      <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">Packs ({kit.packs.length})</h2>
+          <h2 className="text-lg font-semibold text-gray-900">Packs ({packs.length})</h2>
           <button
             className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-lg bg-primary text-white border-none cursor-pointer hover:bg-primary-hover"
             onClick={() => setShowPackForm(!showPackForm)}
@@ -241,7 +317,7 @@ export default function KitDetail() {
           </form>
         )}
 
-        {kit.packs.map((pack) => (
+        {packs.map((pack) => (
           <div key={pack.id} className="bg-white border border-gray-200 rounded-lg p-4 mb-3">
             <div className="flex items-center justify-between mb-2">
               <div>
@@ -343,9 +419,9 @@ export default function KitDetail() {
       </div>
 
       {/* Computers */}
-      {kit.computers.length > 0 && (
+      {computers.length > 0 && (
         <div className="mt-8">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Computers ({kit.computers.length})</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Computers ({computers.length})</h2>
           <div className="bg-white border border-gray-200 rounded-lg overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -356,7 +432,7 @@ export default function KitDetail() {
                 </tr>
               </thead>
               <tbody>
-                {kit.computers.map((c) => (
+                {computers.map((c) => (
                   <tr key={c.id} className="border-b border-gray-100">
                     <td className="px-4 py-2">
                       <Link to={`/computers/${c.id}`} className="text-primary hover:underline">

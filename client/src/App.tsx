@@ -34,7 +34,6 @@ function App() {
           <Route path="/kits" element={<KitList />} />
           <Route path="/kits/new" element={<KitForm />} />
           <Route path="/kits/:id" element={<KitDetail />} />
-          <Route path="/kits/:id/edit" element={<KitForm />} />
           <Route path="/computers" element={<ComputerList />} />
           <Route path="/computers/new" element={<ComputerForm />} />
           <Route path="/computers/:id" element={<ComputerDetail />} />
