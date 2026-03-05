@@ -1,12 +1,12 @@
 ---
 id: '003'
 title: Domain service classes
-status: pending
+status: done
 use-cases:
-  - SUC-002
+- SUC-002
 depends-on:
-  - '001'
-  - '002'
+- '001'
+- '002'
 ---
 
 # Domain service classes
