@@ -1,12 +1,12 @@
 ---
-id: "004"
-title: "Service layer - kits, packs, items"
-status: todo
+id: '005'
+title: Service layer - checkouts, users, QR
+status: done
 use-cases: []
 depends-on: []
 ---
 
-# Service layer - kits, packs, items
+# Service layer - checkouts, users, QR
 
 ## Description
 

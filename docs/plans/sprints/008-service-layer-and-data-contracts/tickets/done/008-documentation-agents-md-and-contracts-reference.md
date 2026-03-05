@@ -1,12 +1,12 @@
 ---
-id: "005"
-title: "Service layer - checkouts, users, QR"
-status: todo
+id: 008
+title: Documentation - AGENTS.md and contracts reference
+status: done
 use-cases: []
 depends-on: []
 ---
 
-# Service layer - checkouts, users, QR
+# Documentation - AGENTS.md and contracts reference
 
 ## Description
 

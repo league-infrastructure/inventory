@@ -1,12 +1,12 @@
 ---
-id: "003"
-title: "Service layer - sites, hostnames, computers"
-status: todo
+id: '002'
+title: Data contract interfaces
+status: done
 use-cases: []
 depends-on: []
 ---
 
-# Service layer - sites, hostnames, computers
+# Data contract interfaces
 
 ## Description
 

@@ -1,7 +1,7 @@
 ---
-id: "006"
-title: "Route migration - all routes to use service layer"
-status: todo
+id: '006'
+title: Route migration - all routes to use service layer
+status: done
 use-cases: []
 depends-on: []
 ---

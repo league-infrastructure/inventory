@@ -1,12 +1,12 @@
 ---
-id: "002"
-title: "Data contract interfaces"
-status: todo
+id: '001'
+title: Service error types and error handler update
+status: done
 use-cases: []
 depends-on: []
 ---
 
-# Data contract interfaces
+# Service error types and error handler update
 
 ## Description
 

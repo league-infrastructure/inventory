@@ -1,12 +1,12 @@
 ---
-id: "008"
-title: "Documentation - AGENTS.md and contracts reference"
-status: todo
+id: '004'
+title: Service layer - kits, packs, items
+status: done
 use-cases: []
 depends-on: []
 ---
 
-# Documentation - AGENTS.md and contracts reference
+# Service layer - kits, packs, items
 
 ## Description
 

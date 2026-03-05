@@ -1,12 +1,12 @@
 ---
-id: "001"
-title: "Service error types and error handler update"
-status: todo
+id: '003'
+title: Service layer - sites, hostnames, computers
+status: done
 use-cases: []
 depends-on: []
 ---
 
-# Service error types and error handler update
+# Service layer - sites, hostnames, computers
 
 ## Description
 
