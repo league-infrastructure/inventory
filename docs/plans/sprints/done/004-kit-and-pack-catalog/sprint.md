@@ -1,13 +1,13 @@
 ---
-id: "004"
-title: "Kit and Pack Catalog"
-status: planning
+id: '004'
+title: Kit and Pack Catalog
+status: done
 branch: sprint/004-kit-and-pack-catalog
 use-cases:
-  - UC-4.1
-  - UC-4.2
-  - UC-4.4
-  - UC-4.11
+- UC-4.1
+- UC-4.2
+- UC-4.4
+- UC-4.11
 ---
 
 # Sprint 004: Kit and Pack Catalog
