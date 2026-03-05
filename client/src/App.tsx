@@ -24,6 +24,7 @@ function App() {
         <Route path="/kits/:id/edit" element={<KitForm />} />
         <Route path="/k/:id" element={<QrLanding />} />
         <Route path="/p/:id" element={<QrLanding />} />
+        <Route path="/c/:id" element={<QrLanding />} />
         <Route path="/admin" element={<AdminLogin />} />
         <Route element={<AdminLayout />}>
           <Route path="/admin/env" element={<EnvironmentInfo />} />

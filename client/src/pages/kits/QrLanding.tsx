@@ -18,8 +18,9 @@ export default function QrLanding() {
 
   // Determine type from path
   const isKit = location.pathname.startsWith('/k/');
-  const typePrefix = isKit ? 'k' : 'p';
-  const detailPath = isKit ? `/kits/${id}` : `/packs/${id}`;
+  const isComputer = location.pathname.startsWith('/c/');
+  const typePrefix = isKit ? 'k' : isComputer ? 'c' : 'p';
+  const detailPath = isKit ? `/kits/${id}` : isComputer ? `/computers/${id}` : `/packs/${id}`;
 
   useEffect(() => {
     // Check if user is authenticated

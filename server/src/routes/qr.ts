@@ -18,6 +18,20 @@ qrRouter.get('/qr/k/:id', async (req: Request, res: Response) => {
   res.json({ type: 'Kit', ...kit, qrDataUrl });
 });
 
+// Public: get minimal Computer info for QR landing page (no auth required)
+qrRouter.get('/qr/c/:id', async (req: Request, res: Response) => {
+  const id = parseInt(req.params.id as string, 10);
+  const computer = await prisma.computer.findUnique({
+    where: { id },
+    select: { id: true, model: true, disposition: true },
+  });
+  if (!computer) {
+    return res.status(404).json({ error: 'Not found' });
+  }
+  const qrDataUrl = await generateQrDataUrl(`/c/${id}`);
+  res.json({ type: 'Computer', ...computer, name: computer.model || `Computer #${id}`, qrDataUrl });
+});
+
 // Public: get minimal Pack info for QR landing page (no auth required)
 qrRouter.get('/qr/p/:id', async (req: Request, res: Response) => {
   const id = parseInt(req.params.id as string, 10);
