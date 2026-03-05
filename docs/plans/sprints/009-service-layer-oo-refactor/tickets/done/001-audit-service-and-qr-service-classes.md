@@ -1,9 +1,9 @@
 ---
 id: '001'
 title: AuditService and QrService classes
-status: pending
+status: done
 use-cases:
-  - SUC-003
+- SUC-003
 depends-on: []
 ---
 
