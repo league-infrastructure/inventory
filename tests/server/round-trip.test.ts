@@ -10,13 +10,11 @@ if (!process.env.DATABASE_URL) {
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { prisma } from '../../server/src/services/prisma';
-import * as siteService from '../../server/src/services/siteService';
-import * as hostNameService from '../../server/src/services/hostNameService';
-import * as computerService from '../../server/src/services/computerService';
-import * as kitService from '../../server/src/services/kitService';
-import * as packService from '../../server/src/services/packService';
-import * as itemService from '../../server/src/services/itemService';
+import { PrismaClient } from '@prisma/client';
+import { ServiceRegistry } from '../../server/src/services/service.registry';
+
+const prisma = new PrismaClient();
+const registry = ServiceRegistry.create(prisma);
 
 // Ensure a test user exists for service calls that need userId
 let testUserId: number;
@@ -100,21 +98,21 @@ describe('Round-trip test: import → export → compare', () => {
   it('imports seed data through the service layer', async () => {
     // 1. Create sites (add suffix to names for uniqueness)
     for (const s of seed.sites) {
-      const site = await siteService.createSite({ ...s, name: `${s.name}-${suffix}` }, getUserId());
+      const site = await registry.sites.create({ ...s, name: `${s.name}-${suffix}` }, getUserId());
       createdSiteIds.push(site.id);
     }
     expect(createdSiteIds).toHaveLength(seed.sites.length);
 
     // 2. Create host names (add suffix for uniqueness)
     for (const h of seed.hostNames) {
-      const hostname = await hostNameService.createHostName({ name: `${h.name}-${suffix}` });
+      const hostname = await registry.hostNames.create({ name: `${h.name}-${suffix}` });
       createdHostNameIds.push(hostname.id);
     }
     expect(createdHostNameIds).toHaveLength(seed.hostNames.length);
 
     // 3. Create computers with site and hostname assignments
     for (const c of seed.computers) {
-      const computer = await computerService.createComputer({
+      const computer = await registry.computers.create({
         serialNumber: c.serialNumber,
         model: c.model,
         notes: c.notes,
@@ -127,7 +125,7 @@ describe('Round-trip test: import → export → compare', () => {
 
     // 4. Create kits with packs and items
     for (const k of seed.kits) {
-      const kit = await kitService.createKit({
+      const kit = await registry.kits.create({
         name: `${k.name}-${suffix}`,
         description: k.description,
         siteId: createdSiteIds[k.siteIndex],
@@ -135,17 +133,17 @@ describe('Round-trip test: import → export → compare', () => {
       createdKitIds.push(kit.id);
 
       for (const p of k.packs) {
-        const pack = await packService.createPack(kit.id, {
+        const pack = await registry.packs.create({
           name: p.name,
           description: p.description,
-        }, getUserId());
+        }, getUserId(), kit.id);
 
         for (const item of p.items) {
-          await itemService.createItem(pack.id, {
+          await registry.items.create({
             name: item.name,
             type: item.type,
             expectedQuantity: item.expectedQuantity ?? null,
-          }, getUserId());
+          }, getUserId(), pack.id);
         }
       }
     }
@@ -155,7 +153,7 @@ describe('Round-trip test: import → export → compare', () => {
   it('exports data and verifies field-by-field equality', async () => {
     // Export sites
     for (let i = 0; i < seed.sites.length; i++) {
-      const exported = await siteService.getSite(createdSiteIds[i]);
+      const exported = await registry.sites.get(createdSiteIds[i]);
       expect(exported.name).toBe(`${seed.sites[i].name}-${suffix}`);
       expect(exported.address).toBe(seed.sites[i].address);
       expect(exported.latitude).toBe(seed.sites[i].latitude);
@@ -165,7 +163,7 @@ describe('Round-trip test: import → export → compare', () => {
     }
 
     // Export host names
-    const allHostNames = await hostNameService.listHostNames();
+    const allHostNames = await registry.hostNames.list();
     for (let i = 0; i < seed.hostNames.length; i++) {
       const match = allHostNames.find((h) => h.id === createdHostNameIds[i]);
       expect(match).toBeDefined();
@@ -174,7 +172,7 @@ describe('Round-trip test: import → export → compare', () => {
 
     // Export computers
     for (let i = 0; i < seed.computers.length; i++) {
-      const exported = await computerService.getComputer(createdComputerIds[i]);
+      const exported = await registry.computers.get(createdComputerIds[i]);
       expect(exported.serialNumber).toBe(seed.computers[i].serialNumber);
       expect(exported.model).toBe(seed.computers[i].model);
       expect(exported.notes).toBe(seed.computers[i].notes);
@@ -185,7 +183,7 @@ describe('Round-trip test: import → export → compare', () => {
 
     // Export kits with packs and items
     for (let ki = 0; ki < seed.kits.length; ki++) {
-      const exported = await kitService.getKit(createdKitIds[ki]);
+      const exported = await registry.kits.get(createdKitIds[ki]);
       expect(exported.name).toBe(`${seed.kits[ki].name}-${suffix}`);
       expect(exported.description).toBe(seed.kits[ki].description);
       expect(exported.siteId).toBe(createdSiteIds[seed.kits[ki].siteIndex]);

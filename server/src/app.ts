@@ -20,6 +20,7 @@ import { checkoutsRouter } from './routes/checkouts';
 import { errorHandler } from './middleware/errorHandler';
 import { logBuffer } from './services/logBuffer';
 import { prisma } from './services/prisma';
+import { ServiceRegistry } from './services/service.registry';
 
 const app = express();
 
@@ -90,18 +91,21 @@ passport.deserializeUser(async (serialized: any, done) => {
 app.use(passport.initialize());
 app.use(passport.session());
 
+// Create the service registry (composition root)
+const services = ServiceRegistry.create();
+
 // Routes
 app.use('/api', healthRouter);
 app.use('/api', authRouter);
-app.use('/api', sitesRouter);
+app.use('/api', sitesRouter(services));
 app.use('/api', quartermasterRouter);
-app.use('/api', kitsRouter);
-app.use('/api', packsRouter);
-app.use('/api', itemsRouter);
-app.use('/api', qrRouter);
-app.use('/api', computersRouter);
-app.use('/api', hostnamesRouter);
-app.use('/api', checkoutsRouter);
+app.use('/api', kitsRouter(services));
+app.use('/api', packsRouter(services));
+app.use('/api', itemsRouter(services));
+app.use('/api', qrRouter(services));
+app.use('/api', computersRouter(services));
+app.use('/api', hostnamesRouter(services));
+app.use('/api', checkoutsRouter(services));
 app.use('/api', adminRouter);
 
 // Test-only auth bypass: allows automated tests to create sessions
