@@ -24,8 +24,9 @@ export function useAuth() {
 const navItems = [
   { to: '/', label: 'Home', icon: Home, roles: null },
   { to: '/kits', label: 'Kits', icon: Tags, roles: null },
-  { to: '/computers', label: 'Computers', icon: Monitor, roles: ['QUARTERMASTER'] },
-  { to: '/hostnames', label: 'Host Names', icon: Tags, roles: ['QUARTERMASTER'] },
+  { to: '/computers', label: 'Computers', icon: Monitor, roles: ['QUARTERMASTER'],
+    children: [{ to: '/hostnames', label: 'Host Names' }],
+  },
   { to: '/sites', label: 'Sites', icon: MapPin, roles: ['QUARTERMASTER'] },
   { to: '/admin', label: 'Admin', icon: Shield, roles: null },
 ];
@@ -106,22 +107,40 @@ export default function AppLayout() {
             {filteredNav.map((item) => {
               const Icon = item.icon;
               const active = isActive(item.to);
+              const sectionActive = active || (item.children?.some((c) => isActive(c.to)) ?? false);
               return (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  className={`
-                    flex items-center gap-3 px-3 py-2 rounded-lg text-sm no-underline
-                    transition-colors duration-150
-                    ${active
-                      ? 'bg-sidebar-hover text-sidebar-active font-medium'
-                      : 'text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-active'
-                    }
-                  `}
-                >
-                  <Icon size={18} />
-                  {item.label}
-                </Link>
+                <div key={item.to}>
+                  <Link
+                    to={item.to}
+                    className={`
+                      flex items-center gap-3 px-3 py-2 rounded-lg text-sm no-underline
+                      transition-colors duration-150
+                      ${sectionActive
+                        ? 'bg-sidebar-hover text-sidebar-active font-medium'
+                        : 'text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-active'
+                      }
+                    `}
+                  >
+                    <Icon size={18} />
+                    {item.label}
+                  </Link>
+                  {sectionActive && item.children?.map((child) => (
+                    <Link
+                      key={child.to}
+                      to={child.to}
+                      className={`
+                        flex items-center gap-3 pl-10 pr-3 py-1.5 rounded-lg text-xs no-underline
+                        transition-colors duration-150
+                        ${isActive(child.to)
+                          ? 'text-sidebar-active font-medium'
+                          : 'text-sidebar-text hover:text-sidebar-active'
+                        }
+                      `}
+                    >
+                      {child.label}
+                    </Link>
+                  ))}
+                </div>
               );
             })}
           </nav>
