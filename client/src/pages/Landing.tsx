@@ -59,6 +59,9 @@ export default function Landing() {
           </div>
 
           <div style={styles.nav}>
+            <Link to="/kits" style={styles.navLink}>
+              Kits
+            </Link>
             {user.role === 'QUARTERMASTER' && (
               <Link to="/sites" style={styles.navLink}>
                 Manage Sites
