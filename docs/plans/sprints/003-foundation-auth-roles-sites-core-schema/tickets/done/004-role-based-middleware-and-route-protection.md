@@ -1,9 +1,10 @@
 ---
-id: "004"
-title: "Role-based middleware and route protection"
-status: todo
+id: '004'
+title: Role-based middleware and route protection
+status: done
 use-cases: []
-depends-on: ["002"]
+depends-on:
+- '002'
 ---
 
 # Role-based middleware and route protection
