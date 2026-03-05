@@ -1,15 +1,15 @@
 ---
-id: "006"
-title: "Checkout System"
+id: '007'
+title: Checkout System
 status: planning
-branch: sprint/006-checkout-system
+branch: sprint/007-checkout-system
 use-cases:
-  - UC-1.1
-  - UC-1.2
-  - UC-1.3
+- UC-1.1
+- UC-1.2
+- UC-1.3
 ---
 
-# Sprint 006: Checkout System
+# Sprint 007: Checkout System
 
 ## Goals
 

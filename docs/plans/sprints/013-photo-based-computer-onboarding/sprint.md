@@ -1,13 +1,13 @@
 ---
-id: "012"
-title: "Photo-Based Computer Onboarding"
+id: '013'
+title: Photo-Based Computer Onboarding
 status: planning
-branch: sprint/012-photo-based-computer-onboarding
+branch: sprint/013-photo-based-computer-onboarding
 use-cases:
-  - UC-4.3a
+- UC-4.3a
 ---
 
-# Sprint 012: Photo-Based Computer Onboarding
+# Sprint 013: Photo-Based Computer Onboarding
 
 ## Goals
 

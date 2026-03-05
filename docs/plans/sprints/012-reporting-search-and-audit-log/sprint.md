@@ -1,21 +1,21 @@
 ---
-id: "011"
-title: "Reporting, Search, and Audit Log"
+id: '012'
+title: Reporting, Search, and Audit Log
 status: planning
-branch: sprint/011-reporting-search-and-audit-log
+branch: sprint/012-reporting-search-and-audit-log
 use-cases:
-  - UC-5.1
-  - UC-5.2
-  - UC-5.3
-  - UC-5.4
-  - UC-5.5
-  - UC-5.6
-  - UC-5.7
-  - UC-5.8
-  - UC-6.1
+- UC-5.1
+- UC-5.2
+- UC-5.3
+- UC-5.4
+- UC-5.5
+- UC-5.6
+- UC-5.7
+- UC-5.8
+- UC-6.1
 ---
 
-# Sprint 011: Reporting, Search, and Audit Log
+# Sprint 012: Reporting, Search, and Audit Log
 
 ## Goals
 

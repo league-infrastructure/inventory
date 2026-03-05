@@ -1,15 +1,15 @@
 ---
-id: "005"
-title: "Computer Catalog and Host Naming"
+id: '006'
+title: Computer Catalog and Host Naming
 status: planning
-branch: sprint/005-computer-catalog-and-host-naming
+branch: sprint/006-computer-catalog-and-host-naming
 use-cases:
-  - UC-4.3
-  - UC-4.5
-  - UC-4.6
+- UC-4.3
+- UC-4.5
+- UC-4.6
 ---
 
-# Sprint 005: Computer Catalog and Host Naming
+# Sprint 006: Computer Catalog and Host Naming
 
 ## Goals
 
