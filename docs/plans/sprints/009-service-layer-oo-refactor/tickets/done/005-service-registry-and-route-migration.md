@@ -1,7 +1,7 @@
 ---
 id: '005'
 title: ServiceRegistry and route migration
-status: pending
+status: done
 use-cases:
   - SUC-003
 depends-on:
