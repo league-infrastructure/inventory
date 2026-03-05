@@ -1,7 +1,7 @@
 ---
 id: '007'
 title: Checkout System
-status: planning
+status: done
 branch: sprint/007-checkout-system
 use-cases:
 - UC-1.1
