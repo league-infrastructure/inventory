@@ -1,7 +1,7 @@
 ---
-id: "014"
-title: "Checkout flow remove destination site requirement"
-status: todo
+id: '014'
+title: Checkout flow remove destination site requirement
+status: done
 use-cases: []
 depends-on: []
 ---
