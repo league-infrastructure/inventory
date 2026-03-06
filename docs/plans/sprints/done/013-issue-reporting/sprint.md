@@ -1,7 +1,7 @@
 ---
 id: '013'
 title: Issue Reporting
-status: in-progress
+status: done
 branch: sprint/013-issue-reporting
 use-cases:
 - SUC-013-001
