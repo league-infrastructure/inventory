@@ -1,7 +1,7 @@
 ---
 id: '002'
 title: Inventory Check Routes
-status: todo
+status: done
 use-cases:
 - SUC-012-001
 - SUC-012-002

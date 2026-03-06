@@ -1,7 +1,7 @@
 ---
 id: '003'
 title: Frontend Inventory Check UI
-status: todo
+status: done
 use-cases:
 - SUC-012-001
 - SUC-012-002

@@ -1,7 +1,7 @@
 ---
 id: '001'
 title: Inventory Check Contract and Service
-status: todo
+status: done
 use-cases:
 - SUC-012-001
 - SUC-012-002
