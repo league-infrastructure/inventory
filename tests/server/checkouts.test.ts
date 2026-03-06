@@ -1,6 +1,12 @@
 process.env.NODE_ENV = 'test';
+if (!process.env.DATABASE_URL) {
+  process.env.DATABASE_URL = 'postgresql://app:devpassword@localhost:5433/app';
+}
 
+import { PrismaClient } from '@prisma/client';
 import { createAuthAgent, createUnauthenticatedAgent } from './helpers/auth';
+
+const prisma = new PrismaClient();
 
 describe('Checkouts API', () => {
   const agent = createAuthAgent('INSTRUCTOR');
@@ -10,10 +16,11 @@ describe('Checkouts API', () => {
   let siteId: number;
   let site2Id: number;
   let kitId: number;
+  let suffix: number;
 
   beforeAll(async () => {
     // Create two sites for checkout/checkin (unique names to avoid conflicts)
-    const suffix = Date.now();
+    suffix = Date.now();
     const s1 = await qmAgent
       .post('/api/sites')
       .send({ name: `CO-Test-Site-A-${suffix}`, address: '123 Main St' });
@@ -29,6 +36,15 @@ describe('Checkouts API', () => {
       .post('/api/kits')
       .send({ number: (suffix % 100000) + 600, name: `CO-Test-Kit-${suffix}`, siteId });
     kitId = k.body.id;
+  });
+
+  afterAll(async () => {
+    // Clean up test data
+    await prisma.checkout.deleteMany({ where: { kit: { name: { contains: `CO-Test-Kit-${suffix}` } } } });
+    await prisma.kit.deleteMany({ where: { name: { contains: `CO-Test-Kit-${suffix}` } } });
+    await prisma.site.deleteMany({ where: { name: { contains: `CO-Test-Site-A-${suffix}` } } });
+    await prisma.site.deleteMany({ where: { name: { contains: `CO-Test-Site-B-${suffix}` } } });
+    await prisma.$disconnect();
   });
 
   describe('POST /api/checkouts', () => {
