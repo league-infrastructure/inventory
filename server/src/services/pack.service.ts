@@ -3,6 +3,7 @@ import { AuditService } from './audit.service';
 import { BaseService } from './base.service';
 import { NotFoundError, ValidationError } from './errors';
 import { PackRecord, PackDetailRecord, CreatePackInput, UpdatePackInput } from '../contracts';
+import { resolveItemsFromDescription } from './description-parser';
 
 export class PackService extends BaseService<PackRecord, CreatePackInput, UpdatePackInput> {
   protected readonly entityName = 'Pack';
@@ -85,6 +86,27 @@ export class PackService extends BaseService<PackRecord, CreatePackInput, Update
             name: i.name,
             type: i.type,
             expectedQuantity: i.expectedQuantity,
+            packId: pack.id,
+          })),
+        });
+        items = await this.prisma.item.findMany({
+          where: { packId: pack.id },
+          orderBy: { name: 'asc' },
+        });
+      }
+    } else if (input.description) {
+      // Auto-create items from description with fuzzy matching
+      const allExistingItems = await this.prisma.item.findMany({
+        select: { name: true, type: true },
+        distinct: ['name'],
+      });
+      const resolved = resolveItemsFromDescription(input.description, allExistingItems);
+      if (resolved.length > 0) {
+        await this.prisma.item.createMany({
+          data: resolved.map((r) => ({
+            name: r.name,
+            type: r.type as any,
+            expectedQuantity: r.expectedQuantity,
             packId: pack.id,
           })),
         });
