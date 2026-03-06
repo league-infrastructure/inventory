@@ -11,6 +11,7 @@ import { ItemService } from './item.service';
 import { CheckoutService } from './checkout.service';
 import { TokenService } from './token.service';
 import { InventoryCheckService } from './inventory-check.service';
+import { IssueService } from './issue.service';
 
 export class ServiceRegistry {
   readonly prisma: PrismaClient;
@@ -25,6 +26,7 @@ export class ServiceRegistry {
   readonly checkouts: CheckoutService;
   readonly tokens: TokenService;
   readonly inventoryChecks: InventoryCheckService;
+  readonly issues: IssueService;
 
   private constructor(prisma: PrismaClient, source: AuditSource = 'UI') {
     this.prisma = prisma;
@@ -39,6 +41,7 @@ export class ServiceRegistry {
     this.checkouts = new CheckoutService(prisma, this.audit);
     this.tokens = new TokenService(prisma);
     this.inventoryChecks = new InventoryCheckService(prisma, this.audit);
+    this.issues = new IssueService(prisma, this.audit);
   }
 
   static create(prisma?: PrismaClient, source?: AuditSource): ServiceRegistry {

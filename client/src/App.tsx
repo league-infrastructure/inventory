@@ -15,6 +15,7 @@ import InactiveComputers from './pages/computers/InactiveComputers';
 import PackList from './pages/packs/PackList';
 import SiteList from './pages/sites/SiteList';
 import CheckedOutList from './pages/checkouts/CheckedOutList';
+import IssueList from './pages/issues/IssueList';
 import AdminLogin from './pages/admin/AdminLogin';
 import AdminLayout from './pages/admin/AdminLayout';
 import EnvironmentInfo from './pages/admin/EnvironmentInfo';
@@ -50,6 +51,7 @@ function App() {
           <Route path="/hostnames" element={<HostNameList />} />
           <Route path="/packs" element={<PackList />} />
           <Route path="/checkouts" element={<CheckedOutList />} />
+          <Route path="/issues" element={<IssueList />} />
           <Route path="/sites" element={<SiteList />} />
           <Route path="/account" element={<Account />} />
           <Route path="/admin" element={<AdminLogin />} />
