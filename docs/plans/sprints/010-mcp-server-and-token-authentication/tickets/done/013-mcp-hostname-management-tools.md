@@ -1,7 +1,7 @@
 ---
-id: "013"
-title: "MCP hostname management tools"
-status: todo
+id: '013'
+title: MCP hostname management tools
+status: done
 use-cases: []
 depends-on: []
 ---
