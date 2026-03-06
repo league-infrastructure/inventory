@@ -1,7 +1,7 @@
 ---
 id: '015'
 title: Import and Export
-status: planning
+status: done
 branch: sprint/015-import-and-export
 use-cases:
 - UC-4.9
