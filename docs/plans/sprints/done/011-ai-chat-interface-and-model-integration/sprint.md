@@ -1,7 +1,7 @@
 ---
 id: '011'
 title: AI Chat Interface and Model Integration
-status: in-progress
+status: done
 branch: sprint/011-ai-chat-interface-and-model-integration
 use-cases:
 - SUC-011-001
