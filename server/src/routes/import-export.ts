@@ -8,6 +8,7 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 
 export function importExportRouter(services: ServiceRegistry): Router {
   const router = Router();
 
+  // Excel export
   router.get('/export', requireAuth, async (_req: Request, res: Response, next: NextFunction) => {
     try {
       const buffer = await services.exports.exportToExcel();
@@ -18,6 +19,18 @@ export function importExportRouter(services: ServiceRegistry): Router {
     } catch (err) { next(err); }
   });
 
+  // JSON export
+  router.get('/export/json', requireAuth, async (_req: Request, res: Response, next: NextFunction) => {
+    try {
+      const data = await services.exports.exportToJson();
+      const filename = `inventory-export-${new Date().toISOString().split('T')[0]}.json`;
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.json(data);
+    } catch (err) { next(err); }
+  });
+
+  // Excel import preview
   router.post('/import/preview', requireAuth, upload.single('file'), async (req: Request, res: Response, next: NextFunction) => {
     try {
       if (!req.file) {
@@ -28,6 +41,7 @@ export function importExportRouter(services: ServiceRegistry): Router {
     } catch (err) { next(err); }
   });
 
+  // Excel import apply
   router.post('/import/apply', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
     try {
       const userId = (req.user as any).id;

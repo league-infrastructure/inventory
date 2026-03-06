@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Download, Upload, FileSpreadsheet, Check, X } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Download, Upload, FileSpreadsheet, FileJson, Check, X, Database, Trash2, RotateCcw } from 'lucide-react';
 
 interface ImportDiffRow {
   sheet: string;
@@ -16,23 +16,60 @@ interface ImportResult {
   errors: string[];
 }
 
+interface BackupInfo {
+  filename: string;
+  size: number;
+  createdAt: string;
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export default function ImportExport() {
   const [diffs, setDiffs] = useState<ImportDiffRow[] | null>(null);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function handleExport() {
+  // Backup state
+  const [backups, setBackups] = useState<BackupInfo[]>([]);
+  const [backupLoading, setBackupLoading] = useState(false);
+  const [backupError, setBackupError] = useState<string | null>(null);
+  const [backupMessage, setBackupMessage] = useState<string | null>(null);
+  const [confirmRestore, setConfirmRestore] = useState<string | null>(null);
+
+  useEffect(() => { loadBackups(); }, []);
+
+  async function loadBackups() {
+    try {
+      const res = await fetch('/api/admin/backups');
+      if (res.ok) setBackups(await res.json());
+    } catch { /* ignore */ }
+  }
+
+  async function handleExcelExport() {
     const res = await fetch('/api/export');
-    if (!res.ok) {
-      setError('Export failed');
-      return;
-    }
+    if (!res.ok) { setError('Export failed'); return; }
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = `inventory-export-${new Date().toISOString().split('T')[0]}.xlsx`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function handleJsonExport() {
+    const res = await fetch('/api/export/json');
+    if (!res.ok) { setError('Export failed'); return; }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `inventory-export-${new Date().toISOString().split('T')[0]}.json`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -43,18 +80,12 @@ export default function ImportExport() {
     setError(null);
     setResult(null);
     setLoading(true);
-
     const formData = new FormData();
     formData.append('file', file);
-
     try {
       const res = await fetch('/api/import/preview', { method: 'POST', body: formData });
-      if (!res.ok) {
-        setError('Failed to parse file');
-        return;
-      }
-      const data = await res.json();
-      setDiffs(data);
+      if (!res.ok) { setError('Failed to parse file'); return; }
+      setDiffs(await res.json());
     } catch {
       setError('Failed to upload file');
     } finally {
@@ -72,18 +103,61 @@ export default function ImportExport() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ diffs }),
       });
-      if (!res.ok) {
-        setError('Import failed');
-        return;
-      }
-      const data = await res.json();
-      setResult(data);
+      if (!res.ok) { setError('Import failed'); return; }
+      setResult(await res.json());
       setDiffs(null);
     } catch {
       setError('Import failed');
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleCreateBackup() {
+    setBackupLoading(true);
+    setBackupError(null);
+    setBackupMessage(null);
+    try {
+      const res = await fetch('/api/admin/backups', { method: 'POST' });
+      if (!res.ok) throw new Error('Backup failed');
+      const info = await res.json();
+      setBackupMessage(`Backup created: ${info.filename} (${formatBytes(info.size)})`);
+      loadBackups();
+    } catch (e: any) {
+      setBackupError(e.message);
+    } finally {
+      setBackupLoading(false);
+    }
+  }
+
+  async function handleRestore(filename: string) {
+    if (confirmRestore !== filename) {
+      setConfirmRestore(filename);
+      return;
+    }
+    setBackupLoading(true);
+    setBackupError(null);
+    setConfirmRestore(null);
+    try {
+      const res = await fetch('/api/admin/backups/restore', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename }),
+      });
+      if (!res.ok) throw new Error('Restore failed');
+      setBackupMessage(`Database restored from ${filename}`);
+    } catch (e: any) {
+      setBackupError(e.message);
+    } finally {
+      setBackupLoading(false);
+    }
+  }
+
+  async function handleDeleteBackup(filename: string) {
+    try {
+      const res = await fetch(`/api/admin/backups/${encodeURIComponent(filename)}`, { method: 'DELETE' });
+      if (res.ok) loadBackups();
+    } catch { /* ignore */ }
   }
 
   return (
@@ -97,15 +171,24 @@ export default function ImportExport() {
           <h2 className="text-lg font-semibold">Export Inventory</h2>
         </div>
         <p className="text-sm text-gray-600 mb-4">
-          Download a complete Excel spreadsheet of all sites, kits, packs, items, and computers.
+          Download a complete inventory dump in Excel or JSON format.
         </p>
-        <button
-          onClick={handleExport}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-hover"
-        >
-          <FileSpreadsheet size={16} />
-          Download Excel
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={handleExcelExport}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-hover"
+          >
+            <FileSpreadsheet size={16} />
+            Download Excel
+          </button>
+          <button
+            onClick={handleJsonExport}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-hover"
+          >
+            <FileJson size={16} />
+            Download JSON
+          </button>
+        </div>
       </div>
 
       {/* Import section */}
@@ -128,7 +211,6 @@ export default function ImportExport() {
         {loading && <p className="mt-4 text-sm text-gray-500">Processing...</p>}
         {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
 
-        {/* Diff preview */}
         {diffs && diffs.length > 0 && (
           <div className="mt-6">
             <h3 className="text-sm font-semibold mb-2">Preview Changes ({diffs.length} rows)</h3>
@@ -188,7 +270,6 @@ export default function ImportExport() {
           <p className="mt-4 text-sm text-gray-500">No changes detected in the uploaded file.</p>
         )}
 
-        {/* Import result */}
         {result && (
           <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
             <h3 className="text-sm font-semibold text-green-800 mb-2">Import Complete</h3>
@@ -204,6 +285,82 @@ export default function ImportExport() {
               </div>
             )}
           </div>
+        )}
+      </div>
+
+      {/* Database backup section */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <Database className="text-primary" size={24} />
+          <h2 className="text-lg font-semibold">Database Backup</h2>
+        </div>
+        <p className="text-sm text-gray-600 mb-4">
+          Create and manage PostgreSQL database backups using pg_dump.
+        </p>
+
+        <button
+          onClick={handleCreateBackup}
+          disabled={backupLoading}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-hover disabled:opacity-50"
+        >
+          <Database size={16} />
+          {backupLoading ? 'Creating...' : 'Create Backup'}
+        </button>
+
+        {backupError && <p className="mt-3 text-sm text-red-600">{backupError}</p>}
+        {backupMessage && <p className="mt-3 text-sm text-green-600">{backupMessage}</p>}
+
+        {backups.length > 0 && (
+          <div className="mt-6">
+            <h3 className="text-sm font-semibold mb-2">Backups ({backups.length})</h3>
+            <div className="border rounded-lg overflow-hidden">
+              <table className="min-w-full text-sm">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-3 py-2 text-left">Filename</th>
+                    <th className="px-3 py-2 text-left">Size</th>
+                    <th className="px-3 py-2 text-left">Created</th>
+                    <th className="px-3 py-2 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {backups.map((b) => (
+                    <tr key={b.filename}>
+                      <td className="px-3 py-2 font-mono text-xs">{b.filename}</td>
+                      <td className="px-3 py-2 text-gray-500">{formatBytes(b.size)}</td>
+                      <td className="px-3 py-2 text-gray-500 text-xs">{new Date(b.createdAt).toLocaleString()}</td>
+                      <td className="px-3 py-2 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => handleRestore(b.filename)}
+                            disabled={backupLoading}
+                            className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md border cursor-pointer disabled:opacity-50 ${
+                              confirmRestore === b.filename
+                                ? 'bg-red-100 text-red-700 border-red-300'
+                                : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
+                            }`}
+                          >
+                            <RotateCcw size={12} />
+                            {confirmRestore === b.filename ? 'Confirm?' : 'Restore'}
+                          </button>
+                          <button
+                            onClick={() => handleDeleteBackup(b.filename)}
+                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md bg-gray-50 text-gray-500 border border-gray-200 cursor-pointer hover:bg-gray-100"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {backups.length === 0 && !backupLoading && (
+          <p className="mt-4 text-sm text-gray-500">No backups found.</p>
         )}
       </div>
     </div>
