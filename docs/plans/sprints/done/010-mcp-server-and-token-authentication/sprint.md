@@ -1,7 +1,7 @@
 ---
 id: '010'
 title: MCP Server and Token Authentication
-status: ticketing
+status: done
 branch: sprint/010-mcp-server-and-token-authentication
 use-cases:
 - SUC-001
