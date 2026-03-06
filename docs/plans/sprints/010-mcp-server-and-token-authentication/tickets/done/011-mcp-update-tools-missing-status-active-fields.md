@@ -1,7 +1,7 @@
 ---
-id: "011"
-title: "MCP update tools missing status/active fields"
-status: todo
+id: '011'
+title: MCP update tools missing status/active fields
+status: done
 use-cases: []
 depends-on: []
 ---

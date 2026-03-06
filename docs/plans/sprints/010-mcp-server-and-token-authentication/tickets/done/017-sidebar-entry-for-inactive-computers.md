@@ -1,7 +1,7 @@
 ---
-id: "017"
-title: "Sidebar entry for inactive computers"
-status: todo
+id: '017'
+title: Sidebar entry for inactive computers
+status: done
 use-cases: []
 depends-on: []
 ---

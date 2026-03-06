@@ -1,7 +1,7 @@
 ---
-id: "012"
-title: "MCP delete tools for kits, sites, and computers"
-status: todo
+id: '012'
+title: MCP delete tools for kits, sites, and computers
+status: done
 use-cases: []
 depends-on: []
 ---

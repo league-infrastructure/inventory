@@ -1,9 +1,10 @@
 ---
-id: "016"
-title: "Kits tab show and un-retire retired kits"
-status: todo
+id: '016'
+title: Kits tab show and un-retire retired kits
+status: done
 use-cases: []
-depends-on: ["011"]
+depends-on:
+- '011'
 ---
 
 # Kits tab show and un-retire retired kits
