@@ -5,6 +5,7 @@ import Landing from './pages/Landing';
 import KitList from './pages/kits/KitList';
 import KitDetail from './pages/kits/KitDetail';
 import KitForm from './pages/kits/KitForm';
+import RetiredKits from './pages/kits/RetiredKits';
 import QrLanding from './pages/kits/QrLanding';
 import ComputerList from './pages/computers/ComputerList';
 import ComputerDetail from './pages/computers/ComputerDetail';
@@ -39,6 +40,7 @@ function App() {
         <Route element={<AppLayout />}>
           <Route path="/" element={<Landing />} />
           <Route path="/kits" element={<KitList />} />
+          <Route path="/kits/retired" element={<RetiredKits />} />
           <Route path="/kits/new" element={<KitForm />} />
           <Route path="/kits/:id" element={<KitDetail />} />
           <Route path="/computers" element={<ComputerList />} />
