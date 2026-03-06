@@ -13,6 +13,12 @@ const CONTAINER_TYPE_LABELS: Record<ContainerType, string> = {
   DUFFEL: 'Duffel',
 };
 
+interface Checkout {
+  id: number;
+  kitId: number;
+  user: { displayName: string };
+}
+
 interface Kit {
   id: number;
   number: number;
@@ -21,6 +27,7 @@ interface Kit {
   status: string;
   qrCode: string | null;
   site: { id: number; name: string };
+  _checkedOutBy?: string;
 }
 
 function kitDisplayName(kit: Kit): string {
@@ -38,12 +45,17 @@ export default function KitList() {
   useEffect(() => {
     setLoading(true);
     const params = statusFilter ? `?status=${statusFilter}` : '';
-    fetch(`/api/kits${params}`)
-      .then((r) => {
+    Promise.all([
+      fetch(`/api/kits${params}`).then((r) => {
         if (!r.ok) throw new Error('Failed to load kits');
         return r.json();
+      }),
+      fetch('/api/checkouts?status=open').then((r) => r.ok ? r.json() : []),
+    ])
+      .then(([kitData, checkouts]: [Kit[], Checkout[]]) => {
+        const coByKit = new Map(checkouts.map((c) => [c.kitId, c.user.displayName]));
+        setKits(kitData.map((k) => ({ ...k, _checkedOutBy: coByKit.get(k.id) })));
       })
-      .then(setKits)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, [statusFilter]);
@@ -89,7 +101,7 @@ export default function KitList() {
             <thead>
               <tr className="border-b border-gray-200">
                 <SortableHeader label="Name" sortKey="name" currentSort={sort} onSort={toggleSort} filterValue={filters['name']} onFilter={setFilter} />
-                <SortableHeader label="Site" sortKey="site.name" currentSort={sort} onSort={toggleSort} filterValue={filters['site.name']} onFilter={setFilter} />
+                <SortableHeader label="Where" sortKey="site.name" currentSort={sort} onSort={toggleSort} filterValue={filters['site.name']} onFilter={setFilter} />
                 <SortableHeader label="Status" sortKey="status" currentSort={sort} onSort={toggleSort} filterValue={filters['status']} onFilter={setFilter} />
                 {statusFilter === 'RETIRED' && <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>}
               </tr>
@@ -104,7 +116,11 @@ export default function KitList() {
                   onClick={() => navigate(`/kits/${kit.id}`)}
                 >
                   <td className={`px-4 py-3 font-medium ${kit.status === 'RETIRED' ? 'text-gray-400' : 'text-gray-900'}`}>{kitDisplayName(kit)}</td>
-                  <td className={`px-4 py-3 ${kit.status === 'RETIRED' ? 'text-gray-400' : 'text-gray-600'}`}>{kit.site.name}</td>
+                  <td className={`px-4 py-3 ${kit.status === 'RETIRED' ? 'text-gray-400' : 'text-gray-600'}`}>
+                    {kit._checkedOutBy ? (
+                      <span className="text-amber-600 font-medium">{kit._checkedOutBy}</span>
+                    ) : kit.site.name}
+                  </td>
                   <td className="px-4 py-3">
                     <span
                       className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium ${
