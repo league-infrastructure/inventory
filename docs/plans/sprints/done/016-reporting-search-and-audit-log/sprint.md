@@ -1,7 +1,7 @@
 ---
 id: '016'
 title: Reporting, Search, and Audit Log
-status: planning
+status: done
 branch: sprint/016-reporting-search-and-audit-log
 use-cases:
 - UC-5.1
