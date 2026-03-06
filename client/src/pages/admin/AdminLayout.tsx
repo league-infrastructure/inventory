@@ -10,6 +10,7 @@ const NAV_ITEMS = [
   { to: '/admin/sessions', label: 'Sessions' },
   { to: '/admin/permissions', label: 'Permissions' },
   { to: '/admin/tokens', label: 'API Tokens' },
+  { to: '/admin/import-export', label: 'Import / Export' },
 ];
 
 export default function AdminLayout() {
