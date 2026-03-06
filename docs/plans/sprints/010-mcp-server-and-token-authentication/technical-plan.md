@@ -1,5 +1,5 @@
 ---
-status: draft
+status: approved
 from-architecture-version: null
 to-architecture-version: null
 ---
@@ -16,15 +16,15 @@ to-architecture-version: null
 This sprint adds two new subsystems that sit alongside the existing
 Express REST API:
 
-```
-External AI Client ──► /api/mcp (Streamable HTTP) ──► MCP Server
-                           │                              │
-                     Bearer Token Auth             MCP Tool Handlers
-                           │                              │
-                     Token Middleware ──► User Identity ──► ServiceRegistry
-                                                              │
-                                                         Same services
-                                                         used by REST API
+```mermaid
+flowchart LR
+    Client["External AI Client"] -->|Streamable HTTP| Endpoint["/api/mcp"]
+    Endpoint --> TokenMW["Token Middleware"]
+    TokenMW -->|Bearer token| Validate["Validate token\n→ User identity + role"]
+    Validate --> Registry["ServiceRegistry\n(source: 'MCP')"]
+    Registry --> Tools["MCP Tool Handlers"]
+    Tools --> Services["Same service layer\nused by REST API"]
+    Services --> DB[(PostgreSQL)]
 ```
 
 The MCP server reuses the existing `ServiceRegistry` and service classes,
@@ -34,6 +34,22 @@ identical whether changes come from the REST API or an MCP tool call.
 A new `ApiToken` Prisma model stores hashed tokens linked to users.
 Token authentication is a new middleware path separate from session auth,
 used only for MCP endpoints.
+
+**Key architectural decisions (from architecture review):**
+
+- **Singleton MCP server**: A single `McpServer` instance is created at
+  startup with all tools registered once. Per-request authentication
+  context is injected via the SDK's handler API, not by creating new
+  server instances per request.
+- **Audit source propagation**: `AuditService` accepts a `defaultSource`
+  constructor parameter. `ServiceRegistry.create()` accepts an optional
+  `source` parameter, forwarded to `AuditService`. MCP handlers create
+  a `ServiceRegistry` with `source: 'MCP'`, so all audit entries from
+  MCP operations are automatically tagged without changing any service
+  method signatures.
+- **Session middleware on MCP routes**: The existing global session
+  middleware runs on MCP routes but is a no-op when there is no session
+  cookie. No middleware restructuring is needed.
 
 ## Component Design
 
@@ -45,15 +61,16 @@ New Prisma model for personal API tokens:
 
 ```prisma
 model ApiToken {
-  id          Int       @id @default(autoincrement())
+  id          Int        @id @default(autoincrement())
   label       String
-  tokenHash   String    @unique
-  prefix      String    // First 8 chars for display
+  tokenHash   String     @unique
+  prefix      String     // First 8 chars for display
   userId      Int
-  role        UserRole  // Snapshot of user's role at creation
+  role        UserRole   // Snapshot of user's role at creation
   lastUsedAt  DateTime?
   revokedAt   DateTime?
-  createdAt   DateTime  @default(now())
+  expiresAt   DateTime?  // Optional expiration (nullable = no expiry)
+  createdAt   DateTime   @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -61,12 +78,17 @@ model ApiToken {
 }
 ```
 
+The `User` model must be updated with `apiTokens ApiToken[]` relation.
+
 - `tokenHash`: SHA-256 hash of the full token. Lookup by hashing the
   incoming Bearer token and querying by hash.
 - `prefix`: First 8 characters stored in plaintext for display in the UI.
-- `role`: Captured at creation time — if a user's role changes, existing
-  tokens retain the old role until revoked and recreated.
+- `role`: Captured at creation time. When a user's role changes, all
+  their active tokens are automatically revoked to prevent privilege
+  retention via stale tokens.
 - `revokedAt`: Non-null means the token is revoked (soft delete).
+- `expiresAt`: Optional expiration date. If set and past, token is
+  rejected. Initially nullable (no expiry) — UI can expose this later.
 
 ### Component: TokenService
 
@@ -77,10 +99,15 @@ New service class `server/src/services/token.service.ts`:
 - `create(userId, label)` → generates 32-byte random hex token, stores
   SHA-256 hash, returns `{ id, label, prefix, token }` (plaintext token
   returned only on create).
-- `list(userId)` → returns all non-revoked tokens for user (without hash).
-- `revoke(id, userId)` → sets `revokedAt` timestamp.
+- `list(userId?)` → if userId provided, returns that user's non-revoked
+  tokens. If omitted, returns all tokens across all users (admin use).
+- `revoke(id, userId?)` → sets `revokedAt` timestamp. If userId provided,
+  verifies ownership. If omitted, allows admin revocation of any token.
+- `revokeAllForUser(userId)` → revokes all active tokens for a user.
+  Called automatically when a user's role changes.
 - `validate(rawToken)` → hashes token, looks up by hash, checks not
-  revoked, updates `lastUsedAt`, returns `{ userId, role }` or throws.
+  revoked and not expired, updates `lastUsedAt`, returns
+  `{ userId, role }` or throws.
 
 ### Component: Token Auth Middleware
 
@@ -91,7 +118,7 @@ New middleware `server/src/middleware/tokenAuth.ts`:
 - Extracts `Authorization: Bearer <token>` header.
 - Calls `TokenService.validate(token)`.
 - Sets `req.user` with the token owner's user record and role.
-- Returns 401 if token is missing, invalid, or revoked.
+- Returns 401 if token is missing, invalid, revoked, or expired.
 - Used only on MCP routes — session auth continues for REST API routes.
 
 ### Component: Token Management Routes
@@ -100,9 +127,32 @@ New middleware `server/src/middleware/tokenAuth.ts`:
 
 New route file `server/src/routes/tokens.ts`:
 
-- `POST /api/tokens` — create token (requires session auth).
-- `GET /api/tokens` — list user's tokens (requires session auth).
-- `DELETE /api/tokens/:id` — revoke token (requires session auth).
+- `POST /api/tokens` — create token (requires **session auth** via
+  `requireAuth`). Not accessible via API tokens.
+- `GET /api/tokens` — list current user's tokens (requires **session auth**).
+- `DELETE /api/tokens/:id` — revoke token (requires **session auth**).
+- `GET /api/admin/tokens` — list all tokens across all users (requires
+  **session auth** + **Quartermaster** role). Returns token info with
+  owning user's name/email.
+- `DELETE /api/admin/tokens/:id` — admin revoke any token (requires
+  **session auth** + **Quartermaster** role).
+
+**Security note**: Token management endpoints use session-based
+authentication only. They must NOT be accessible via Bearer token auth.
+This prevents an MCP client from creating or revoking tokens.
+
+### Component: Audit Source Propagation
+
+**Use Cases**: SUC-005
+
+- Add `MCP` to the `AuditSource` enum in `schema.prisma`.
+- Add `defaultSource` constructor parameter to `AuditService`
+  (defaults to `'UI'`).
+- Add optional `source` parameter to `ServiceRegistry.create()`,
+  forwarded to `AuditService`.
+- MCP tool handlers create `ServiceRegistry.create(prisma, 'MCP')`.
+- No changes to individual service method signatures — the source
+  is carried as state in the `AuditService` instance.
 
 ### Component: MCP Server
 
@@ -113,8 +163,9 @@ New file `server/src/mcp/server.ts`:
 - Uses `@modelcontextprotocol/sdk` with Streamable HTTP transport.
 - Mounted at `/api/mcp` via Express middleware.
 - Token auth middleware runs before the MCP handler.
-- MCP server instance created per request with the authenticated user's
-  `ServiceRegistry`.
+- **Singleton instance**: Created once at startup with all tools
+  registered. Per-request user context is injected via the SDK's
+  request handler API.
 
 MCP tools are thin wrappers around service methods:
 
@@ -144,6 +195,11 @@ MCP tools are thin wrappers around service methods:
 | `checkout_kit` | `services.checkouts.checkOut(input, userId)` | Any |
 | `checkin_kit` | `services.checkouts.checkIn(id, input, userId)` | Any |
 
+**Note on deletions**: Kits are retired (soft delete via status change),
+not hard-deleted. Computers are updated (disposition change), not
+deleted. Only packs and items support hard deletion, which is reflected
+in the tool table above. Sites use deactivation (soft delete).
+
 ### Component: MCP Tool Handlers
 
 **Use Cases**: SUC-003, SUC-004
@@ -157,47 +213,82 @@ New file `server/src/mcp/tools.ts`:
 - Permission checks happen via a `requireRole` wrapper that checks the
   authenticated user's role before calling the service.
 - Service errors (`NotFoundError`, `ValidationError`) are caught and
-  returned as MCP tool errors.
+  returned as MCP tool errors with appropriate error codes.
 
-### Component: Audit Source Extension
-
-**Use Cases**: SUC-005
-
-- Add `MCP` to the `AuditSource` enum in `schema.prisma`.
-- Extend the `AuditService.write()` method to accept an optional `source`
-  parameter (defaults to `'UI'`).
-- MCP tool handlers pass `source: 'MCP'` when calling services that write
-  audit entries.
-- The `BaseService` audit methods accept an optional source override.
-
-### Component: Token Management UI
+### Component: User Account Page with MCP Config
 
 **Use Cases**: SUC-001, SUC-002
 
-New page `client/src/pages/settings/ApiTokens.tsx`:
+New page `client/src/pages/account/Account.tsx`:
 
-- Table of existing tokens (label, prefix, created, last used).
-- "Create Token" button opens a form with label input.
-- On creation, shows the full token in a copyable field with a warning
-  that it won't be shown again.
-- "Revoke" button with confirmation on each token row.
-- Accessible from sidebar under Settings.
+- Shows the user's profile info (name, email, role).
+- **MCP Connection section**: a read-only code block showing the JSON
+  configuration snippet the user pastes into their AI client (Claude
+  Desktop `claude_desktop_config.json`, Claude Code `.mcp.json`, etc.).
+  The snippet includes the server URL and the user's current API token:
+  ```json
+  {
+    "mcpServers": {
+      "inventory": {
+        "url": "https://inventory.jtlapp.net/api/mcp",
+        "headers": {
+          "Authorization": "Bearer <token>"
+        }
+      }
+    }
+  }
+  ```
+- **"Copy" button**: copies the entire JSON snippet to the clipboard.
+- **"Regenerate Token" button**: revokes the current token, creates a
+  new one, and rebuilds the snippet with the new token. Confirms before
+  regenerating ("This will disconnect any clients using the current
+  token").
+- If no token exists yet, shows a "Generate Token" button that creates
+  the first one and displays the snippet.
+- The server URL in the snippet is derived from `APP_DOMAIN` (production)
+  or the current window origin (development).
+- Accessible from sidebar under the user's name or an Account link.
 
-## Open Questions
+### Component: Admin Token Management UI
 
-1. **MCP SDK version**: Should we use `@modelcontextprotocol/sdk` v1.x
-   (stable SSE transport) or the newer streamable HTTP transport? The
-   sprint document says Streamable HTTP — confirm this is correct and
-   that the SDK supports it.
+**Use Cases**: SUC-006
 
-2. **Token role snapshot vs live lookup**: The plan stores the user's role
-   at token creation time. Should we instead look up the user's current
-   role on each request? Trade-off: snapshot is simpler and more
-   predictable; live lookup means role changes take effect immediately
-   but could surprise users.
+New section on the existing admin dashboard page:
 
-3. **MCP tool granularity**: Should we expose every service method as a
-   separate tool, or group related operations? For example, a single
-   `manage_kit` tool that accepts an action parameter vs separate
-   `create_kit`, `update_kit`, `get_kit` tools. Separate tools are more
-   MCP-idiomatic and clearer for AI models.
+- **Token list table**: Shows all tokens across all users with columns:
+  token prefix, owning user (name + email), role, created date, last
+  used date, and status (active/revoked/expired).
+- **Revoke button**: Per-row action to revoke any token. Confirms before
+  revoking ("This will disconnect the user's MCP client").
+- **Filters**: Filter by status (active/revoked) and by user.
+- Data fetched from `GET /api/admin/tokens` (session auth + Quartermaster).
+- Revoke calls `DELETE /api/admin/tokens/:id`.
+- Only visible to Quartermaster-role users.
+
+### Component: MCP Documentation
+
+New file `docs/mcp.md`:
+
+- What the MCP server is and what it enables (external AI access)
+- How to create an API token from the UI
+- How to connect Claude Desktop, Claude Code, or other MCP clients
+  (server URL, token configuration)
+- List of available tools with descriptions and required roles
+- Example MCP client configuration snippets
+- Security notes (token scoping, revocation, audit trail)
+
+## Decisions
+
+1. **MCP SDK transport**: Use Streamable HTTP transport from
+   `@modelcontextprotocol/sdk`. Include a spike in the first ticket to
+   verify the transport works with Express middleware mounting before
+   building all tools.
+
+2. **Token role snapshot vs live lookup**: Use role snapshot at creation
+   time. When a user's role is changed, automatically revoke all their
+   active tokens. This prevents privilege retention while keeping the
+   token validation path simple (no extra DB join on every request).
+
+3. **MCP tool granularity**: Separate tools per operation (not bundled).
+   This is MCP-idiomatic and gives AI models clear affordances for
+   each action.
