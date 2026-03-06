@@ -1,5 +1,6 @@
 ---
-status: todo
+status: done
+sprint: '012'
 ---
 # Checkout history should retain all entries and appear at bottom
 

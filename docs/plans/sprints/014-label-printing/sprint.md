@@ -33,8 +33,15 @@ labels need to be printed in specific sizes for specific label stock
   name/ID, QR code.
 - Computer labels additionally include: host name, serial number, default
   username/password.
-- Batch printing: select a Kit → "Print all labels" → PDF with Kit label
-  plus all Pack labels, with option to select a subset.
+- Batch printing from the Kit detail page:
+  - A "Print Labels" button opens a modal dialog.
+  - The modal shows a checkbox for the kit label and one checkbox for
+    each pack label in the kit.
+  - "Select All" and "Clear All" controls toggle all checkboxes.
+  - All items are checked by default.
+  - Confirming generates a PDF with the selected labels and sends it
+    to the browser's native print dialog.
+- Labels are large format only (59mm x 102mm Dymo large shipping).
 
 ## Success Criteria
 

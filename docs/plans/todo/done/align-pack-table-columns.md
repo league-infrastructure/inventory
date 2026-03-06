@@ -1,5 +1,6 @@
 ---
-status: todo
+status: done
+sprint: 018
 ---
 # Align pack item table columns across packs on Kit detail page
 

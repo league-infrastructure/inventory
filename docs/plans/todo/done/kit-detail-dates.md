@@ -1,5 +1,6 @@
 ---
-status: todo
+status: done
+sprint: 018
 ---
 # Show created and last updated dates on Kit detail page
 
