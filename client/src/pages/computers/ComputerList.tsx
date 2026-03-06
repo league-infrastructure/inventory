@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Tags } from 'lucide-react';
+import { Plus, Tags, ArrowRightLeft } from 'lucide-react';
 import { useTableSort } from '../../lib/useTableSort';
 import SortableHeader from '../../components/SortableHeader';
+import TransferModal from '../../components/TransferModal';
 
 interface Computer {
   id: number;
@@ -11,6 +12,7 @@ interface Computer {
   hostName: { name: string } | null;
   site: { id: number; name: string } | null;
   kit: { id: number; name: string } | null;
+  custodian: { id: number; displayName: string } | null;
 }
 
 const DISPOSITIONS = [
@@ -37,9 +39,10 @@ export default function ComputerList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dispositionFilter, setDispositionFilter] = useState('ACTIVE');
+  const [transferComputerId, setTransferComputerId] = useState<number | null>(null);
   const { processed: sorted, sort, toggleSort, filters, setFilter } = useTableSort(computers, { key: 'hostName.name', direction: 'asc' });
 
-  useEffect(() => {
+  function loadComputers() {
     setLoading(true);
     const params = dispositionFilter ? `?disposition=${dispositionFilter}` : '';
     fetch(`/api/computers${params}`)
@@ -50,7 +53,15 @@ export default function ComputerList() {
       .then(setComputers)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, [dispositionFilter]);
+  }
+
+  useEffect(() => { loadComputers(); }, [dispositionFilter]);
+
+  function handleTransferClick(e: React.MouseEvent, computer: Computer) {
+    e.stopPropagation();
+    if (computer.kit) return; // Can't transfer computers in a kit
+    setTransferComputerId(computer.id);
+  }
 
   return (
     <div className="max-w-5xl">
@@ -105,8 +116,8 @@ export default function ComputerList() {
                 <SortableHeader label="Host Name" sortKey="hostName.name" currentSort={sort} onSort={toggleSort} filterValue={filters['hostName.name']} onFilter={setFilter} />
                 <SortableHeader label="Model" sortKey="model" currentSort={sort} onSort={toggleSort} filterValue={filters['model']} onFilter={setFilter} />
                 <SortableHeader label="Disposition" sortKey="disposition" currentSort={sort} onSort={toggleSort} filterValue={filters['disposition']} onFilter={setFilter} />
-                <SortableHeader label="Site" sortKey="site.name" currentSort={sort} onSort={toggleSort} filterValue={filters['site.name']} onFilter={setFilter} className="hidden sm:table-cell" />
-                <SortableHeader label="Kit" sortKey="kit.name" currentSort={sort} onSort={toggleSort} filterValue={filters['kit.name']} onFilter={setFilter} className="hidden sm:table-cell" />
+                <SortableHeader label="Where" sortKey="site.name" currentSort={sort} onSort={toggleSort} filterValue={filters['site.name']} onFilter={setFilter} className="hidden sm:table-cell" />
+                <th className="px-4 py-3 text-xs font-semibold text-gray-500 hidden sm:table-cell">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -125,15 +136,38 @@ export default function ComputerList() {
                       {c.disposition.replace(/_/g, ' ')}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-gray-600 hidden sm:table-cell">{c.site?.name || '—'}</td>
-                  <td className="px-4 py-3 hidden sm:table-cell text-gray-600">
-                    {c.kit?.name || '—'}
+                  <td className="px-4 py-3 text-gray-600 hidden sm:table-cell">
+                    {c.custodian ? (
+                      <span className="text-amber-600 font-medium">{c.custodian.displayName}</span>
+                    ) : c.kit ? (
+                      <span className="text-gray-500">Kit: {c.kit.name}</span>
+                    ) : c.site?.name || '—'}
+                  </td>
+                  <td className="px-4 py-3 hidden sm:table-cell">
+                    {!c.kit && (
+                      <button
+                        onClick={(e) => handleTransferClick(e, c)}
+                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md bg-blue-50 text-blue-700 border border-blue-200 cursor-pointer hover:bg-blue-100"
+                        title="Transfer"
+                      >
+                        <ArrowRightLeft size={12} />
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+      )}
+
+      {transferComputerId && (
+        <TransferModal
+          objectType="Computer"
+          objectId={transferComputerId}
+          onClose={() => setTransferComputerId(null)}
+          onComplete={loadComputers}
+        />
       )}
     </div>
   );
