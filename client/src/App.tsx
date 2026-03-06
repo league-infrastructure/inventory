@@ -20,6 +20,8 @@ import ConfigPanel from './pages/admin/ConfigPanel';
 import LogViewer from './pages/admin/LogViewer';
 import SessionViewer from './pages/admin/SessionViewer';
 import PermissionsPanel from './pages/admin/PermissionsPanel';
+import Account from './pages/account/Account';
+import AdminTokens from './pages/admin/AdminTokens';
 
 function App() {
   return (
@@ -43,6 +45,7 @@ function App() {
           <Route path="/packs" element={<PackList />} />
           <Route path="/checkouts" element={<CheckedOutList />} />
           <Route path="/sites" element={<SiteList />} />
+          <Route path="/account" element={<Account />} />
           <Route path="/admin" element={<AdminLogin />} />
           <Route element={<AdminLayout />}>
             <Route path="/admin/env" element={<EnvironmentInfo />} />
@@ -51,6 +54,7 @@ function App() {
             <Route path="/admin/logs" element={<LogViewer />} />
             <Route path="/admin/sessions" element={<SessionViewer />} />
             <Route path="/admin/permissions" element={<PermissionsPanel />} />
+            <Route path="/admin/tokens" element={<AdminTokens />} />
           </Route>
         </Route>
       </Routes>

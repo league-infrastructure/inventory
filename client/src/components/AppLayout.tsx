@@ -1,7 +1,7 @@
 import { useState, useEffect, createContext, useContext } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
-  Home, Monitor, Tags, PackageCheck, MapPin, Shield, Menu, X, LogOut, ChevronDown,
+  Home, Monitor, Tags, PackageCheck, MapPin, Shield, Menu, X, LogOut, ChevronDown, UserCircle,
 } from 'lucide-react';
 
 interface AuthUser {
@@ -201,6 +201,14 @@ export default function AppLayout() {
                         <div className="px-4 py-2 text-xs text-gray-500 border-b border-gray-100">
                           {user.email}
                         </div>
+                        <Link
+                          to="/account"
+                          className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 no-underline"
+                          onClick={() => setUserMenuOpen(false)}
+                        >
+                          <UserCircle size={14} />
+                          Account
+                        </Link>
                         <button
                           className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 bg-transparent border-none cursor-pointer text-left"
                           onClick={handleLogout}
