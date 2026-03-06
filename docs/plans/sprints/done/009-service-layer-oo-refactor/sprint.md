@@ -1,7 +1,7 @@
 ---
-id: "009"
-title: "Service Layer OO Refactor"
-status: planning
+id: 009
+title: Service Layer OO Refactor
+status: done
 branch: sprint/009-service-layer-oo-refactor
 use-cases: []
 ---
