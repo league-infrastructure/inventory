@@ -6,6 +6,12 @@ import { ServiceRegistry } from '../services/service.registry';
 export function itemsRouter(services: ServiceRegistry): Router {
   const router = Router();
 
+  router.get('/items', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      res.json(await services.items.listAll());
+    } catch (err) { next(err); }
+  });
+
   router.get('/packs/:packId/items', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
     try {
       res.json(await services.items.list(parseInt(req.params.packId as string, 10)));

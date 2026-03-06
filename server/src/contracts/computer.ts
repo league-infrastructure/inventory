@@ -36,6 +36,7 @@ export interface CreateComputerInput {
   siteId?: number | null;
   kitId?: number | null;
   osId?: number | null;
+  custodianId?: number | null;
   hostNameId?: number | null;
 }
 

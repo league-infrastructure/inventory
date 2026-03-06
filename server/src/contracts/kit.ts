@@ -52,5 +52,6 @@ export interface UpdateKitInput {
   name?: string;
   description?: string | null;
   siteId?: number;
+  custodianId?: number | null;
   status?: string;
 }

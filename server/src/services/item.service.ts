@@ -2,7 +2,7 @@ import { PrismaClient, ItemType } from '@prisma/client';
 import { AuditService } from './audit.service';
 import { BaseService } from './base.service';
 import { NotFoundError, ValidationError } from './errors';
-import { ItemRecord, CreateItemInput, UpdateItemInput } from '../contracts';
+import { ItemRecord, ItemDetailRecord, CreateItemInput, UpdateItemInput } from '../contracts';
 
 export class ItemService extends BaseService<ItemRecord, CreateItemInput, UpdateItemInput> {
   protected readonly entityName = 'Item';
@@ -22,6 +22,22 @@ export class ItemService extends BaseService<ItemRecord, CreateItemInput, Update
       orderBy: { name: 'asc' },
     });
     return items as unknown as ItemRecord[];
+  }
+
+  async listAll(): Promise<ItemDetailRecord[]> {
+    const items = await this.prisma.item.findMany({
+      include: {
+        pack: {
+          select: {
+            id: true,
+            name: true,
+            kit: { select: { id: true, name: true } },
+          },
+        },
+      },
+      orderBy: { name: 'asc' },
+    });
+    return items as unknown as ItemDetailRecord[];
   }
 
   async get(id: number): Promise<ItemRecord> {

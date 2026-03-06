@@ -71,10 +71,14 @@ export class ComputerService extends BaseService<ComputerRecord, CreateComputerI
       if (!site) throw new ValidationError('Site not found');
     }
 
+    let kitSiteId: number | null = null;
+    let kitCustodianId: number | null = null;
     if (input.kitId != null) {
       if (typeof input.kitId !== 'number') throw new ValidationError('kitId must be a number');
       const kit = await this.prisma.kit.findUnique({ where: { id: input.kitId } });
       if (!kit) throw new ValidationError('Kit not found');
+      kitSiteId = kit.siteId;
+      kitCustodianId = kit.custodianId;
     }
 
     if (input.osId != null) {
@@ -82,6 +86,10 @@ export class ComputerService extends BaseService<ComputerRecord, CreateComputerI
       const os = await this.prisma.operatingSystem.findUnique({ where: { id: input.osId } });
       if (!os) throw new ValidationError('Operating system not found');
     }
+
+    // When assigned to a kit, inherit the kit's siteId and custodianId
+    const effectiveSiteId = input.kitId != null ? kitSiteId : (input.siteId || null);
+    const effectiveCustodianId = input.kitId != null ? kitCustodianId : (input.custodianId || null);
 
     const computer = await this.prisma.computer.create({
       data: {
@@ -94,8 +102,9 @@ export class ComputerService extends BaseService<ComputerRecord, CreateComputerI
         dateReceived: input.dateReceived ? new Date(input.dateReceived) : null,
         lastInventoried: input.lastInventoried ? new Date(input.lastInventoried) : null,
         notes: input.notes || null,
-        siteId: input.siteId || null,
+        siteId: effectiveSiteId,
         kitId: input.kitId || null,
+        custodianId: effectiveCustodianId,
         osId: input.osId || null,
       },
     });
@@ -143,10 +152,12 @@ export class ComputerService extends BaseService<ComputerRecord, CreateComputerI
       if (!site) throw new ValidationError('Site not found');
     }
 
+    let assignedKit: { siteId: number | null; custodianId: number | null } | null = null;
     if (input.kitId != null) {
       if (typeof input.kitId !== 'number') throw new ValidationError('kitId must be a number');
       const kit = await this.prisma.kit.findUnique({ where: { id: input.kitId } });
       if (!kit) throw new ValidationError('Kit not found');
+      assignedKit = { siteId: kit.siteId, custodianId: kit.custodianId };
     }
 
     if (input.osId != null) {
@@ -165,9 +176,22 @@ export class ComputerService extends BaseService<ComputerRecord, CreateComputerI
     if (input.dateReceived !== undefined) data.dateReceived = input.dateReceived ? new Date(input.dateReceived) : null;
     if (input.lastInventoried !== undefined) data.lastInventoried = input.lastInventoried ? new Date(input.lastInventoried) : null;
     if (input.notes !== undefined) data.notes = input.notes || null;
-    if (input.siteId !== undefined) data.siteId = input.siteId;
     if (input.kitId !== undefined) data.kitId = input.kitId;
     if (input.osId !== undefined) data.osId = input.osId;
+
+    // When assigning to a kit, sync siteId and custodianId from the kit
+    if (assignedKit) {
+      data.siteId = assignedKit.siteId;
+      data.custodianId = assignedKit.custodianId;
+    } else if (input.kitId === null) {
+      // Removing from kit — allow explicit siteId/custodianId if provided
+      if (input.siteId !== undefined) data.siteId = input.siteId;
+      if (input.custodianId !== undefined) data.custodianId = input.custodianId;
+    } else {
+      // kitId not being changed — allow normal siteId/custodianId updates
+      if (input.siteId !== undefined) data.siteId = input.siteId;
+      if (input.custodianId !== undefined) data.custodianId = input.custodianId;
+    }
 
     const updated = await this.prisma.computer.update({
       where: { id },

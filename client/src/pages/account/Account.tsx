@@ -37,8 +37,9 @@ export default function Account() {
       .then((tokens: any[]) => {
         if (tokens.length > 0) {
           const t = tokens[0];
-          setTokenInfo({ id: t.id, prefix: t.prefix });
-          setSnippet(buildSnippet(serverUrl, `${t.prefix}...`));
+          const savedToken = localStorage.getItem(`mcp_token_${t.id}`);
+          setTokenInfo({ id: t.id, prefix: t.prefix, token: savedToken ?? undefined });
+          setSnippet(buildSnippet(serverUrl, savedToken ?? `${t.prefix}...`));
         }
       })
       .catch(() => {})
@@ -51,6 +52,7 @@ export default function Account() {
     try {
       // Revoke existing token if present
       if (tokenInfo) {
+        localStorage.removeItem(`mcp_token_${tokenInfo.id}`);
         await fetch(`/api/tokens/${tokenInfo.id}`, { method: 'DELETE' });
       }
 
@@ -61,6 +63,7 @@ export default function Account() {
       });
       if (!res.ok) throw new Error('Failed to create token');
       const data = await res.json();
+      localStorage.setItem(`mcp_token_${data.id}`, data.token);
       setTokenInfo({ id: data.id, prefix: data.prefix, token: data.token });
       setSnippet(buildSnippet(serverUrl, data.token));
     } catch (e: any) {
@@ -156,11 +159,15 @@ export default function Account() {
                     {tokenInfo.token ?? `${tokenInfo.prefix}...`}
                   </code>
                   <button
-                    onClick={() => copyToClipboard(tokenInfo.token ?? `${tokenInfo.prefix}...`, 'token')}
-                    className="flex items-center gap-1 px-2 py-1.5 border border-gray-300 rounded text-xs text-gray-600 hover:bg-gray-50 shrink-0"
+                    onClick={() => tokenInfo.token
+                      ? copyToClipboard(tokenInfo.token, 'token')
+                      : copyToClipboard(`Bearer ${tokenInfo.prefix}...`, 'token-unavailable')
+                    }
+                    className={`flex items-center gap-1 px-2 py-1.5 border border-gray-300 rounded text-xs hover:bg-gray-50 shrink-0 ${tokenInfo.token ? 'text-gray-600' : 'text-gray-400'}`}
+                    title={tokenInfo.token ? 'Copy full token' : 'Token not available — regenerate to copy'}
                   >
                     <Copy size={12} />
-                    {copied === 'token' ? 'Copied!' : 'Copy'}
+                    {copied === 'token' ? 'Copied!' : copied === 'token-unavailable' ? 'Regenerate to copy' : 'Copy'}
                   </button>
                 </div>
               </div>

@@ -139,6 +139,19 @@ export class KitService extends BaseService<KitRecord, CreateKitInput, UpdateKit
       include: { site: { select: { id: true, name: true } }, custodian: { select: { id: true, displayName: true } } },
     });
 
+    // Cascade siteId/custodianId changes to member computers
+    const siteChanged = input.siteId !== undefined && input.siteId !== existing.siteId;
+    const custodianChanged = input.custodianId !== undefined && input.custodianId !== existing.custodianId;
+    if (siteChanged || custodianChanged) {
+      const cascade: any = {};
+      if (siteChanged) cascade.siteId = updated.siteId;
+      if (custodianChanged) cascade.custodianId = input.custodianId ?? null;
+      await this.prisma.computer.updateMany({
+        where: { kitId: id },
+        data: cascade,
+      });
+    }
+
     const auditEntries = this.buildAuditEntries(userId, id, existing, updated);
     if (auditEntries.length > 0) {
       await this.writeAudit(auditEntries);

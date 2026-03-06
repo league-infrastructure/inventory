@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, ClipboardCheck, Check, ArrowRightLeft } from 'lucide-react';
+import { Plus, ClipboardCheck, Check, ArrowRightLeft, User, Building2 } from 'lucide-react';
 import { useTableSort } from '../../lib/useTableSort';
 import SortableHeader from '../../components/SortableHeader';
 import InventoryCheckModal from '../../components/InventoryCheckModal';
@@ -47,7 +47,15 @@ export default function KitList() {
   const [transferKitId, setTransferKitId] = useState<number | null>(null);
   const [justChecked, setJustChecked] = useState<Set<number>>(new Set());
   const [inventoryInterval, setInventoryInterval] = useState(60);
-  const { processed: sorted, sort, toggleSort, filters, setFilter } = useTableSort(kits, { key: 'name', direction: 'asc' });
+
+  const kitsWithWhere = useMemo(() => kits.map((kit) => ({
+    ...kit,
+    _where: kit.custodian ? `1:${kit.custodian.displayName}` : kit.site ? `2:${kit.site.name}` : '3:',
+    _whereDisplay: kit.custodian?.displayName ?? kit.site?.name ?? null,
+    _whereType: kit.custodian ? 'person' as const : kit.site ? 'site' as const : null,
+  })), [kits]);
+
+  const { processed: sorted, sort, toggleSort, filters, setFilter } = useTableSort(kitsWithWhere, { key: 'name', direction: 'asc' });
 
   const loadKits = useCallback(() => {
     setLoading(true);
@@ -117,7 +125,7 @@ export default function KitList() {
             <thead>
               <tr className="border-b border-gray-200">
                 <SortableHeader label="Name" sortKey="name" currentSort={sort} onSort={toggleSort} filterValue={filters['name']} onFilter={setFilter} />
-                <SortableHeader label="Where" sortKey="site.name" currentSort={sort} onSort={toggleSort} filterValue={filters['site.name']} onFilter={setFilter} />
+                <SortableHeader label="Where" sortKey="_where" currentSort={sort} onSort={toggleSort} filterValue={filters['_whereDisplay']} onFilter={(_, v) => setFilter('_whereDisplay', v)} />
                 <SortableHeader label="Status" sortKey="status" currentSort={sort} onSort={toggleSort} filterValue={filters['status']} onFilter={setFilter} />
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500">Actions</th>
               </tr>
@@ -134,9 +142,17 @@ export default function KitList() {
                   >
                     <td className="px-4 py-3 font-medium text-gray-900">{kitDisplayName(kit)}</td>
                     <td className="px-4 py-3 text-gray-600">
-                      {kit.custodian ? (
-                        <span className="text-amber-600 font-medium">{kit.custodian.displayName}</span>
-                      ) : kit.site?.name ?? '—'}
+                      {kit._whereType === 'person' ? (
+                        <span className="inline-flex items-center gap-1.5 text-amber-600 font-medium">
+                          <User size={14} className="shrink-0" />
+                          {kit._whereDisplay}
+                        </span>
+                      ) : kit._whereType === 'site' ? (
+                        <span className="inline-flex items-center gap-1.5">
+                          <Building2 size={14} className="shrink-0 text-gray-400" />
+                          {kit._whereDisplay}
+                        </span>
+                      ) : '—'}
                     </td>
                     <td className="px-4 py-3">
                       <span className="inline-block text-xs px-2 py-0.5 rounded-full font-medium bg-green-100 text-green-700">

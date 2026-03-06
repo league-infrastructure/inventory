@@ -6,6 +6,10 @@ export interface ItemRecord {
   packId: number;
 }
 
+export interface ItemDetailRecord extends ItemRecord {
+  pack: { id: number; name: string; kit: { id: number; name: string } };
+}
+
 export interface CreateItemInput {
   name: string;
   type: string;

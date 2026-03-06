@@ -170,12 +170,15 @@ export function registerTools(server: McpServer): void {
 
   // ─── Packs ──────────────────────────────────────────────────────────
 
-  server.tool('list_packs', 'List packs, optionally filtered by kit ID', {
+  server.tool('list_packs', 'List packs. If kitId is provided, lists packs for that kit. If omitted, lists all packs with their kit info.', {
     kitId: z.number().optional(),
   }, async ({ kitId }) => {
     return safeCall(async () => {
       const { services } = getContext();
-      return ok(await services.packs.list(kitId));
+      if (kitId != null) {
+        return ok(await services.packs.list(kitId));
+      }
+      return ok(await services.packs.listAll());
     });
   });
 
@@ -214,12 +217,15 @@ export function registerTools(server: McpServer): void {
 
   // ─── Items ──────────────────────────────────────────────────────────
 
-  server.tool('list_items', 'List items, optionally filtered by pack ID', {
+  server.tool('list_items', 'List items. If packId is provided, lists items for that pack. If omitted, lists all items with their pack and kit info.', {
     packId: z.number().optional(),
   }, async ({ packId }) => {
     return safeCall(async () => {
       const { services } = getContext();
-      return ok(await services.items.list(packId));
+      if (packId != null) {
+        return ok(await services.items.list(packId));
+      }
+      return ok(await services.items.listAll());
     });
   });
 
