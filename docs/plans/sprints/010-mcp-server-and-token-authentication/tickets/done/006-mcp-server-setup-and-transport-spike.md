@@ -1,7 +1,7 @@
 ---
 id: '006'
 title: MCP server setup and transport spike
-status: todo
+status: done
 use-cases:
 - SUC-003
 depends-on:

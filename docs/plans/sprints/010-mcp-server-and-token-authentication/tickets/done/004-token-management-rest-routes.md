@@ -1,7 +1,7 @@
 ---
 id: '004'
 title: Token management REST routes
-status: todo
+status: done
 use-cases:
 - SUC-001
 - SUC-002

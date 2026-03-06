@@ -1,7 +1,7 @@
 ---
 id: '007'
 title: MCP tool handlers
-status: todo
+status: done
 use-cases:
 - SUC-003
 - SUC-004

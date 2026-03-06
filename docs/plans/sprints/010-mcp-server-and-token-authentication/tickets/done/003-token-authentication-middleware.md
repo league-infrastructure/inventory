@@ -1,7 +1,7 @@
 ---
 id: '003'
 title: Token authentication middleware
-status: todo
+status: done
 use-cases:
 - SUC-003
 depends-on:

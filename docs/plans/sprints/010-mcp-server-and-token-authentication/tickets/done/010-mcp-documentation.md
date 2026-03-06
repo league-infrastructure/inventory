@@ -1,7 +1,7 @@
 ---
 id: '010'
 title: MCP documentation
-status: todo
+status: done
 use-cases:
 - SUC-001
 - SUC-002
@@ -11,8 +11,8 @@ use-cases:
 - SUC-006
 depends-on:
 - '007'
-- '008'
-- '009'
+- 008
+- 009
 ---
 
 # MCP documentation

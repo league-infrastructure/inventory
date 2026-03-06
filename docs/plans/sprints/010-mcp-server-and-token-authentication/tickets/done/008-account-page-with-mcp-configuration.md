@@ -1,7 +1,7 @@
 ---
-id: '008'
+id: 008
 title: Account page with MCP configuration
-status: todo
+status: done
 use-cases:
 - SUC-001
 - SUC-002

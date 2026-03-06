@@ -1,7 +1,7 @@
 ---
 id: '001'
 title: ApiToken Prisma model and AuditSource enum
-status: todo
+status: done
 use-cases:
 - SUC-001
 - SUC-005

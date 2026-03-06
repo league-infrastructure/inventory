@@ -1,7 +1,7 @@
 ---
-id: '009'
+id: 009
 title: Admin token management UI
-status: todo
+status: done
 use-cases:
 - SUC-006
 depends-on:
