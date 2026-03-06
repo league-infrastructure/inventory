@@ -1,7 +1,7 @@
 ---
-id: "021"
-title: "Import/Export Refactor and Database Backup"
-status: planning
+id: '021'
+title: Import/Export Refactor and Database Backup
+status: done
 branch: sprint/021-import-export-refactor-and-database-backup
 use-cases: []
 ---
