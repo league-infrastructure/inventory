@@ -22,6 +22,7 @@ export interface KitRecord {
   siteId: number;
   createdAt: string;
   updatedAt: string;
+  lastInventoried: string | null;
   site: { id: number; name: string };
 }
 

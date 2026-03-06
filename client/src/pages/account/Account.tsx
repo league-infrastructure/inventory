@@ -10,12 +10,11 @@ interface TokenInfo {
 
 function buildSnippet(serverUrl: string, token: string): string {
   return JSON.stringify({
-    mcpServers: {
-      inventory: {
-        url: `${serverUrl}/api/mcp`,
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+    inventory: {
+      type: 'http',
+      url: `${serverUrl}/api/mcp`,
+      headers: {
+        Authorization: `Bearer ${token}`,
       },
     },
   }, null, 2);
@@ -27,7 +26,7 @@ export default function Account() {
   const [snippet, setSnippet] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<string | false>(false);
   const [error, setError] = useState<string | null>(null);
 
   const serverUrl = window.location.origin;
@@ -76,22 +75,19 @@ export default function Account() {
     await generateToken();
   }
 
-  async function handleCopy() {
+  async function copyToClipboard(text: string, label: string) {
     try {
-      await navigator.clipboard.writeText(snippet);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      await navigator.clipboard.writeText(text);
     } catch {
-      // Fallback
       const ta = document.createElement('textarea');
-      ta.value = snippet;
+      ta.value = text;
       document.body.appendChild(ta);
       ta.select();
       document.execCommand('copy');
       document.body.removeChild(ta);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     }
+    setCopied(label);
+    setTimeout(() => setCopied(false), 2000);
   }
 
   if (!user) {
@@ -136,17 +132,57 @@ export default function Account() {
           </button>
         ) : (
           <>
-            <div className="relative">
-              <pre className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-xs overflow-x-auto whitespace-pre">
-                {snippet}
-              </pre>
-              <button
-                onClick={handleCopy}
-                className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 bg-white border border-gray-300 rounded text-xs text-gray-600 hover:bg-gray-50"
-              >
-                <Copy size={12} />
-                {copied ? 'Copied!' : 'Copy'}
-              </button>
+            {/* Individual fields */}
+            <div className="space-y-3 mb-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">URL</label>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 bg-gray-50 border border-gray-200 rounded px-3 py-1.5 text-xs text-gray-800 truncate">
+                    {`${serverUrl}/api/mcp`}
+                  </code>
+                  <button
+                    onClick={() => copyToClipboard(`${serverUrl}/api/mcp`, 'url')}
+                    className="flex items-center gap-1 px-2 py-1.5 border border-gray-300 rounded text-xs text-gray-600 hover:bg-gray-50 shrink-0"
+                  >
+                    <Copy size={12} />
+                    {copied === 'url' ? 'Copied!' : 'Copy'}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Token</label>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 bg-gray-50 border border-gray-200 rounded px-3 py-1.5 text-xs text-gray-800 truncate">
+                    {tokenInfo.token ?? `${tokenInfo.prefix}...`}
+                  </code>
+                  <button
+                    onClick={() => copyToClipboard(tokenInfo.token ?? `${tokenInfo.prefix}...`, 'token')}
+                    className="flex items-center gap-1 px-2 py-1.5 border border-gray-300 rounded text-xs text-gray-600 hover:bg-gray-50 shrink-0"
+                  >
+                    <Copy size={12} />
+                    {copied === 'token' ? 'Copied!' : 'Copy'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* JSON snippet */}
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">
+                Claude configuration block <span className="font-normal text-gray-400">(add to mcpServers in .mcp.json)</span>
+              </label>
+              <div className="relative">
+                <pre className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-xs overflow-x-auto whitespace-pre">
+                  {snippet}
+                </pre>
+                <button
+                  onClick={() => copyToClipboard(snippet, 'snippet')}
+                  className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 bg-white border border-gray-300 rounded text-xs text-gray-600 hover:bg-gray-50"
+                >
+                  <Copy size={12} />
+                  {copied === 'snippet' ? 'Copied!' : 'Copy'}
+                </button>
+              </div>
             </div>
 
             {tokenInfo.token && (

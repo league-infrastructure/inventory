@@ -1,7 +1,7 @@
-import { useState, useEffect, createContext, useContext } from 'react';
+import { useState, useEffect, useRef, createContext, useContext } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
-  Home, Monitor, Tags, PackageCheck, MapPin, Shield, Menu, X, LogOut, ChevronDown, UserCircle, AlertTriangle, Search, BarChart3,
+  Home, Monitor, Tags, PackageCheck, MapPin, Shield, Menu, X, LogOut, ChevronDown, UserCircle, AlertTriangle, Search, BarChart3, Package, Box,
 } from 'lucide-react';
 import AiChat from './AiChat';
 
@@ -33,7 +33,6 @@ const navItems = [
     children: [{ to: '/hostnames', label: 'Host Names' }, { to: '/computers/inactive', label: 'Inactive Computers' }],
   },
   { to: '/sites', label: 'Sites', icon: MapPin, roles: ['QUARTERMASTER'] },
-  { to: '/search', label: 'Search', icon: Search, roles: null },
   { to: '/reports/audit-log', label: 'Reports', icon: BarChart3, roles: ['QUARTERMASTER'],
     children: [
       { to: '/reports/inventory-age', label: 'Inventory Age' },
@@ -43,6 +42,84 @@ const navItems = [
   { to: '/admin', label: 'Admin', icon: Shield, roles: null },
 ];
 
+// Search result types
+interface SearchResult {
+  type: 'kit' | 'pack' | 'item' | 'computer' | 'site';
+  id: number;
+  title: string;
+  subtitle: string | null;
+  url: string;
+}
+
+const typeIcons: Record<string, any> = {
+  kit: Tags,
+  pack: Package,
+  item: Box,
+  computer: Monitor,
+  site: MapPin,
+};
+
+const typeColors: Record<string, string> = {
+  kit: 'bg-blue-100 text-blue-800',
+  pack: 'bg-purple-100 text-purple-800',
+  item: 'bg-green-100 text-green-800',
+  computer: 'bg-orange-100 text-orange-800',
+  site: 'bg-gray-100 text-gray-800',
+};
+
+function SearchResults({ query, results, loading, onNavigate }: {
+  query: string;
+  results: SearchResult[];
+  loading: boolean;
+  onNavigate: () => void;
+}) {
+  const grouped = results.reduce<Record<string, SearchResult[]>>((acc, r) => {
+    if (!acc[r.type]) acc[r.type] = [];
+    acc[r.type].push(r);
+    return acc;
+  }, {});
+
+  return (
+    <div className="max-w-3xl mx-auto">
+      {loading && <p className="text-sm text-gray-500">Searching...</p>}
+
+      {!loading && query.length >= 2 && results.length === 0 && (
+        <p className="text-sm text-gray-500">No results found for &ldquo;{query}&rdquo;</p>
+      )}
+
+      {Object.entries(grouped).map(([type, items]) => {
+        const Icon = typeIcons[type] || Box;
+        return (
+          <div key={type} className="mb-6">
+            <h2 className="text-sm font-semibold text-gray-500 uppercase mb-2 flex items-center gap-2">
+              <Icon size={16} />
+              {type}s ({items.length})
+            </h2>
+            <div className="bg-white rounded-lg shadow divide-y">
+              {items.map((r) => (
+                <Link
+                  key={`${r.type}-${r.id}`}
+                  to={r.url}
+                  onClick={onNavigate}
+                  className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 no-underline text-gray-900"
+                >
+                  <div>
+                    <div className="font-medium">{r.title}</div>
+                    {r.subtitle && <div className="text-sm text-gray-500">{r.subtitle}</div>}
+                  </div>
+                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${typeColors[r.type]}`}>
+                    {r.type}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function AppLayout() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -50,6 +127,13 @@ export default function AppLayout() {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const searchDebounce = useRef<ReturnType<typeof setTimeout>>();
+  const searchActive = searchQuery.length >= 2;
 
   useEffect(() => {
     fetch('/api/auth/me')
@@ -59,11 +143,31 @@ export default function AppLayout() {
       .finally(() => setLoading(false));
   }, []);
 
-  // Close sidebar on route change (mobile)
+  // Close sidebar on route change (mobile) and clear search
   useEffect(() => {
     setSidebarOpen(false);
     setUserMenuOpen(false);
+    setSearchQuery('');
+    setSearchResults([]);
   }, [location.pathname]);
+
+  // Search debounce
+  useEffect(() => {
+    if (searchDebounce.current) clearTimeout(searchDebounce.current);
+    if (searchQuery.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+    searchDebounce.current = setTimeout(async () => {
+      setSearchLoading(true);
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`);
+        if (res.ok) setSearchResults(await res.json());
+      } catch { /* ignore */ }
+      setSearchLoading(false);
+    }, 300);
+    return () => { if (searchDebounce.current) clearTimeout(searchDebounce.current); };
+  }, [searchQuery]);
 
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' });
@@ -74,6 +178,11 @@ export default function AppLayout() {
   function isActive(path: string) {
     if (path === '/') return location.pathname === '/';
     return location.pathname.startsWith(path);
+  }
+
+  function clearSearch() {
+    setSearchQuery('');
+    setSearchResults([]);
   }
 
   const filteredNav = navItems.filter(
@@ -162,7 +271,7 @@ export default function AppLayout() {
         {/* Main content area */}
         <div className="flex-1 flex flex-col min-w-0">
           {/* Top header bar */}
-          <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 shrink-0">
+          <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 shrink-0 gap-4">
             {showSidebar && (
               <button
                 className="lg:hidden text-gray-500 hover:text-gray-700 bg-transparent border-none p-1"
@@ -172,14 +281,32 @@ export default function AppLayout() {
               </button>
             )}
 
-            <div className="lg:hidden" /> {/* spacer */}
+            {/* Search bar */}
+            {showSidebar && (
+              <div className="flex-1 max-w-xl relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={16} />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search kits, packs, items, computers..."
+                  className="w-full pl-9 pr-8 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-gray-50 focus:bg-white"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={clearSearch}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 bg-transparent border-none cursor-pointer p-0.5"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+            )}
 
-            <div className="hidden lg:block text-sm text-gray-500">
-              {/* breadcrumb area — can extend later */}
-            </div>
+            {!showSidebar && <div />}
 
             {/* User menu */}
-            <div className="relative">
+            <div className="relative shrink-0">
               {user ? (
                 <>
                   <button
@@ -242,9 +369,18 @@ export default function AppLayout() {
             </div>
           </header>
 
-          {/* Page content */}
+          {/* Page content — replaced by search results when searching */}
           <main className="flex-1 overflow-auto p-4 sm:p-6">
-            <Outlet />
+            {searchActive ? (
+              <SearchResults
+                query={searchQuery}
+                results={searchResults}
+                loading={searchLoading}
+                onNavigate={clearSearch}
+              />
+            ) : (
+              <Outlet />
+            )}
           </main>
         </div>
       </div>

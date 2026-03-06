@@ -20,10 +20,23 @@ export class KitService extends BaseService<KitRecord, CreateKitInput, UpdateKit
 
     const kits = await this.prisma.kit.findMany({
       where,
-      include: { site: { select: { id: true, name: true } } },
+      include: {
+        site: { select: { id: true, name: true } },
+        inventoryChecks: {
+          select: { createdAt: true },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
+      },
       orderBy: { number: 'asc' },
     });
-    return kits as unknown as KitRecord[];
+    return kits.map((kit) => {
+      const { inventoryChecks, ...rest } = kit;
+      return {
+        ...rest,
+        lastInventoried: inventoryChecks[0]?.createdAt?.toISOString() ?? null,
+      } as unknown as KitRecord;
+    });
   }
 
   async get(id: number): Promise<KitDetailRecord> {

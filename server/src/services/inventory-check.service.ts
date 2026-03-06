@@ -157,6 +157,14 @@ export class InventoryCheckService {
       });
     }
 
+    // Touch kit's updatedAt so the list reflects the check
+    if (check.kitId) {
+      await this.prisma.kit.update({
+        where: { id: check.kitId },
+        data: { updatedAt: new Date() },
+      });
+    }
+
     // Write audit entry
     await this.audit.write({
       userId,
