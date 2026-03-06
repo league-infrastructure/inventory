@@ -1,7 +1,7 @@
 ---
-id: "019"
-title: "Transfer and Custodian Model"
-status: planning
+id: 019
+title: Transfer and Custodian Model
+status: done
 branch: sprint/019-transfer-and-custodian-model
 use-cases: []
 ---
