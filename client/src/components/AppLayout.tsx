@@ -1,7 +1,7 @@
 import { useState, useEffect, createContext, useContext } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
-  Home, Monitor, Tags, PackageCheck, MapPin, Shield, Menu, X, LogOut, ChevronDown, UserCircle, AlertTriangle,
+  Home, Monitor, Tags, PackageCheck, MapPin, Shield, Menu, X, LogOut, ChevronDown, UserCircle, AlertTriangle, Search, BarChart3,
 } from 'lucide-react';
 import AiChat from './AiChat';
 
@@ -33,6 +33,13 @@ const navItems = [
     children: [{ to: '/hostnames', label: 'Host Names' }, { to: '/computers/inactive', label: 'Inactive Computers' }],
   },
   { to: '/sites', label: 'Sites', icon: MapPin, roles: ['QUARTERMASTER'] },
+  { to: '/search', label: 'Search', icon: Search, roles: null },
+  { to: '/reports/audit-log', label: 'Reports', icon: BarChart3, roles: ['QUARTERMASTER'],
+    children: [
+      { to: '/reports/inventory-age', label: 'Inventory Age' },
+      { to: '/reports/checked-out-by-person', label: 'By Person' },
+    ],
+  },
   { to: '/admin', label: 'Admin', icon: Shield, roles: null },
 ];
 

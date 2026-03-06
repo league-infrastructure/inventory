@@ -27,6 +27,10 @@ import PermissionsPanel from './pages/admin/PermissionsPanel';
 import Account from './pages/account/Account';
 import AdminTokens from './pages/admin/AdminTokens';
 import ImportExport from './pages/admin/ImportExport';
+import SearchPage from './pages/search/SearchPage';
+import AuditLogViewer from './pages/reports/AuditLogViewer';
+import InventoryAgeReport from './pages/reports/InventoryAgeReport';
+import CheckedOutByPerson from './pages/reports/CheckedOutByPerson';
 
 function App() {
   return (
@@ -54,6 +58,10 @@ function App() {
           <Route path="/checkouts" element={<CheckedOutList />} />
           <Route path="/issues" element={<IssueList />} />
           <Route path="/sites" element={<SiteList />} />
+          <Route path="/search" element={<SearchPage />} />
+          <Route path="/reports/audit-log" element={<AuditLogViewer />} />
+          <Route path="/reports/inventory-age" element={<InventoryAgeReport />} />
+          <Route path="/reports/checked-out-by-person" element={<CheckedOutByPerson />} />
           <Route path="/account" element={<Account />} />
           <Route path="/admin" element={<AdminLogin />} />
           <Route element={<AdminLayout />}>
