@@ -3,6 +3,7 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   Home, Monitor, Tags, PackageCheck, MapPin, Shield, Menu, X, LogOut, ChevronDown, UserCircle,
 } from 'lucide-react';
+import AiChat from './AiChat';
 
 interface AuthUser {
   id: number;
@@ -239,6 +240,7 @@ export default function AppLayout() {
           </main>
         </div>
       </div>
+      {showSidebar && <AiChat />}
     </AuthContext.Provider>
   );
 }

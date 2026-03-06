@@ -18,6 +18,7 @@ import { computersRouter } from './routes/computers';
 import { hostnamesRouter } from './routes/hostnames';
 import { checkoutsRouter } from './routes/checkouts';
 import { tokensRouter } from './routes/tokens';
+import { aiChatRouter } from './routes/ai-chat';
 import { errorHandler } from './middleware/errorHandler';
 import { logBuffer } from './services/logBuffer';
 import { prisma } from './services/prisma';
@@ -110,6 +111,7 @@ app.use('/api', computersRouter(services));
 app.use('/api', hostnamesRouter(services));
 app.use('/api', checkoutsRouter(services));
 app.use('/api', tokensRouter(services));
+app.use('/api', aiChatRouter(services));
 app.use('/api', adminRouter);
 
 // MCP server — token-authenticated endpoint for external AI clients
