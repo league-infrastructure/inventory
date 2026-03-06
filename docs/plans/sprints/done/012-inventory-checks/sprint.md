@@ -1,7 +1,7 @@
 ---
 id: '012'
 title: Inventory Checks
-status: in-progress
+status: done
 branch: sprint/012-inventory-checks
 use-cases:
 - SUC-012-001
