@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, ClipboardCheck, Check } from 'lucide-react';
+import { Plus, ClipboardCheck, Check, ArrowRightLeft } from 'lucide-react';
 import { useTableSort } from '../../lib/useTableSort';
 import SortableHeader from '../../components/SortableHeader';
 import InventoryCheckModal from '../../components/InventoryCheckModal';
+import TransferModal from '../../components/TransferModal';
 
 type ContainerType = 'BAG' | 'LARGE_TOTE' | 'SMALL_TOTE' | 'DUFFEL';
 
@@ -37,18 +38,15 @@ function daysSince(dateStr: string | null): number | null {
   return Math.floor((Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24));
 }
 
-function needsInventory(kit: Kit): boolean {
-  const days = daysSince(kit.lastInventoried);
-  return days === null || days > 30;
-}
-
 export default function KitList() {
   const navigate = useNavigate();
   const [kits, setKits] = useState<Kit[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [checkingKitId, setCheckingKitId] = useState<number | null>(null);
+  const [transferKitId, setTransferKitId] = useState<number | null>(null);
   const [justChecked, setJustChecked] = useState<Set<number>>(new Set());
+  const [inventoryInterval, setInventoryInterval] = useState(60);
   const { processed: sorted, sort, toggleSort, filters, setFilter } = useTableSort(kits, { key: 'name', direction: 'asc' });
 
   const loadKits = useCallback(() => {
@@ -65,9 +63,25 @@ export default function KitList() {
 
   useEffect(() => { loadKits(); }, [loadKits]);
 
+  useEffect(() => {
+    fetch('/api/settings/inventory-interval')
+      .then((r) => r.ok ? r.json() : { days: 60 })
+      .then((data) => setInventoryInterval(data.days));
+  }, []);
+
+  function needsInventory(kit: Kit): boolean {
+    const days = daysSince(kit.lastInventoried);
+    return days === null || days > inventoryInterval;
+  }
+
   function handleInventoryClick(e: React.MouseEvent, kitId: number) {
     e.stopPropagation();
     setCheckingKitId(kitId);
+  }
+
+  function handleTransferClick(e: React.MouseEvent, kitId: number) {
+    e.stopPropagation();
+    setTransferKitId(kitId);
   }
 
   function handleCheckComplete() {
@@ -105,9 +119,7 @@ export default function KitList() {
                 <SortableHeader label="Name" sortKey="name" currentSort={sort} onSort={toggleSort} filterValue={filters['name']} onFilter={setFilter} />
                 <SortableHeader label="Where" sortKey="site.name" currentSort={sort} onSort={toggleSort} filterValue={filters['site.name']} onFilter={setFilter} />
                 <SortableHeader label="Status" sortKey="status" currentSort={sort} onSort={toggleSort} filterValue={filters['status']} onFilter={setFilter} />
-                <SortableHeader label="Created" sortKey="createdAt" currentSort={sort} onSort={toggleSort} />
-                <SortableHeader label="Updated" sortKey="updatedAt" currentSort={sort} onSort={toggleSort} />
-                <th className="px-4 py-3 text-xs font-semibold text-gray-500">Inventory</th>
+                <th className="px-4 py-3 text-xs font-semibold text-gray-500">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -131,25 +143,33 @@ export default function KitList() {
                         {kit.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{new Date(kit.createdAt).toLocaleDateString()}</td>
-                    <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{new Date(kit.updatedAt).toLocaleDateString()}</td>
-                    <td className="px-4 py-3 text-center">
-                      {checked ? (
-                        <span className="inline-flex items-center gap-1 text-xs text-green-600 font-medium">
-                          <Check size={14} /> Done
-                        </span>
-                      ) : needs ? (
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1.5">
                         <button
-                          onClick={(e) => handleInventoryClick(e, kit.id)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md bg-amber-100 text-amber-700 border border-amber-300 cursor-pointer hover:bg-amber-200"
+                          onClick={(e) => handleTransferClick(e, kit.id)}
+                          className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md bg-blue-50 text-blue-700 border border-blue-200 cursor-pointer hover:bg-blue-100"
+                          title="Transfer"
                         >
-                          <ClipboardCheck size={13} /> Check
+                          <ArrowRightLeft size={12} />
                         </button>
-                      ) : (
-                        <span className="text-xs text-gray-400">
-                          {daysSince(kit.lastInventoried)}d ago
-                        </span>
-                      )}
+                        {checked ? (
+                          <span className="inline-flex items-center gap-1 text-xs text-green-600 font-medium">
+                            <Check size={14} /> Done
+                          </span>
+                        ) : needs ? (
+                          <button
+                            onClick={(e) => handleInventoryClick(e, kit.id)}
+                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md bg-amber-100 text-amber-700 border border-amber-300 cursor-pointer hover:bg-amber-200"
+                            title="Inventory check overdue"
+                          >
+                            <ClipboardCheck size={12} />
+                          </button>
+                        ) : (
+                          <span className="text-xs text-gray-400">
+                            {daysSince(kit.lastInventoried)}d
+                          </span>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -165,6 +185,15 @@ export default function KitList() {
           kitName={kitDisplayName(checkingKit)}
           onClose={() => setCheckingKitId(null)}
           onComplete={handleCheckComplete}
+        />
+      )}
+
+      {transferKitId && (
+        <TransferModal
+          objectType="Kit"
+          objectId={transferKitId}
+          onClose={() => setTransferKitId(null)}
+          onComplete={loadKits}
         />
       )}
     </div>

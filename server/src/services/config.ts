@@ -25,6 +25,8 @@ export const CONFIG_KEYS: ConfigKeyMeta[] = [
   // AI Services
   { key: 'ANTHROPIC_API_KEY', group: 'AI Services', label: 'Claude API Key', isSecret: true, requiresRestart: false },
   { key: 'OPENAI_API_KEY', group: 'AI Services', label: 'OpenAI API Key', isSecret: true, requiresRestart: false },
+  // Inventory
+  { key: 'INVENTORY_CHECK_INTERVAL_DAYS', group: 'Inventory', label: 'Inventory Check Interval (days)', isSecret: false, requiresRestart: false },
 ];
 
 const CONFIG_KEY_SET = new Set(CONFIG_KEYS.map((k) => k.key));
