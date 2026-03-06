@@ -28,7 +28,7 @@ const navItems = [
   },
   { to: '/checkouts', label: 'Checked Out', icon: PackageCheck, roles: null },
   { to: '/computers', label: 'Computers', icon: Monitor, roles: ['QUARTERMASTER'],
-    children: [{ to: '/hostnames', label: 'Host Names' }],
+    children: [{ to: '/hostnames', label: 'Host Names' }, { to: '/computers/inactive', label: 'Inactive Computers' }],
   },
   { to: '/sites', label: 'Sites', icon: MapPin, roles: ['QUARTERMASTER'] },
   { to: '/admin', label: 'Admin', icon: Shield, roles: null },

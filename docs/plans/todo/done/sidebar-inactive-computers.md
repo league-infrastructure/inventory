@@ -1,3 +1,9 @@
+---
+status: done
+sprint: '010'
+tickets:
+- '017'
+---
 # Sidebar entry for inactive computers (lost, scrapped, decommissioned)
 
 ## Summary

@@ -1,3 +1,9 @@
+---
+status: done
+sprint: '010'
+tickets:
+- '014'
+---
 # Checkout should not require a destination site
 
 ## Summary

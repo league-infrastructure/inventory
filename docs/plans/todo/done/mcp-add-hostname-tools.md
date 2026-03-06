@@ -1,3 +1,9 @@
+---
+status: done
+sprint: '010'
+tickets:
+- '013'
+---
 # MCP server missing hostname management tools
 
 ## Summary

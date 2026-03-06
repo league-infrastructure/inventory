@@ -1,3 +1,9 @@
+---
+status: done
+sprint: '010'
+tickets:
+- '012'
+---
 # MCP server missing delete_site tool
 
 ## Summary

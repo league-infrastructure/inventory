@@ -1,3 +1,9 @@
+---
+status: done
+sprint: '010'
+tickets:
+- '016'
+---
 # Kits tab should show retired kits
 
 ## Summary

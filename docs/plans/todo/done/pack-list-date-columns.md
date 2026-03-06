@@ -1,3 +1,9 @@
+---
+status: done
+sprint: '010'
+tickets:
+- 018
+---
 # Pack list should show created and last updated dates
 
 ## Summary

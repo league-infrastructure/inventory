@@ -108,6 +108,9 @@ export class KitService extends BaseService<KitRecord, CreateKitInput, UpdateKit
       const site = await this.prisma.site.findUnique({ where: { id: input.siteId } });
       if (!site || !site.isActive) throw new ValidationError('Site not found or inactive');
     }
+    if (input.status != null && !Object.values(KitStatus).includes(input.status as KitStatus)) {
+      throw new ValidationError('Invalid status value');
+    }
 
     const updated = await this.prisma.kit.update({
       where: { id },
@@ -117,6 +120,7 @@ export class KitService extends BaseService<KitRecord, CreateKitInput, UpdateKit
         ...(input.name != null && { name: input.name.trim() }),
         ...(input.description !== undefined && { description: input.description || null }),
         ...(input.siteId != null && { siteId: input.siteId }),
+        ...(input.status != null && { status: input.status as KitStatus }),
       },
       include: { site: { select: { id: true, name: true } } },
     });

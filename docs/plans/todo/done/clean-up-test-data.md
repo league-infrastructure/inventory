@@ -1,3 +1,9 @@
+---
+status: done
+sprint: '010'
+tickets:
+- '020'
+---
 # Clean up leftover test data in production database
 
 ## Summary

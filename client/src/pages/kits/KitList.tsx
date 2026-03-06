@@ -91,17 +91,20 @@ export default function KitList() {
                 <SortableHeader label="Name" sortKey="name" currentSort={sort} onSort={toggleSort} filterValue={filters['name']} onFilter={setFilter} />
                 <SortableHeader label="Site" sortKey="site.name" currentSort={sort} onSort={toggleSort} filterValue={filters['site.name']} onFilter={setFilter} />
                 <SortableHeader label="Status" sortKey="status" currentSort={sort} onSort={toggleSort} filterValue={filters['status']} onFilter={setFilter} />
+                {statusFilter === 'RETIRED' && <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>}
               </tr>
             </thead>
             <tbody>
               {sorted.map((kit) => (
                 <tr
                   key={kit.id}
-                  className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
+                  className={`border-b border-gray-100 hover:bg-gray-50 cursor-pointer ${
+                    kit.status === 'RETIRED' ? 'opacity-60' : ''
+                  }`}
                   onClick={() => navigate(`/kits/${kit.id}`)}
                 >
-                  <td className="px-4 py-3 font-medium text-gray-900">{kitDisplayName(kit)}</td>
-                  <td className="px-4 py-3 text-gray-600">{kit.site.name}</td>
+                  <td className={`px-4 py-3 font-medium ${kit.status === 'RETIRED' ? 'text-gray-400' : 'text-gray-900'}`}>{kitDisplayName(kit)}</td>
+                  <td className={`px-4 py-3 ${kit.status === 'RETIRED' ? 'text-gray-400' : 'text-gray-600'}`}>{kit.site.name}</td>
                   <td className="px-4 py-3">
                     <span
                       className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium ${
@@ -113,6 +116,28 @@ export default function KitList() {
                       {kit.status}
                     </span>
                   </td>
+                  {statusFilter === 'RETIRED' && (
+                    <td className="px-4 py-3">
+                      <button
+                        className="text-xs px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 transition-colors border-none cursor-pointer"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          fetch(`/api/kits/${kit.id}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ status: 'ACTIVE' }),
+                          })
+                            .then((r) => {
+                              if (!r.ok) throw new Error('Failed to restore kit');
+                              setKits((prev) => prev.filter((k) => k.id !== kit.id));
+                            })
+                            .catch((err) => setError(err.message));
+                        }}
+                      >
+                        Restore
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

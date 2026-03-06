@@ -16,8 +16,16 @@ interface Pack {
   description: string | null;
   qrCode: string | null;
   kitId: number;
+  createdAt: string;
+  updatedAt: string;
   kit: { id: number; name: string };
   items: Item[];
+}
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-US', {
+    month: 'short', day: 'numeric', year: 'numeric',
+  });
 }
 
 export default function PackList() {
@@ -67,6 +75,8 @@ export default function PackList() {
                 <SortableHeader label="Name" sortKey="name" currentSort={sort} onSort={toggleSort} filterValue={filters['name']} onFilter={setFilter} />
                 <SortableHeader label="Kit" sortKey="kit.name" currentSort={sort} onSort={toggleSort} filterValue={filters['kit.name']} onFilter={setFilter} />
                 <th className="text-left px-4 py-3 font-semibold text-gray-700">Contents</th>
+                <SortableHeader label="Created" sortKey="createdAt" currentSort={sort} onSort={toggleSort} />
+                <SortableHeader label="Last Updated" sortKey="updatedAt" currentSort={sort} onSort={toggleSort} />
               </tr>
             </thead>
             <tbody>
@@ -81,6 +91,8 @@ export default function PackList() {
                   <td className="px-4 py-3 text-gray-500 text-xs truncate max-w-xs">
                     {itemSummary(pack.items)}
                   </td>
+                  <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{formatDate(pack.createdAt)}</td>
+                  <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{formatDate(pack.updatedAt)}</td>
                 </tr>
               ))}
             </tbody>

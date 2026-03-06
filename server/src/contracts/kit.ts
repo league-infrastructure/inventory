@@ -49,4 +49,5 @@ export interface UpdateKitInput {
   name?: string;
   description?: string | null;
   siteId?: number;
+  status?: string;
 }

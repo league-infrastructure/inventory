@@ -194,14 +194,14 @@ model Checkout {
   id                Int       @id @default(autoincrement())
   kitId             Int
   userId            Int
-  destinationSiteId Int
+  destinationSiteId Int?
   returnSiteId      Int?
   checkedOutAt      DateTime  @default(now())
   checkedInAt       DateTime?
 
-  kit             Kit  @relation(fields: [kitId], references: [id])
-  user            User @relation(fields: [userId], references: [id])
-  destinationSite Site @relation("CheckoutDestination", fields: [destinationSiteId], references: [id])
+  kit             Kit   @relation(fields: [kitId], references: [id])
+  user            User  @relation(fields: [userId], references: [id])
+  destinationSite Site? @relation("CheckoutDestination", fields: [destinationSiteId], references: [id])
   returnSite      Site? @relation("CheckoutReturn", fields: [returnSiteId], references: [id])
 
   @@index([kitId])

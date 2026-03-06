@@ -1,3 +1,9 @@
+---
+status: done
+sprint: '010'
+tickets:
+- 019
+---
 # Auto-create items from pack descriptions with fuzzy matching
 
 ## Summary

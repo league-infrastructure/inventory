@@ -1,3 +1,9 @@
+---
+status: done
+sprint: '010'
+tickets:
+- '011'
+---
 # MCP update_kit tool missing status field
 
 ## Summary

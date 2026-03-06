@@ -70,11 +70,32 @@ export function registerTools(server: McpServer): void {
     latitude: z.number().optional(),
     longitude: z.number().optional(),
     isHomeSite: z.boolean().optional(),
+    isActive: z.boolean().optional(),
   }, async ({ id, ...input }) => {
     return safeCall(async () => {
       requireQM();
       const { services, user } = getContext();
       return ok(await services.sites.update(id, input, user.id));
+    });
+  });
+
+  server.tool('delete_site', 'Delete a site (must have no kits assigned and be deactivated)', {
+    id: z.number(),
+  }, async ({ id }) => {
+    return safeCall(async () => {
+      requireQM();
+      const { services } = getContext();
+      const site = await services.sites.get(id);
+      if (site.isActive) {
+        throw new Error('Cannot delete active site — deactivate it first');
+      }
+      const kits = await services.kits.list();
+      const assignedKits = kits.filter(k => k.siteId === id);
+      if (assignedKits.length > 0) {
+        throw new Error(`Cannot delete site: ${assignedKits.length} kit(s) still assigned`);
+      }
+      await services.prisma.site.delete({ where: { id } });
+      return ok({ deleted: true });
     });
   });
 
@@ -117,11 +138,33 @@ export function registerTools(server: McpServer): void {
     name: z.string().optional(),
     description: z.string().optional(),
     siteId: z.number().optional(),
+    status: z.string().optional(),
   }, async ({ id, ...input }) => {
     return safeCall(async () => {
       requireQM();
       const { services, user } = getContext();
       return ok(await services.kits.update(id, input as any, user.id));
+    });
+  });
+
+  server.tool('delete_kit', 'Delete a kit (must be retired and have no packs or computers)', {
+    id: z.number(),
+  }, async ({ id }) => {
+    return safeCall(async () => {
+      requireQM();
+      const { services } = getContext();
+      const kit = await services.kits.get(id);
+      if (kit.status !== 'RETIRED') {
+        throw new Error('Cannot delete active kit — retire it first');
+      }
+      if (kit.packs.length > 0) {
+        throw new Error(`Cannot delete kit: ${kit.packs.length} pack(s) still assigned`);
+      }
+      if (kit.computers.length > 0) {
+        throw new Error(`Cannot delete kit: ${kit.computers.length} computer(s) still assigned`);
+      }
+      await services.prisma.kit.delete({ where: { id } });
+      return ok({ deleted: true });
     });
   });
 
@@ -272,6 +315,33 @@ export function registerTools(server: McpServer): void {
     });
   });
 
+  server.tool('delete_computer', 'Delete a computer (must not have active checkouts)', {
+    id: z.number(),
+  }, async ({ id }) => {
+    return safeCall(async () => {
+      requireQM();
+      const { services } = getContext();
+      const computer = await services.computers.get(id);
+      // Check for active checkouts via kit
+      if (computer.kitId) {
+        const checkouts = await services.checkouts.list('open');
+        const activeCheckout = checkouts.find(c => c.kitId === computer.kitId);
+        if (activeCheckout) {
+          throw new Error('Cannot delete computer: its kit has an active checkout');
+        }
+      }
+      // Unassign hostname if present
+      if (computer.hostName) {
+        await services.prisma.hostName.update({
+          where: { id: computer.hostName.id },
+          data: { computerId: null },
+        });
+      }
+      await services.prisma.computer.delete({ where: { id } });
+      return ok({ deleted: true });
+    });
+  });
+
   // ─── Host Names ─────────────────────────────────────────────────────
 
   server.tool('list_hostnames', 'List all host names', {}, async () => {
@@ -281,15 +351,35 @@ export function registerTools(server: McpServer): void {
     });
   });
 
+  server.tool('create_hostname', 'Create a new host name', {
+    name: z.string(),
+  }, async ({ name }) => {
+    return safeCall(async () => {
+      requireQM();
+      const { services, user } = getContext();
+      return ok(await services.hostNames.create({ name }, user.id));
+    });
+  });
+
+  server.tool('delete_hostname', 'Delete an unassigned host name', {
+    id: z.number(),
+  }, async ({ id }) => {
+    return safeCall(async () => {
+      requireQM();
+      const { services } = getContext();
+      await services.hostNames.delete(id);
+      return ok({ deleted: true });
+    });
+  });
+
   // ─── Checkouts ──────────────────────────────────────────────────────
 
-  server.tool('checkout_kit', 'Check out a kit to a destination site', {
+  server.tool('checkout_kit', 'Check out a kit (assigns it to the authenticated user)', {
     kitId: z.number(),
-    destinationSiteId: z.number(),
-  }, async (args) => {
+  }, async ({ kitId }) => {
     return safeCall(async () => {
       const { services, user } = getContext();
-      return ok(await services.checkouts.checkOut(args, user.id));
+      return ok(await services.checkouts.checkOut({ kitId }, user.id));
     });
   });
 
