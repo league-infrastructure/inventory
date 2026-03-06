@@ -1,9 +1,13 @@
 ---
 id: '011'
 title: AI Chat Interface and Model Integration
-status: planning
+status: in-progress
 branch: sprint/011-ai-chat-interface-and-model-integration
-use-cases: []
+use-cases:
+- SUC-011-001
+- SUC-011-002
+- SUC-011-003
+- SUC-011-004
 ---
 
 # Sprint 011: AI Chat Interface and Model Integration
