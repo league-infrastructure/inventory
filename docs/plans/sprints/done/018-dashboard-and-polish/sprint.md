@@ -1,7 +1,7 @@
 ---
 id: 018
 title: Dashboard and Polish
-status: planning
+status: done
 branch: sprint/018-dashboard-and-polish
 use-cases: []
 ---
