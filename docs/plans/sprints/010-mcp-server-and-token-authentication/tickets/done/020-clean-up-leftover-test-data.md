@@ -1,9 +1,11 @@
 ---
-id: "020"
-title: "Clean up leftover test data"
-status: todo
+id: '020'
+title: Clean up leftover test data
+status: done
 use-cases: []
-depends-on: ["011", "012"]
+depends-on:
+- '011'
+- '012'
 ---
 
 # Clean up leftover test data
