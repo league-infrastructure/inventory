@@ -9,6 +9,7 @@ import { KitService } from './kit.service';
 import { PackService } from './pack.service';
 import { ItemService } from './item.service';
 import { CheckoutService } from './checkout.service';
+import { ComputerCheckoutService } from './computer-checkout.service';
 import { TokenService } from './token.service';
 import { InventoryCheckService } from './inventory-check.service';
 import { IssueService } from './issue.service';
@@ -29,6 +30,7 @@ export class ServiceRegistry {
   readonly packs: PackService;
   readonly items: ItemService;
   readonly checkouts: CheckoutService;
+  readonly computerCheckouts: ComputerCheckoutService;
   readonly tokens: TokenService;
   readonly inventoryChecks: InventoryCheckService;
   readonly issues: IssueService;
@@ -49,6 +51,7 @@ export class ServiceRegistry {
     this.packs = new PackService(prisma, this.audit);
     this.items = new ItemService(prisma, this.audit);
     this.checkouts = new CheckoutService(prisma, this.audit);
+    this.computerCheckouts = new ComputerCheckoutService(prisma, this.audit);
     this.tokens = new TokenService(prisma);
     this.inventoryChecks = new InventoryCheckService(prisma, this.audit);
     this.issues = new IssueService(prisma, this.audit);
@@ -72,11 +75,13 @@ export class ServiceRegistry {
     await p.inventoryCheckLine.deleteMany();
     await p.inventoryCheck.deleteMany();
     await p.issue.deleteMany();
+    await p.computerCheckout.deleteMany();
     await p.checkout.deleteMany();
     await p.item.deleteMany();
     await p.pack.deleteMany();
     await p.hostName.updateMany({ data: { computerId: null } });
     await p.computer.deleteMany();
+    await p.operatingSystem.deleteMany();
     await p.kit.deleteMany();
     await p.hostName.deleteMany();
     await p.site.deleteMany();

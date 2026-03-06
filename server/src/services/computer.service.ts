@@ -15,13 +15,14 @@ const COMPUTER_INCLUDES = {
   hostName: true,
   site: { select: { id: true, name: true } },
   kit: { select: { id: true, name: true } },
+  os: { select: { id: true, name: true } },
 };
 
 export class ComputerService extends BaseService<ComputerRecord, CreateComputerInput, UpdateComputerInput> {
   protected readonly entityName = 'Computer';
   protected readonly auditFields = [
     'serialNumber', 'serviceTag', 'model', 'defaultUsername', 'defaultPassword',
-    'disposition', 'dateReceived', 'lastInventoried', 'notes', 'siteId', 'kitId', 'qrCode',
+    'disposition', 'dateReceived', 'lastInventoried', 'notes', 'siteId', 'kitId', 'osId', 'qrCode',
   ];
 
   constructor(prisma: PrismaClient, audit: AuditService) {
@@ -58,6 +59,15 @@ export class ComputerService extends BaseService<ComputerRecord, CreateComputerI
     return computer as unknown as ComputerRecord;
   }
 
+  private async assertNotCheckedOut(computerId: number): Promise<void> {
+    const openCheckout = await this.prisma.computerCheckout.findFirst({
+      where: { computerId, checkedInAt: null },
+    });
+    if (openCheckout) {
+      throw new ValidationError('Computer has an open checkout and cannot be assigned to a kit');
+    }
+  }
+
   async create(input: CreateComputerInput, userId: number): Promise<ComputerRecord> {
     if (input.disposition && !Object.values(ComputerDisposition).includes(input.disposition as ComputerDisposition)) {
       throw new ValidationError('Invalid disposition value');
@@ -75,6 +85,12 @@ export class ComputerService extends BaseService<ComputerRecord, CreateComputerI
       if (!kit) throw new ValidationError('Kit not found');
     }
 
+    if (input.osId != null) {
+      if (typeof input.osId !== 'number') throw new ValidationError('osId must be a number');
+      const os = await this.prisma.operatingSystem.findUnique({ where: { id: input.osId } });
+      if (!os) throw new ValidationError('Operating system not found');
+    }
+
     const computer = await this.prisma.computer.create({
       data: {
         serialNumber: input.serialNumber || null,
@@ -88,6 +104,7 @@ export class ComputerService extends BaseService<ComputerRecord, CreateComputerI
         notes: input.notes || null,
         siteId: input.siteId || null,
         kitId: input.kitId || null,
+        osId: input.osId || null,
       },
     });
 
@@ -138,6 +155,13 @@ export class ComputerService extends BaseService<ComputerRecord, CreateComputerI
       if (typeof input.kitId !== 'number') throw new ValidationError('kitId must be a number');
       const kit = await this.prisma.kit.findUnique({ where: { id: input.kitId } });
       if (!kit) throw new ValidationError('Kit not found');
+      await this.assertNotCheckedOut(id);
+    }
+
+    if (input.osId != null) {
+      if (typeof input.osId !== 'number') throw new ValidationError('osId must be a number');
+      const os = await this.prisma.operatingSystem.findUnique({ where: { id: input.osId } });
+      if (!os) throw new ValidationError('Operating system not found');
     }
 
     const data: any = {};
@@ -152,6 +176,7 @@ export class ComputerService extends BaseService<ComputerRecord, CreateComputerI
     if (input.notes !== undefined) data.notes = input.notes || null;
     if (input.siteId !== undefined) data.siteId = input.siteId;
     if (input.kitId !== undefined) data.kitId = input.kitId;
+    if (input.osId !== undefined) data.osId = input.osId;
 
     const updated = await this.prisma.computer.update({
       where: { id },

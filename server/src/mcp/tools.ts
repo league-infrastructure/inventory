@@ -258,6 +258,54 @@ export function registerTools(server: McpServer): void {
     });
   });
 
+  // ─── Operating Systems ─────────────────────────────────────────────
+
+  server.tool('list_operating_systems', 'List all operating systems', {}, async () => {
+    return safeCall(async () => {
+      const { services } = getContext();
+      const items = await services.prisma.operatingSystem.findMany({ orderBy: { name: 'asc' } });
+      return ok(items);
+    });
+  });
+
+  server.tool('create_operating_system', 'Create a new operating system entry', {
+    name: z.string(),
+  }, async ({ name }) => {
+    return safeCall(async () => {
+      requireQM();
+      const { services } = getContext();
+      const os = await services.prisma.operatingSystem.create({ data: { name } });
+      return ok(os);
+    });
+  });
+
+  server.tool('update_operating_system', 'Rename an operating system entry', {
+    id: z.number(),
+    name: z.string(),
+  }, async ({ id, name }) => {
+    return safeCall(async () => {
+      requireQM();
+      const { services } = getContext();
+      const os = await services.prisma.operatingSystem.update({ where: { id }, data: { name } });
+      return ok(os);
+    });
+  });
+
+  server.tool('delete_operating_system', 'Delete an operating system (must not be assigned to any computers)', {
+    id: z.number(),
+  }, async ({ id }) => {
+    return safeCall(async () => {
+      requireQM();
+      const { services } = getContext();
+      const count = await services.prisma.computer.count({ where: { osId: id } });
+      if (count > 0) {
+        throw new Error(`Cannot delete: ${count} computer(s) still using this OS`);
+      }
+      await services.prisma.operatingSystem.delete({ where: { id } });
+      return ok({ deleted: true });
+    });
+  });
+
   // ─── Computers ──────────────────────────────────────────────────────
 
   server.tool('list_computers', 'List all computers', {}, async () => {
@@ -285,6 +333,7 @@ export function registerTools(server: McpServer): void {
     notes: z.string().optional(),
     siteId: z.number().optional(),
     kitId: z.number().optional(),
+    osId: z.number().optional(),
     hostNameId: z.number().optional(),
   }, async (args) => {
     return safeCall(async () => {
@@ -306,6 +355,7 @@ export function registerTools(server: McpServer): void {
     notes: z.string().optional(),
     siteId: z.number().optional(),
     kitId: z.number().optional(),
+    osId: z.number().optional(),
     hostNameId: z.number().optional(),
   }, async ({ id, ...input }) => {
     return safeCall(async () => {
@@ -401,6 +451,28 @@ export function registerTools(server: McpServer): void {
     return safeCall(async () => {
       const { services, user } = getContext();
       return ok(await services.checkouts.checkIn(checkoutId, { returnSiteId }, user.id));
+    });
+  });
+
+  // ─── Computer Checkouts ───────────────────────────────────────────
+
+  server.tool('checkout_computer', 'Check out a computer (assigns it to the authenticated user). Computer must not be in a kit.', {
+    computerId: z.number(),
+    destinationSiteId: z.number().optional(),
+  }, async ({ computerId, destinationSiteId }) => {
+    return safeCall(async () => {
+      const { services, user } = getContext();
+      return ok(await services.computerCheckouts.checkOut({ computerId, destinationSiteId }, user.id));
+    });
+  });
+
+  server.tool('checkin_computer', 'Check in a computer, returning it to a site', {
+    checkoutId: z.number(),
+    returnSiteId: z.number(),
+  }, async ({ checkoutId, returnSiteId }) => {
+    return safeCall(async () => {
+      const { services, user } = getContext();
+      return ok(await services.computerCheckouts.checkIn(checkoutId, { returnSiteId }, user.id));
     });
   });
 }

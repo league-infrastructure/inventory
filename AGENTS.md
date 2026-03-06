@@ -59,7 +59,7 @@ Activities that trigger the SE process include:
 - Creating, modifying, or closing sprints and tickets
 - Merging, branching, or tagging releases
 
-**If it touches code, tests, docs about code, or plans for code — use
+**If it touches code, tests, TODOS,  docs about code, or plans for code — use
 the process.**
 
 ### Process

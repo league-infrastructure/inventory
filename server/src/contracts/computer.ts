@@ -12,11 +12,13 @@ export interface ComputerRecord {
   qrCode: string | null;
   siteId: number | null;
   kitId: number | null;
+  osId: number | null;
   createdAt: string;
   updatedAt: string;
   hostName: { id: number; name: string; computerId: number | null } | null;
   site: { id: number; name: string } | null;
   kit: { id: number; name: string } | null;
+  os: { id: number; name: string } | null;
 }
 
 export interface CreateComputerInput {
@@ -31,6 +33,7 @@ export interface CreateComputerInput {
   notes?: string | null;
   siteId?: number | null;
   kitId?: number | null;
+  osId?: number | null;
   hostNameId?: number | null;
 }
 

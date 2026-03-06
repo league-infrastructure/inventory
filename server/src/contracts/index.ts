@@ -5,6 +5,7 @@ export * from './kit';
 export * from './pack';
 export * from './item';
 export * from './checkout';
+export * from './computerCheckout';
 export * from './inventoryCheck';
 export * from './issue';
 export * from './user';
