@@ -1,7 +1,7 @@
 ---
-id: "019"
-title: "Auto-create items from pack descriptions with fuzzy matching"
-status: todo
+id: 019
+title: Auto-create items from pack descriptions with fuzzy matching
+status: done
 use-cases: []
 depends-on: []
 ---
