@@ -365,22 +365,13 @@ export function registerTools(server: McpServer): void {
     });
   });
 
-  server.tool('delete_computer', 'Delete a computer (must not have active checkouts)', {
+  server.tool('delete_computer', 'Delete a computer', {
     id: z.number(),
   }, async ({ id }) => {
     return safeCall(async () => {
       requireQM();
       const { services } = getContext();
       const computer = await services.computers.get(id);
-      // Check for active checkouts via kit
-      if (computer.kitId) {
-        const checkouts = await services.checkouts.list('open');
-        const activeCheckout = checkouts.find(c => c.kitId === computer.kitId);
-        if (activeCheckout) {
-          throw new Error('Cannot delete computer: its kit has an active checkout');
-        }
-      }
-      // Unassign hostname if present
       if (computer.hostName) {
         await services.prisma.hostName.update({
           where: { id: computer.hostName.id },
@@ -433,46 +424,41 @@ export function registerTools(server: McpServer): void {
     });
   });
 
-  // ─── Checkouts ──────────────────────────────────────────────────────
+  // ─── Transfers ─────────────────────────────────────────────────────
 
-  server.tool('checkout_kit', 'Check out a kit (assigns it to the authenticated user)', {
+  server.tool('transfer_kit', 'Transfer a kit to a new custodian and/or site', {
     kitId: z.number(),
-  }, async ({ kitId }) => {
+    custodianId: z.number().nullable().optional(),
+    siteId: z.number().nullable().optional(),
+    notes: z.string().optional(),
+  }, async ({ kitId, custodianId, siteId, notes }) => {
     return safeCall(async () => {
       const { services, user } = getContext();
-      return ok(await services.checkouts.checkOut({ kitId }, user.id));
+      return ok(await services.transfers.transfer({
+        objectType: 'Kit',
+        objectId: kitId,
+        custodianId,
+        siteId,
+        notes,
+      }, user.id));
     });
   });
 
-  server.tool('checkin_kit', 'Check in a kit, returning it to a site', {
-    checkoutId: z.number(),
-    returnSiteId: z.number(),
-  }, async ({ checkoutId, returnSiteId }) => {
-    return safeCall(async () => {
-      const { services, user } = getContext();
-      return ok(await services.checkouts.checkIn(checkoutId, { returnSiteId }, user.id));
-    });
-  });
-
-  // ─── Computer Checkouts ───────────────────────────────────────────
-
-  server.tool('checkout_computer', 'Check out a computer (assigns it to the authenticated user). Computer must not be in a kit.', {
+  server.tool('transfer_computer', 'Transfer a standalone computer to a new custodian and/or site. Computer must not be in a kit.', {
     computerId: z.number(),
-    destinationSiteId: z.number().optional(),
-  }, async ({ computerId, destinationSiteId }) => {
+    custodianId: z.number().nullable().optional(),
+    siteId: z.number().nullable().optional(),
+    notes: z.string().optional(),
+  }, async ({ computerId, custodianId, siteId, notes }) => {
     return safeCall(async () => {
       const { services, user } = getContext();
-      return ok(await services.computerCheckouts.checkOut({ computerId, destinationSiteId }, user.id));
-    });
-  });
-
-  server.tool('checkin_computer', 'Check in a computer, returning it to a site', {
-    checkoutId: z.number(),
-    returnSiteId: z.number(),
-  }, async ({ checkoutId, returnSiteId }) => {
-    return safeCall(async () => {
-      const { services, user } = getContext();
-      return ok(await services.computerCheckouts.checkIn(checkoutId, { returnSiteId }, user.id));
+      return ok(await services.transfers.transfer({
+        objectType: 'Computer',
+        objectId: computerId,
+        custodianId,
+        siteId,
+        notes,
+      }, user.id));
     });
   });
 }

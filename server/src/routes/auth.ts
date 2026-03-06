@@ -127,6 +127,16 @@ authRouter.get('/auth/me', (req: Request, res: Response) => {
   });
 });
 
+// List all users (for transfer modal custodian selection)
+authRouter.get('/auth/users', async (req: Request, res: Response) => {
+  if (!req.user) return res.status(401).json({ error: 'Not authenticated' });
+  const users = await prisma.user.findMany({
+    select: { id: true, displayName: true },
+    orderBy: { displayName: 'asc' },
+  });
+  res.json(users);
+});
+
 // Logout
 authRouter.post('/auth/logout', (req: Request, res: Response, next) => {
   req.logout((err) => {

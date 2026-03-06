@@ -50,13 +50,14 @@ model User {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  checkouts           Checkout[]
-  computerCheckouts   ComputerCheckout[]
-  reportedIssues  Issue[]          @relation("IssueReporter")
-  resolvedIssues  Issue[]          @relation("IssueResolver")
-  inventoryChecks InventoryCheck[]
-  auditLogs       AuditLog[]
-  apiTokens       ApiToken[]
+  custodiedKits      Kit[]      @relation("KitCustodian")
+  custodiedComputers Computer[] @relation("ComputerCustodian")
+  transfers          Transfer[]
+  reportedIssues     Issue[]          @relation("IssueReporter")
+  resolvedIssues     Issue[]          @relation("IssueResolver")
+  inventoryChecks    InventoryCheck[]
+  auditLogs          AuditLog[]
+  apiTokens          ApiToken[]
 }
 
 model Site {
@@ -70,12 +71,8 @@ model Site {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  kits                Kit[]
-  computers           Computer[]
-  checkoutDestinations Checkout[] @relation("CheckoutDestination")
-  checkoutReturns     Checkout[] @relation("CheckoutReturn")
-  computerCheckoutDestinations ComputerCheckout[] @relation("ComputerCheckoutDestination")
-  computerCheckoutReturns      ComputerCheckout[] @relation("ComputerCheckoutReturn")
+  kits      Kit[]
+  computers Computer[]
 }
 
 enum KitStatus {
@@ -98,17 +95,19 @@ model Kit {
   description   String?
   status        KitStatus     @default(ACTIVE)
   qrCode        String?       @unique
-  siteId        Int
+  siteId        Int?
+  custodianId   Int?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
-  site      Site       @relation(fields: [siteId], references: [id])
+  site      Site?      @relation(fields: [siteId], references: [id])
+  custodian User?      @relation("KitCustodian", fields: [custodianId], references: [id])
   packs     Pack[]
   computers Computer[]
-  checkouts Checkout[]
   inventoryChecks InventoryCheck[] @relation("KitInventoryCheck")
 
   @@index([siteId])
+  @@index([custodianId])
 }
 
 model Pack {
@@ -182,18 +181,20 @@ model Computer {
   siteId          Int?
   kitId           Int?
   osId            Int?
+  custodianId     Int?
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
 
-  site     Site?             @relation(fields: [siteId], references: [id])
-  kit      Kit?              @relation(fields: [kitId], references: [id])
-  os       OperatingSystem?  @relation(fields: [osId], references: [id])
-  hostName HostName?
-  computerCheckouts ComputerCheckout[]
+  site      Site?             @relation(fields: [siteId], references: [id])
+  kit       Kit?              @relation(fields: [kitId], references: [id])
+  os        OperatingSystem?  @relation(fields: [osId], references: [id])
+  custodian User?             @relation("ComputerCustodian", fields: [custodianId], references: [id])
+  hostName  HostName?
 
   @@index([siteId])
   @@index([kitId])
   @@index([osId])
+  @@index([custodianId])
 }
 
 model HostName {
@@ -206,40 +207,25 @@ model HostName {
   computer Computer? @relation(fields: [computerId], references: [id])
 }
 
-model Checkout {
-  id                Int       @id @default(autoincrement())
-  kitId             Int
-  userId            Int
-  destinationSiteId Int?
-  returnSiteId      Int?
-  checkedOutAt      DateTime  @default(now())
-  checkedInAt       DateTime?
+// Transfer records chain-of-custody changes for kits and computers.
+// objectType is 'Kit' or 'Computer', objectId is the entity ID.
+model Transfer {
+  id             Int       @id @default(autoincrement())
+  objectType     String
+  objectId       Int
+  userId         Int
+  fromCustodian  String?
+  toCustodian    String?
+  fromSiteId     Int?
+  toSiteId       Int?
+  notes          String?
+  createdAt      DateTime  @default(now())
 
-  kit             Kit   @relation(fields: [kitId], references: [id])
-  user            User  @relation(fields: [userId], references: [id])
-  destinationSite Site? @relation("CheckoutDestination", fields: [destinationSiteId], references: [id])
-  returnSite      Site? @relation("CheckoutReturn", fields: [returnSiteId], references: [id])
+  user User @relation(fields: [userId], references: [id])
 
-  @@index([kitId])
+  @@index([objectType, objectId])
   @@index([userId])
-}
-
-model ComputerCheckout {
-  id                Int       @id @default(autoincrement())
-  computerId        Int
-  userId            Int
-  destinationSiteId Int?
-  returnSiteId      Int?
-  checkedOutAt      DateTime  @default(now())
-  checkedInAt       DateTime?
-
-  computer        Computer @relation(fields: [computerId], references: [id])
-  user            User     @relation(fields: [userId], references: [id])
-  destinationSite Site?    @relation("ComputerCheckoutDestination", fields: [destinationSiteId], references: [id])
-  returnSite      Site?    @relation("ComputerCheckoutReturn", fields: [returnSiteId], references: [id])
-
-  @@index([computerId])
-  @@index([userId])
+  @@index([createdAt])
 }
 
 enum IssueType {

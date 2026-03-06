@@ -52,8 +52,8 @@ describe('AiChatService', () => {
       expect(names).toContain('list_kits');
       expect(names).toContain('list_sites');
       expect(names).toContain('get_kit');
-      expect(names).toContain('checkout_kit');
-      expect(names).toContain('checkin_kit');
+      expect(names).toContain('transfer_kit');
+      expect(names).toContain('transfer_computer');
       // Should NOT contain write tools
       expect(names).not.toContain('create_kit');
       expect(names).not.toContain('delete_item');

@@ -128,8 +128,8 @@ describe('ReportService', () => {
     }
   });
 
-  it('returns checked-out-by-person report', async () => {
-    const data = await registry.reports.getCheckedOutByPerson();
+  it('returns transferred-by-person report', async () => {
+    const data = await registry.reports.getTransferredByPerson();
     expect(typeof data).toBe('object');
   });
 });

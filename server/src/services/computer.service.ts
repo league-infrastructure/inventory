@@ -16,6 +16,7 @@ const COMPUTER_INCLUDES = {
   site: { select: { id: true, name: true } },
   kit: { select: { id: true, name: true } },
   os: { select: { id: true, name: true } },
+  custodian: { select: { id: true, displayName: true } },
 };
 
 export class ComputerService extends BaseService<ComputerRecord, CreateComputerInput, UpdateComputerInput> {
@@ -57,15 +58,6 @@ export class ComputerService extends BaseService<ComputerRecord, CreateComputerI
     });
     if (!computer) throw new NotFoundError('Computer not found');
     return computer as unknown as ComputerRecord;
-  }
-
-  private async assertNotCheckedOut(computerId: number): Promise<void> {
-    const openCheckout = await this.prisma.computerCheckout.findFirst({
-      where: { computerId, checkedInAt: null },
-    });
-    if (openCheckout) {
-      throw new ValidationError('Computer has an open checkout and cannot be assigned to a kit');
-    }
   }
 
   async create(input: CreateComputerInput, userId: number): Promise<ComputerRecord> {
@@ -155,7 +147,6 @@ export class ComputerService extends BaseService<ComputerRecord, CreateComputerI
       if (typeof input.kitId !== 'number') throw new ValidationError('kitId must be a number');
       const kit = await this.prisma.kit.findUnique({ where: { id: input.kitId } });
       if (!kit) throw new ValidationError('Kit not found');
-      await this.assertNotCheckedOut(id);
     }
 
     if (input.osId != null) {

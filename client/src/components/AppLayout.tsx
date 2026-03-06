@@ -27,7 +27,7 @@ const navItems = [
   { to: '/kits', label: 'Kits', icon: Tags, roles: null,
     children: [{ to: '/packs', label: 'Packs' }, { to: '/kits/retired', label: 'Retired Kits' }],
   },
-  { to: '/checkouts', label: 'Checked Out', icon: PackageCheck, roles: null },
+  { to: '/checkouts', label: 'Transferred Out', icon: PackageCheck, roles: null },
   { to: '/issues', label: 'Issues', icon: AlertTriangle, roles: null },
   { to: '/computers', label: 'Computers', icon: Monitor, roles: ['QUARTERMASTER'],
     children: [{ to: '/hostnames', label: 'Host Names' }, { to: '/computers/inactive', label: 'Inactive Computers' }],
@@ -36,7 +36,7 @@ const navItems = [
   { to: '/reports/audit-log', label: 'Reports', icon: BarChart3, roles: ['QUARTERMASTER'],
     children: [
       { to: '/reports/inventory-age', label: 'Inventory Age' },
-      { to: '/reports/checked-out-by-person', label: 'By Person' },
+      { to: '/reports/transferred-by-person', label: 'By Person' },
     ],
   },
   { to: '/admin', label: 'Admin', icon: Shield, roles: null },

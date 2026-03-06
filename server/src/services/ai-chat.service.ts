@@ -68,13 +68,13 @@ function getToolDefinitions(): ToolDef[] {
     { name: 'update_hostname', description: 'Rename a host name', input_schema: { type: 'object', properties: { id: { type: 'number' }, name: { type: 'string' } }, required: ['id', 'name'] }, requiresQM: true },
     { name: 'delete_hostname', description: 'Delete an unassigned host name', input_schema: { type: 'object', properties: { id: { type: 'number' } }, required: ['id'] }, requiresQM: true },
 
-    // ─── Checkouts ─────────────────────────────────────
-    { name: 'checkout_kit', description: 'Check out a kit (assigns it to the authenticated user)', input_schema: { type: 'object', properties: { kitId: { type: 'number' } }, required: ['kitId'] }, requiresQM: false },
-    { name: 'checkin_kit', description: 'Check in a kit, returning it to a site', input_schema: { type: 'object', properties: { checkoutId: { type: 'number' }, returnSiteId: { type: 'number' } }, required: ['checkoutId', 'returnSiteId'] }, requiresQM: false },
+    // ─── Transfers ────────────────────────────────────
+    { name: 'transfer_kit', description: 'Transfer a kit to a new custodian and/or site', input_schema: { type: 'object', properties: { kitId: { type: 'number' }, custodianId: { type: ['number', 'null'] }, siteId: { type: ['number', 'null'] }, notes: { type: 'string' } }, required: ['kitId'] }, requiresQM: false },
+    { name: 'transfer_computer', description: 'Transfer a standalone computer to a new custodian and/or site', input_schema: { type: 'object', properties: { computerId: { type: 'number' }, custodianId: { type: ['number', 'null'] }, siteId: { type: ['number', 'null'] }, notes: { type: 'string' } }, required: ['computerId'] }, requiresQM: false },
   ];
 }
 
-const SYSTEM_PROMPT = `You are an AI assistant for the League of Amazing Programmers inventory management system. You help users manage equipment kits, packs, items, computers, sites, and checkouts.
+const SYSTEM_PROMPT = `You are an AI assistant for the League of Amazing Programmers inventory management system. You help users manage equipment kits, packs, items, computers, sites, and transfers.
 
 You have access to tools that let you read and modify inventory data. Use them to fulfill user requests.
 
@@ -84,7 +84,7 @@ Key concepts:
 - **Packs** are groups of related items within a kit (e.g., "Laptops", "Cables").
 - **Items** are individual pieces within a pack, either COUNTED (with expected quantity) or CONSUMABLE (variable quantity).
 - **Computers** are tracked hardware assets with serial numbers, host names, and disposition status.
-- **Checkouts** track when kits are borrowed and returned.
+- **Transfers** change the custodian and/or site of kits and computers. A null custodian means admin custody.
 
 Be concise and helpful. When you make changes, summarize what you did.`;
 
@@ -140,9 +140,9 @@ async function executeTool(
       case 'update_hostname': return JSON.stringify(await services.hostNames.update(input.id as number, { name: input.name as string }, userId), null, 2);
       case 'delete_hostname': { await services.hostNames.delete(input.id as number); return JSON.stringify({ deleted: true }); }
 
-      // Checkouts
-      case 'checkout_kit': return JSON.stringify(await services.checkouts.checkOut({ kitId: input.kitId as number }, userId), null, 2);
-      case 'checkin_kit': return JSON.stringify(await services.checkouts.checkIn(input.checkoutId as number, { returnSiteId: input.returnSiteId as number }, userId), null, 2);
+      // Transfers
+      case 'transfer_kit': return JSON.stringify(await services.transfers.transfer({ objectType: 'Kit', objectId: input.kitId as number, custodianId: input.custodianId as number | null | undefined, siteId: input.siteId as number | null | undefined, notes: input.notes as string | undefined }, userId), null, 2);
+      case 'transfer_computer': return JSON.stringify(await services.transfers.transfer({ objectType: 'Computer', objectId: input.computerId as number, custodianId: input.custodianId as number | null | undefined, siteId: input.siteId as number | null | undefined, notes: input.notes as string | undefined }, userId), null, 2);
 
       default:
         return JSON.stringify({ error: `Unknown tool: ${name}` });

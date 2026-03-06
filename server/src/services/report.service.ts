@@ -177,26 +177,50 @@ export class ReportService {
     return rows;
   }
 
-  async getCheckedOutByPerson(): Promise<Record<string, any[]>> {
-    const checkouts = await this.prisma.checkout.findMany({
-      where: { checkedInAt: null },
+  async getTransferredByPerson(): Promise<Record<string, any[]>> {
+    const byPerson: Record<string, any[]> = {};
+
+    // Kits with custodians
+    const kits = await this.prisma.kit.findMany({
+      where: { custodianId: { not: null }, status: 'ACTIVE' },
       include: {
-        kit: { select: { id: true, number: true, name: true } },
-        user: { select: { id: true, displayName: true } },
+        custodian: { select: { id: true, displayName: true } },
+        site: { select: { id: true, name: true } },
       },
-      orderBy: { checkedOutAt: 'desc' },
+      orderBy: { number: 'asc' },
     });
 
-    const byPerson: Record<string, any[]> = {};
-    for (const co of checkouts) {
-      const name = co.user.displayName;
+    for (const kit of kits) {
+      const name = kit.custodian!.displayName;
       if (!byPerson[name]) byPerson[name] = [];
       byPerson[name].push({
-        checkoutId: co.id,
-        kitId: co.kit.id,
-        kitNumber: co.kit.number,
-        kitName: co.kit.name,
-        checkedOutAt: co.checkedOutAt.toISOString(),
+        type: 'kit',
+        id: kit.id,
+        number: kit.number,
+        name: kit.name,
+        site: kit.site?.name ?? null,
+      });
+    }
+
+    // Standalone computers with custodians
+    const computers = await this.prisma.computer.findMany({
+      where: { custodianId: { not: null }, kitId: null },
+      include: {
+        custodian: { select: { id: true, displayName: true } },
+        site: { select: { id: true, name: true } },
+        hostName: { select: { name: true } },
+      },
+      orderBy: { id: 'asc' },
+    });
+
+    for (const c of computers) {
+      const name = c.custodian!.displayName;
+      if (!byPerson[name]) byPerson[name] = [];
+      byPerson[name].push({
+        type: 'computer',
+        id: c.id,
+        name: c.hostName?.name || c.model || `Computer #${c.id}`,
+        site: c.site?.name ?? null,
       });
     }
 
