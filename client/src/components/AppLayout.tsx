@@ -1,7 +1,7 @@
 import { useState, useEffect, createContext, useContext } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
-  Home, Monitor, Tags, PackageCheck, MapPin, Shield, Menu, X, LogOut, ChevronDown, UserCircle,
+  Home, Monitor, Tags, PackageCheck, MapPin, Shield, Menu, X, LogOut, ChevronDown, UserCircle, AlertTriangle,
 } from 'lucide-react';
 import AiChat from './AiChat';
 
@@ -28,6 +28,7 @@ const navItems = [
     children: [{ to: '/packs', label: 'Packs' }, { to: '/kits/retired', label: 'Retired Kits' }],
   },
   { to: '/checkouts', label: 'Checked Out', icon: PackageCheck, roles: null },
+  { to: '/issues', label: 'Issues', icon: AlertTriangle, roles: null },
   { to: '/computers', label: 'Computers', icon: Monitor, roles: ['QUARTERMASTER'],
     children: [{ to: '/hostnames', label: 'Host Names' }, { to: '/computers/inactive', label: 'Inactive Computers' }],
   },

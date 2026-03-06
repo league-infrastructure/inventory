@@ -6,4 +6,5 @@ export * from './pack';
 export * from './item';
 export * from './checkout';
 export * from './inventoryCheck';
+export * from './issue';
 export * from './user';
