@@ -24,6 +24,11 @@ export class LabelService {
     return QRCode.toBuffer(url, { width: 120, margin: 1, type: 'png' });
   }
 
+  private async generateQrDataUri(path: string): Promise<string> {
+    const url = `${this.baseUrl}${path}`;
+    return QRCode.toDataURL(url, { width: 120, margin: 1 });
+  }
+
   private createDoc(): typeof PDFDocument.prototype {
     return new PDFDocument({
       size: [LABEL_WIDTH_PT, LABEL_HEIGHT_PT],
@@ -168,7 +173,7 @@ export class LabelService {
     });
   }
 
-  async generateBatchLabels(kitId: number, packIds: number[]): Promise<Buffer> {
+  async generateBatchLabels(kitId: number, packIds: number[], includeKit = true): Promise<Buffer> {
     const kit = await this.prisma.kit.findUnique({
       where: { id: kitId },
       include: {
@@ -182,13 +187,18 @@ export class LabelService {
     const buffers: Buffer[] = [];
     doc.on('data', (chunk: Buffer) => buffers.push(chunk));
 
-    // Kit label (first page)
-    const kitQr = await this.generateQrBuffer(`/k/${kitId}`);
-    this.addLabelContent(doc, kitQr,
-      `Kit #${kit.number}`,
-      kit.name,
-      [kit.site.name],
-    );
+    let firstPage = true;
+
+    // Kit label (first page, if selected)
+    if (includeKit) {
+      const kitQr = await this.generateQrBuffer(`/k/${kitId}`);
+      this.addLabelContent(doc, kitQr,
+        `Kit #${kit.number}`,
+        kit.name,
+        [kit.site.name],
+      );
+      firstPage = false;
+    }
 
     // Pack labels
     const selectedPacks = packIds.length > 0
@@ -196,7 +206,10 @@ export class LabelService {
       : kit.packs;
 
     for (const pack of selectedPacks) {
-      doc.addPage({ size: [LABEL_WIDTH_PT, LABEL_HEIGHT_PT], margins: { top: MARGIN, bottom: MARGIN, left: MARGIN, right: MARGIN } });
+      if (!firstPage) {
+        doc.addPage({ size: [LABEL_WIDTH_PT, LABEL_HEIGHT_PT], margins: { top: MARGIN, bottom: MARGIN, left: MARGIN, right: MARGIN } });
+      }
+      firstPage = false;
       const packQr = await this.generateQrBuffer(`/p/${pack.id}`);
       this.addLabelContent(doc, packQr,
         pack.name,
@@ -209,5 +222,104 @@ export class LabelService {
     return new Promise((resolve) => {
       doc.on('end', () => resolve(Buffer.concat(buffers)));
     });
+  }
+
+  private renderLabelHtml(qrDataUri: string, title: string, subtitle: string, details: string[]): string {
+    const detailLines = details.map((d) => `<div class="detail">${this.escapeHtml(d)}</div>`).join('\n');
+    return `
+      <div class="label">
+        <div class="org">${this.escapeHtml(ORG_NAME)}</div>
+        <img class="qr" src="${qrDataUri}" />
+        <div class="title">${this.escapeHtml(title)}</div>
+        ${subtitle ? `<div class="subtitle">${this.escapeHtml(subtitle)}</div>` : ''}
+        ${detailLines}
+        <div class="spacer"></div>
+        <div class="footer">
+          <div>${this.escapeHtml(CONTACT_URL)}</div>
+          <div>${this.escapeHtml(PHONE)}</div>
+        </div>
+      </div>`;
+  }
+
+  private escapeHtml(str: string): string {
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  async generateBatchHtml(kitId: number, packIds: number[], includeKit = true): Promise<string> {
+    const kit = await this.prisma.kit.findUnique({
+      where: { id: kitId },
+      include: {
+        site: { select: { name: true } },
+        packs: { select: { id: true, name: true, description: true } },
+      },
+    });
+    if (!kit) throw new NotFoundError('Kit not found');
+
+    const labels: string[] = [];
+
+    if (includeKit) {
+      const qr = await this.generateQrDataUri(`/k/${kitId}`);
+      labels.push(this.renderLabelHtml(qr, `Kit #${kit.number}`, kit.name, [kit.site.name]));
+    }
+
+    const selectedPacks = packIds.length > 0
+      ? kit.packs.filter((p) => packIds.includes(p.id))
+      : kit.packs;
+
+    for (const pack of selectedPacks) {
+      const qr = await this.generateQrDataUri(`/p/${pack.id}`);
+      labels.push(this.renderLabelHtml(
+        qr,
+        pack.name,
+        `Kit #${kit.number} — ${kit.name}`,
+        pack.description ? [pack.description] : [],
+      ));
+    }
+
+    return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Labels — Kit #${kit.number}</title>
+<style>
+  @page {
+    size: 59mm 102mm;
+    margin: 2mm;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 59mm; font-family: Helvetica, Arial, sans-serif; }
+  .label {
+    width: 55mm;
+    max-height: 98mm;
+    padding: 1mm 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    page-break-after: always;
+    overflow: hidden;
+  }
+  .label:last-child { page-break-after: auto; }
+  .org { font-size: 7pt; font-weight: bold; text-align: center; }
+  .qr { width: 22mm; height: 22mm; margin: 1mm 0; }
+  .title { font-size: 10pt; font-weight: bold; text-align: center; margin-top: 1mm; }
+  .subtitle { font-size: 8pt; text-align: center; margin-top: 0.5mm; }
+  .detail { font-size: 7pt; text-align: center; margin-top: 0.5mm; }
+  .spacer { flex: 1; }
+  .footer {
+    font-size: 6pt;
+    text-align: center;
+    margin-top: 1mm;
+  }
+  @media screen {
+    html, body { width: auto; }
+    body { background: #eee; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 20px; }
+    .label { width: 55mm; height: 98mm; background: white; border: 1px solid #ccc; border-radius: 4px; }
+  }
+</style>
+</head>
+<body>
+${labels.join('\n')}
+</body>
+</html>`;
   }
 }

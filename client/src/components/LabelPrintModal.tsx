@@ -47,17 +47,16 @@ export default function LabelPrintModal({ kitId, kitName, packs, onClose }: Prop
       const res = await fetch(`/api/labels/kit/${kitId}/batch`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ packIds }),
+        body: JSON.stringify({ packIds, includeKit }),
       });
       if (!res.ok) throw new Error('Failed to generate labels');
 
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const printWindow = window.open(url);
+      const html = await res.text();
+      const printWindow = window.open('', '_blank');
       if (printWindow) {
-        printWindow.onload = () => {
-          printWindow.print();
-        };
+        printWindow.document.write(html);
+        printWindow.document.close();
+        printWindow.onafterprint = () => printWindow.close();
       }
     } catch (e) {
       console.error('Label generation failed:', e);

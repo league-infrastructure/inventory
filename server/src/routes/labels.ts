@@ -39,10 +39,10 @@ export function labelsRouter(services: ServiceRegistry): Router {
     try {
       const id = parseInt(req.params.id as string, 10);
       const packIds: number[] = req.body.packIds || [];
-      const pdf = await services.labels.generateBatchLabels(id, packIds);
-      res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `inline; filename="kit-${id}-labels.pdf"`);
-      res.send(pdf);
+      const includeKit: boolean = req.body.includeKit !== false;
+      const html = await services.labels.generateBatchHtml(id, packIds, includeKit);
+      res.setHeader('Content-Type', 'text/html');
+      res.send(html);
     } catch (err) { next(err); }
   });
 
