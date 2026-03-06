@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTableSort } from '../../lib/useTableSort';
+import SortableHeader from '../../components/SortableHeader';
 
 interface Checkout {
   id: number;
@@ -14,6 +16,7 @@ export default function CheckedOutList() {
   const [checkouts, setCheckouts] = useState<Checkout[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { processed: sorted, sort, toggleSort, filters, setFilter } = useTableSort(checkouts, { key: 'kit.name', direction: 'asc' });
 
   useEffect(() => {
     fetch('/api/checkouts')
@@ -44,14 +47,14 @@ export default function CheckedOutList() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200">
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">Kit Name</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">Checked Out By</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">Destination Site</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">Checkout Time</th>
+                <SortableHeader label="Kit Name" sortKey="kit.name" currentSort={sort} onSort={toggleSort} filterValue={filters['kit.name']} onFilter={setFilter} />
+                <SortableHeader label="Checked Out By" sortKey="user.displayName" currentSort={sort} onSort={toggleSort} filterValue={filters['user.displayName']} onFilter={setFilter} />
+                <SortableHeader label="Destination Site" sortKey="destinationSite.name" currentSort={sort} onSort={toggleSort} filterValue={filters['destinationSite.name']} onFilter={setFilter} />
+                <SortableHeader label="Checkout Time" sortKey="checkedOutAt" currentSort={sort} onSort={toggleSort} />
               </tr>
             </thead>
             <tbody>
-              {checkouts.map((checkout) => (
+              {sorted.map((checkout) => (
                 <tr
                   key={checkout.id}
                   className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"

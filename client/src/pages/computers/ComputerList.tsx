@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Tags } from 'lucide-react';
+import { useTableSort } from '../../lib/useTableSort';
+import SortableHeader from '../../components/SortableHeader';
 
 interface Computer {
   id: number;
@@ -35,6 +37,7 @@ export default function ComputerList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dispositionFilter, setDispositionFilter] = useState('ACTIVE');
+  const { processed: sorted, sort, toggleSort, filters, setFilter } = useTableSort(computers, { key: 'hostName.name', direction: 'asc' });
 
   useEffect(() => {
     setLoading(true);
@@ -99,15 +102,15 @@ export default function ComputerList() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200">
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">Host Name</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">Model</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">Disposition</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-700 hidden sm:table-cell">Site</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-700 hidden sm:table-cell">Kit</th>
+                <SortableHeader label="Host Name" sortKey="hostName.name" currentSort={sort} onSort={toggleSort} filterValue={filters['hostName.name']} onFilter={setFilter} />
+                <SortableHeader label="Model" sortKey="model" currentSort={sort} onSort={toggleSort} filterValue={filters['model']} onFilter={setFilter} />
+                <SortableHeader label="Disposition" sortKey="disposition" currentSort={sort} onSort={toggleSort} filterValue={filters['disposition']} onFilter={setFilter} />
+                <SortableHeader label="Site" sortKey="site.name" currentSort={sort} onSort={toggleSort} filterValue={filters['site.name']} onFilter={setFilter} className="hidden sm:table-cell" />
+                <SortableHeader label="Kit" sortKey="kit.name" currentSort={sort} onSort={toggleSort} filterValue={filters['kit.name']} onFilter={setFilter} className="hidden sm:table-cell" />
               </tr>
             </thead>
             <tbody>
-              {computers.map((c) => (
+              {sorted.map((c) => (
                 <tr
                   key={c.id}
                   className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"

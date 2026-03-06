@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, MapPin } from 'lucide-react';
+import { useTableSort } from '../../lib/useTableSort';
+import SortableHeader from '../../components/SortableHeader';
 
 interface Site {
   id: number;
@@ -15,6 +17,7 @@ export default function SiteList() {
   const [sites, setSites] = useState<Site[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { processed: sorted, sort, toggleSort, filters, setFilter } = useTableSort(sites, { key: 'name', direction: 'asc' });
 
   const [showForm, setShowForm] = useState(false);
   const [formName, setFormName] = useState('');
@@ -142,14 +145,14 @@ export default function SiteList() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200">
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">Name</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">Address</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-700 w-20">Home</th>
+                <SortableHeader label="Name" sortKey="name" currentSort={sort} onSort={toggleSort} filterValue={filters['name']} onFilter={setFilter} />
+                <SortableHeader label="Address" sortKey="address" currentSort={sort} onSort={toggleSort} filterValue={filters['address']} onFilter={setFilter} />
+                <SortableHeader label="Home" sortKey="isHomeSite" currentSort={sort} onSort={toggleSort} className="w-20" />
                 <th className="px-4 py-3 w-12"></th>
               </tr>
             </thead>
             <tbody>
-              {sites.map((s) => (
+              {sorted.map((s) => (
                 <tr key={s.id} className="border-b border-gray-100 hover:bg-gray-50">
                   <td className="px-4 py-3 font-medium text-gray-900">
                     <span className="inline-flex items-center gap-1.5">

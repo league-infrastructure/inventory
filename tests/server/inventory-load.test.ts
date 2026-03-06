@@ -57,6 +57,8 @@ interface SeedPack {
 
 interface SeedKit {
   slug: string;
+  number: number;
+  containerType: string;
   name: string;
   description: string;
   siteIndex: number;
@@ -148,6 +150,8 @@ describe('Inventory load-and-verify', () => {
   it('creates kits with packs and items', async () => {
     for (const k of seed.kits) {
       const kit = await registry.kits.create({
+        number: k.number,
+        containerType: k.containerType as any,
         name: k.name,
         description: k.description,
         siteId: siteIds[k.siteIndex],
@@ -239,6 +243,8 @@ describe('Inventory load-and-verify', () => {
       const kitId = kitIds.get(sk.slug)!;
       const kit = await registry.kits.get(kitId);
 
+      expect(kit.number).toBe(sk.number);
+      expect(kit.containerType).toBe(sk.containerType);
       expect(kit.name).toBe(sk.name);
       expect(kit.description).toBe(sk.description);
       expect(kit.siteId).toBe(siteIds[sk.siteIndex]);

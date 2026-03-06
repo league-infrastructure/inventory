@@ -9,7 +9,7 @@ beforeAll(async () => {
   await setupTestUser();
   const site = await getRegistry().sites.create({ name: `svc-test-${getSuffix()}-co-site` }, getUserId());
   siteId = site.id;
-  const kit = await getRegistry().kits.create({ name: `svc-test-${getSuffix()}-co-kit`, siteId }, getUserId());
+  const kit = await getRegistry().kits.create({ number: (getSuffix() % 100000) + 200, name: `svc-test-${getSuffix()}-co-kit`, siteId }, getUserId());
   kitId = kit.id;
 });
 
@@ -98,7 +98,7 @@ describe('CheckoutService', () => {
 
   it('create delegates to checkOut', async () => {
     // Create a fresh kit for this test
-    const kit2 = await getRegistry().kits.create({ name: `svc-test-${getSuffix()}-co-kit2`, siteId }, getUserId());
+    const kit2 = await getRegistry().kits.create({ number: (getSuffix() % 100000) + 201, name: `svc-test-${getSuffix()}-co-kit2`, siteId }, getUserId());
     const co = await getRegistry().checkouts.create({
       kitId: kit2.id,
       destinationSiteId: siteId,
@@ -109,7 +109,7 @@ describe('CheckoutService', () => {
   });
 
   it('update delegates to checkIn', async () => {
-    const kit3 = await getRegistry().kits.create({ name: `svc-test-${getSuffix()}-co-kit3`, siteId }, getUserId());
+    const kit3 = await getRegistry().kits.create({ number: (getSuffix() % 100000) + 202, name: `svc-test-${getSuffix()}-co-kit3`, siteId }, getUserId());
     const co = await getRegistry().checkouts.checkOut({ kitId: kit3.id, destinationSiteId: siteId }, getUserId());
     const result = await getRegistry().checkouts.update(co.id, { returnSiteId: siteId }, getUserId());
     expect(result.checkedInAt).not.toBeNull();

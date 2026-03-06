@@ -30,9 +30,14 @@ afterAll(async () => {
   await teardown();
 });
 
+let kitNumber = 0;
+function nextKitNumber() { return ++kitNumber + (getSuffix() % 100000); }
+
 describe('KitService', () => {
   it('creates a kit', async () => {
+    const num = nextKitNumber();
     const kit = await getRegistry().kits.create({
+      number: num,
       name: `svc-test-${getSuffix()}-kit`,
       description: 'Test kit',
       siteId,
@@ -45,12 +50,12 @@ describe('KitService', () => {
   });
 
   it('throws ValidationError for missing name', async () => {
-    await expect(getRegistry().kits.create({ name: '', siteId }, getUserId()))
+    await expect(getRegistry().kits.create({ number: nextKitNumber(), name: '', siteId }, getUserId()))
       .rejects.toThrow(ValidationError);
   });
 
   it('throws ValidationError for missing siteId', async () => {
-    await expect(getRegistry().kits.create({ name: 'x', siteId: 0 } as any, getUserId()))
+    await expect(getRegistry().kits.create({ number: nextKitNumber(), name: 'x', siteId: 0 } as any, getUserId()))
       .rejects.toThrow(ValidationError);
   });
 

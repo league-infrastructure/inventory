@@ -45,6 +45,8 @@
   ],
   "kits": [
     {
+      "number": 1,
+      "containerType": "BAG",
       "name": "Networking Kit A",
       "description": "Standard networking equipment",
       "siteIndex": 0,
@@ -69,6 +71,8 @@
       ]
     },
     {
+      "number": 2,
+      "containerType": "SMALL_TOTE",
       "name": "Presentation Kit B",
       "description": "AV equipment for presentations",
       "siteIndex": 1,

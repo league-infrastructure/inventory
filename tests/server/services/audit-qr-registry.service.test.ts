@@ -81,6 +81,7 @@ describe('QrService', () => {
       name: `svc-test-${getSuffix()}-aqr-qrsite`,
     }, getUserId());
     const kit = await getRegistry().kits.create({
+      number: (getSuffix() % 100000) + 300,
       name: `svc-test-${getSuffix()}-aqr-qrkit`,
       siteId: site.id,
     }, getUserId());

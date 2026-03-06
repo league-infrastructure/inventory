@@ -79,15 +79,24 @@ enum KitStatus {
   RETIRED
 }
 
+enum ContainerType {
+  BAG
+  LARGE_TOTE
+  SMALL_TOTE
+  DUFFEL
+}
+
 model Kit {
-  id          Int       @id @default(autoincrement())
-  name        String
-  description String?
-  status      KitStatus @default(ACTIVE)
-  qrCode      String?   @unique
-  siteId      Int
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id            Int           @id @default(autoincrement())
+  number        Int           @unique
+  containerType ContainerType @default(BAG)
+  name          String
+  description   String?
+  status        KitStatus     @default(ACTIVE)
+  qrCode        String?       @unique
+  siteId        Int
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
   site      Site       @relation(fields: [siteId], references: [id])
   packs     Pack[]

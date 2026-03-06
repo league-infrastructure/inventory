@@ -10,7 +10,7 @@ beforeAll(async () => {
   await setupTestUser();
   const site = await getRegistry().sites.create({ name: `svc-test-${getSuffix()}-pi-site` }, getUserId());
   siteId = site.id;
-  const kit = await getRegistry().kits.create({ name: `svc-test-${getSuffix()}-pi-kit`, siteId }, getUserId());
+  const kit = await getRegistry().kits.create({ number: (getSuffix() % 100000) + 100, name: `svc-test-${getSuffix()}-pi-kit`, siteId }, getUserId());
   kitId = kit.id;
 });
 

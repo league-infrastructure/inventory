@@ -40,6 +40,8 @@ interface SeedData {
   hostNames: { name: string }[];
   computers: { serialNumber: string; model: string; notes: string | null; siteIndex: number; hostNameIndex: number }[];
   kits: {
+    number: number;
+    containerType: string;
     name: string;
     description: string;
     siteIndex: number;
@@ -124,8 +126,11 @@ describe('Round-trip test: import → export → compare', () => {
     expect(createdComputerIds).toHaveLength(seed.computers.length);
 
     // 4. Create kits with packs and items
-    for (const k of seed.kits) {
+    for (let ki = 0; ki < seed.kits.length; ki++) {
+      const k = seed.kits[ki];
       const kit = await registry.kits.create({
+        number: (suffix % 100000) + 500 + ki,
+        containerType: k.containerType as any,
         name: `${k.name}-${suffix}`,
         description: k.description,
         siteId: createdSiteIds[k.siteIndex],

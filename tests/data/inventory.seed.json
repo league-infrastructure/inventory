@@ -2,14 +2,14 @@
   "sites": [
     {
       "name": "Carmel Valley",
-      "address": "3800 Mykonos Ln, San Diego, CA 92130",
+      "address": "12625 High Bluff Dr, San Diego, CA 92130",
       "latitude": 32.9305,
       "longitude": -117.2226,
       "isHomeSite": true
     },
     {
       "name": "Busboom Storage",
-      "address": "4455 Murphy Canyon Rd, San Diego, CA 92123",
+      "address": "1370 Wilbur Ave, San Diego, CA 92109",
       "latitude": 32.8148,
       "longitude": -117.1107,
       "isHomeSite": false
@@ -145,7 +145,9 @@
   "kits": [
     {
       "slug": "bag-14-hp-laptops",
-      "name": "Bag 14 — HP Laptops",
+      "number": 14,
+      "containerType": "BAG",
+      "name": "HP Laptops",
       "description": "5-slot rolling bag with 2025 HP 17\" laptops, chargers, and mice",
       "siteIndex": 0,
       "packs": [
@@ -171,7 +173,9 @@
     },
     {
       "slug": "bag-15-hp-laptops",
-      "name": "Bag 15 — HP Laptops",
+      "number": 15,
+      "containerType": "BAG",
+      "name": "HP Laptops",
       "description": "5-slot rolling bag with 2026 HP 17\" laptops",
       "siteIndex": 1,
       "packs": [
@@ -188,7 +192,9 @@
     },
     {
       "slug": "bag-8-macbooks",
-      "name": "Bag 8 — MacBooks",
+      "number": 8,
+      "containerType": "BAG",
+      "name": "MacBooks",
       "description": "Padded bag with MacBook Airs for Carmel Valley sessions",
       "siteIndex": 0,
       "packs": [
@@ -212,7 +218,9 @@
     },
     {
       "slug": "bag-2-dell-laptops",
-      "name": "Bag 2 — Dell Laptops",
+      "number": 2,
+      "containerType": "BAG",
+      "name": "Dell Laptops",
       "description": "5-slot bag with Dell Inspiron 15 laptops",
       "siteIndex": 1,
       "packs": [
@@ -228,7 +236,9 @@
     },
     {
       "slug": "bag-6-lenovo-laptops",
-      "name": "Bag 6 — Lenovo Laptops",
+      "number": 6,
+      "containerType": "SMALL_TOTE",
+      "name": "Lenovo Laptops",
       "description": "Small bag with 3 Lenovo IdeaPad 3 laptops",
       "siteIndex": 1,
       "packs": [
@@ -244,7 +254,9 @@
     },
     {
       "slug": "bag-7-microbit-motors",
-      "name": "Bag 7 — Micro:bit Motors",
+      "number": 7,
+      "containerType": "LARGE_TOTE",
+      "name": "Micro:bit Motors",
       "description": "Bin with micro:bit boards and motor driver kits for robotics lessons",
       "siteIndex": 1,
       "packs": [
@@ -273,7 +285,9 @@
     },
     {
       "slug": "bag-16a-robot-riot",
-      "name": "Bag 16A — Robot Riot",
+      "number": 16,
+      "containerType": "LARGE_TOTE",
+      "name": "Robot Riot",
       "description": "Bin with micro:bits, Cutebot Pro chassis, and game controllers for Robot Riot activity",
       "siteIndex": 1,
       "packs": [
@@ -307,7 +321,9 @@
     },
     {
       "slug": "bag-24-robot-explorer",
-      "name": "Bag 24 — Robot Explorer A",
+      "number": 24,
+      "containerType": "LARGE_TOTE",
+      "name": "Robot Explorer A",
       "description": "Bin with Edison programmable robots for introductory robotics",
       "siteIndex": 1,
       "packs": [

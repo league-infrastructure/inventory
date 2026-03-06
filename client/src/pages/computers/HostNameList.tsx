@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Trash2 } from 'lucide-react';
+import { useTableSort } from '../../lib/useTableSort';
+import SortableHeader from '../../components/SortableHeader';
 
 interface HostName {
   id: number;
@@ -15,6 +17,7 @@ export default function HostNameList() {
   const [error, setError] = useState<string | null>(null);
   const [newName, setNewName] = useState('');
   const [addError, setAddError] = useState<string | null>(null);
+  const { processed: sorted, sort, toggleSort, filters, setFilter } = useTableSort(hostNames, { key: 'name', direction: 'asc' });
 
   useEffect(() => {
     fetch('/api/hostnames')
@@ -95,14 +98,14 @@ export default function HostNameList() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200">
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">Name</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">Status</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">Assigned Computer</th>
+                <SortableHeader label="Name" sortKey="name" currentSort={sort} onSort={toggleSort} filterValue={filters['name']} onFilter={setFilter} />
+                <SortableHeader label="Status" sortKey="computerId" currentSort={sort} onSort={toggleSort} />
+                <SortableHeader label="Assigned Computer" sortKey="computer.model" currentSort={sort} onSort={toggleSort} filterValue={filters['computer.model']} onFilter={setFilter} />
                 <th className="px-4 py-3 w-12"></th>
               </tr>
             </thead>
             <tbody>
-              {hostNames.map((h) => (
+              {sorted.map((h) => (
                 <tr key={h.id} className="border-b border-gray-100 hover:bg-gray-50">
                   <td className="px-4 py-3 font-medium text-gray-900">{h.name}</td>
                   <td className="px-4 py-3">

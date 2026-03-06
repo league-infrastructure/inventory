@@ -1,13 +1,30 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Plus } from 'lucide-react';
+import { useTableSort } from '../../lib/useTableSort';
+import SortableHeader from '../../components/SortableHeader';
+
+type ContainerType = 'BAG' | 'LARGE_TOTE' | 'SMALL_TOTE' | 'DUFFEL';
+
+const CONTAINER_TYPE_LABELS: Record<ContainerType, string> = {
+  BAG: 'Bag',
+  LARGE_TOTE: 'Large Tote',
+  SMALL_TOTE: 'Small Tote',
+  DUFFEL: 'Duffel',
+};
 
 interface Kit {
   id: number;
+  number: number;
+  containerType: ContainerType;
   name: string;
   status: string;
   qrCode: string | null;
   site: { id: number; name: string };
+}
+
+function kitDisplayName(kit: Kit): string {
+  return `${CONTAINER_TYPE_LABELS[kit.containerType] || kit.containerType} ${kit.number} — ${kit.name}`;
 }
 
 export default function KitList() {
@@ -16,6 +33,7 @@ export default function KitList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState('ACTIVE');
+  const { processed: sorted, sort, toggleSort, filters, setFilter } = useTableSort(kits, { key: 'name', direction: 'asc' });
 
   useEffect(() => {
     setLoading(true);
@@ -70,19 +88,19 @@ export default function KitList() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200">
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">Name</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">Site</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">Status</th>
+                <SortableHeader label="Name" sortKey="name" currentSort={sort} onSort={toggleSort} filterValue={filters['name']} onFilter={setFilter} />
+                <SortableHeader label="Site" sortKey="site.name" currentSort={sort} onSort={toggleSort} filterValue={filters['site.name']} onFilter={setFilter} />
+                <SortableHeader label="Status" sortKey="status" currentSort={sort} onSort={toggleSort} filterValue={filters['status']} onFilter={setFilter} />
               </tr>
             </thead>
             <tbody>
-              {kits.map((kit) => (
+              {sorted.map((kit) => (
                 <tr
                   key={kit.id}
                   className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
                   onClick={() => navigate(`/kits/${kit.id}`)}
                 >
-                  <td className="px-4 py-3 font-medium text-gray-900">{kit.name}</td>
+                  <td className="px-4 py-3 font-medium text-gray-900">{kitDisplayName(kit)}</td>
                   <td className="px-4 py-3 text-gray-600">{kit.site.name}</td>
                   <td className="px-4 py-3">
                     <span

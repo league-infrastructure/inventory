@@ -27,7 +27,7 @@ describe('Checkouts API', () => {
     // Create a kit
     const k = await qmAgent
       .post('/api/kits')
-      .send({ name: `CO-Test-Kit-${suffix}`, siteId });
+      .send({ number: (suffix % 100000) + 600, name: `CO-Test-Kit-${suffix}`, siteId });
     kitId = k.body.id;
   });
 

@@ -1,12 +1,12 @@
-import { PrismaClient, KitStatus } from '@prisma/client';
+import { PrismaClient, KitStatus, ContainerType } from '@prisma/client';
 import { AuditService } from './audit.service';
 import { BaseService } from './base.service';
 import { NotFoundError, ValidationError } from './errors';
-import { KitRecord, KitDetailRecord, CreateKitInput, UpdateKitInput } from '../contracts';
+import { KitRecord, KitDetailRecord, CreateKitInput, UpdateKitInput, CONTAINER_TYPES } from '../contracts';
 
 export class KitService extends BaseService<KitRecord, CreateKitInput, UpdateKitInput> {
   protected readonly entityName = 'Kit';
-  protected readonly auditFields = ['name', 'description', 'status', 'siteId', 'qrCode'];
+  protected readonly auditFields = ['number', 'containerType', 'name', 'description', 'status', 'siteId', 'qrCode'];
 
   constructor(prisma: PrismaClient, audit: AuditService) {
     super(prisma, audit);
@@ -21,7 +21,7 @@ export class KitService extends BaseService<KitRecord, CreateKitInput, UpdateKit
     const kits = await this.prisma.kit.findMany({
       where,
       include: { site: { select: { id: true, name: true } } },
-      orderBy: { name: 'asc' },
+      orderBy: { number: 'asc' },
     });
     return kits as unknown as KitRecord[];
   }
@@ -46,12 +46,22 @@ export class KitService extends BaseService<KitRecord, CreateKitInput, UpdateKit
   }
 
   async create(input: CreateKitInput, userId: number): Promise<KitRecord> {
+    if (input.number == null || typeof input.number !== 'number') {
+      throw new ValidationError('Number is required');
+    }
     if (!input.name || typeof input.name !== 'string' || input.name.trim().length === 0) {
       throw new ValidationError('Name is required');
     }
     if (!input.siteId || typeof input.siteId !== 'number') {
       throw new ValidationError('siteId is required');
     }
+    if (input.containerType && !CONTAINER_TYPES.includes(input.containerType)) {
+      throw new ValidationError('Invalid container type');
+    }
+
+    // Check number uniqueness
+    const existing = await this.prisma.kit.findUnique({ where: { number: input.number } });
+    if (existing) throw new ValidationError(`Kit number ${input.number} is already in use`);
 
     const site = await this.prisma.site.findUnique({ where: { id: input.siteId } });
     if (!site || !site.isActive) {
@@ -60,6 +70,8 @@ export class KitService extends BaseService<KitRecord, CreateKitInput, UpdateKit
 
     const kit = await this.prisma.kit.create({
       data: {
+        number: input.number,
+        containerType: (input.containerType || 'BAG') as ContainerType,
         name: input.name.trim(),
         description: input.description || null,
         siteId: input.siteId,
@@ -84,6 +96,13 @@ export class KitService extends BaseService<KitRecord, CreateKitInput, UpdateKit
     if (input.name != null && (typeof input.name !== 'string' || input.name.trim().length === 0)) {
       throw new ValidationError('Name cannot be empty');
     }
+    if (input.containerType != null && !CONTAINER_TYPES.includes(input.containerType)) {
+      throw new ValidationError('Invalid container type');
+    }
+    if (input.number != null) {
+      const dup = await this.prisma.kit.findUnique({ where: { number: input.number } });
+      if (dup && dup.id !== id) throw new ValidationError(`Kit number ${input.number} is already in use`);
+    }
     if (input.siteId != null) {
       if (typeof input.siteId !== 'number') throw new ValidationError('siteId must be a number');
       const site = await this.prisma.site.findUnique({ where: { id: input.siteId } });
@@ -93,6 +112,8 @@ export class KitService extends BaseService<KitRecord, CreateKitInput, UpdateKit
     const updated = await this.prisma.kit.update({
       where: { id },
       data: {
+        ...(input.number != null && { number: input.number }),
+        ...(input.containerType != null && { containerType: input.containerType as ContainerType }),
         ...(input.name != null && { name: input.name.trim() }),
         ...(input.description !== undefined && { description: input.description || null }),
         ...(input.siteId != null && { siteId: input.siteId }),
@@ -130,8 +151,14 @@ export class KitService extends BaseService<KitRecord, CreateKitInput, UpdateKit
     });
     if (!source) throw new NotFoundError('Kit not found');
 
+    // Find next available number
+    const maxKit = await this.prisma.kit.findFirst({ orderBy: { number: 'desc' } });
+    const nextNumber = (maxKit?.number ?? 0) + 1;
+
     const newKit = await this.prisma.kit.create({
       data: {
+        number: nextNumber,
+        containerType: source.containerType,
         name: `${source.name} (Copy)`,
         description: source.description,
         siteId: source.siteId,

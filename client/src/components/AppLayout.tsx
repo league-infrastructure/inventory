@@ -23,7 +23,9 @@ export function useAuth() {
 
 const navItems = [
   { to: '/', label: 'Home', icon: Home, roles: null },
-  { to: '/kits', label: 'Kits', icon: Tags, roles: null },
+  { to: '/kits', label: 'Kits', icon: Tags, roles: null,
+    children: [{ to: '/packs', label: 'Packs' }],
+  },
   { to: '/checkouts', label: 'Checked Out', icon: PackageCheck, roles: null },
   { to: '/computers', label: 'Computers', icon: Monitor, roles: ['QUARTERMASTER'],
     children: [{ to: '/hostnames', label: 'Host Names' }],

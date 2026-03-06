@@ -25,6 +25,17 @@ export class PackService extends BaseService<PackRecord, CreatePackInput, Update
     return packs as unknown as PackRecord[];
   }
 
+  async listAll(): Promise<PackDetailRecord[]> {
+    const packs = await this.prisma.pack.findMany({
+      include: {
+        items: { orderBy: { name: 'asc' } },
+        kit: { select: { id: true, name: true } },
+      },
+      orderBy: { name: 'asc' },
+    });
+    return packs as unknown as PackDetailRecord[];
+  }
+
   async get(id: number): Promise<PackDetailRecord> {
     const pack = await this.prisma.pack.findUnique({
       where: { id },
@@ -37,7 +48,7 @@ export class PackService extends BaseService<PackRecord, CreatePackInput, Update
     return pack as unknown as PackDetailRecord;
   }
 
-  async create(input: CreatePackInput, userId: number, kitId?: number): Promise<PackDetailRecord> {
+  async create(input: CreatePackInput, userId: number, kitId?: number, templatePackId?: number): Promise<PackDetailRecord> {
     if (kitId == null) throw new ValidationError('kitId is required');
     const kit = await this.prisma.kit.findUnique({ where: { id: kitId } });
     if (!kit) throw new NotFoundError('Kit not found');
@@ -61,8 +72,31 @@ export class PackService extends BaseService<PackRecord, CreatePackInput, Update
       include: { kit: { select: { id: true, name: true } } },
     });
 
+    // Copy items from template pack if provided
+    let items: any[] = [];
+    if (templatePackId) {
+      const templatePack = await this.prisma.pack.findUnique({
+        where: { id: templatePackId },
+        include: { items: true },
+      });
+      if (templatePack && templatePack.items.length > 0) {
+        await this.prisma.item.createMany({
+          data: templatePack.items.map((i) => ({
+            name: i.name,
+            type: i.type,
+            expectedQuantity: i.expectedQuantity,
+            packId: pack.id,
+          })),
+        });
+        items = await this.prisma.item.findMany({
+          where: { packId: pack.id },
+          orderBy: { name: 'asc' },
+        });
+      }
+    }
+
     await this.auditCreate(userId, pack.id, updated);
-    return { ...updated, items: [] } as unknown as PackDetailRecord;
+    return { ...updated, items } as unknown as PackDetailRecord;
   }
 
   async update(id: number, input: UpdatePackInput, userId: number): Promise<PackDetailRecord> {

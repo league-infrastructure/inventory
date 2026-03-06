@@ -1,6 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 
+type ContainerType = 'BAG' | 'LARGE_TOTE' | 'SMALL_TOTE' | 'DUFFEL';
+
+const CONTAINER_OPTIONS: { value: ContainerType; label: string }[] = [
+  { value: 'BAG', label: 'Bag' },
+  { value: 'LARGE_TOTE', label: 'Large Tote' },
+  { value: 'SMALL_TOTE', label: 'Small Tote' },
+  { value: 'DUFFEL', label: 'Duffel' },
+];
+
 interface Site {
   id: number;
   name: string;
@@ -11,6 +20,8 @@ export default function KitForm() {
   const navigate = useNavigate();
   const isEdit = !!id;
 
+  const [number, setNumber] = useState<number | ''>('');
+  const [containerType, setContainerType] = useState<ContainerType>('BAG');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [siteId, setSiteId] = useState<number | ''>('');
@@ -30,6 +41,8 @@ export default function KitForm() {
       fetch(`/api/kits/${id}`)
         .then((r) => r.json())
         .then((kit) => {
+          setNumber(kit.number);
+          setContainerType(kit.containerType);
           setName(kit.name);
           setDescription(kit.description || '');
           setSiteId(kit.site.id);
@@ -38,16 +51,22 @@ export default function KitForm() {
     }
   }, [id, isEdit]);
 
+  const inputClass = "mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm";
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
     setError(null);
 
-    const body = {
+    const body: any = {
       name,
+      containerType,
       description: description || null,
       siteId: typeof siteId === 'number' ? siteId : parseInt(siteId as string, 10),
     };
+    if (!isEdit) {
+      body.number = typeof number === 'number' ? number : parseInt(number as string, 10);
+    }
 
     try {
       const res = await fetch(
@@ -82,13 +101,41 @@ export default function KitForm() {
       {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="flex gap-4">
+          <label className="block w-24">
+            <span className="text-sm font-medium text-gray-700">Number *</span>
+            <input
+              type="number"
+              min={1}
+              value={number}
+              onChange={(e) => setNumber(e.target.value ? parseInt(e.target.value, 10) : '')}
+              className={inputClass}
+              required
+              disabled={isEdit}
+            />
+          </label>
+          <label className="block flex-1">
+            <span className="text-sm font-medium text-gray-700">Container *</span>
+            <select
+              value={containerType}
+              onChange={(e) => setContainerType(e.target.value as ContainerType)}
+              className={inputClass + " bg-white"}
+            >
+              {CONTAINER_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+
         <label className="block">
           <span className="text-sm font-medium text-gray-700">Name *</span>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+            className={inputClass}
             required
+            placeholder="e.g. HP Laptops"
           />
         </label>
 
@@ -97,7 +144,7 @@ export default function KitForm() {
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm resize-y"
+            className={inputClass + " resize-y"}
             rows={3}
           />
         </label>
@@ -107,7 +154,7 @@ export default function KitForm() {
           <select
             value={siteId}
             onChange={(e) => setSiteId(parseInt(e.target.value, 10))}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+            className={inputClass + " bg-white"}
             required
           >
             <option value="">Select a site...</option>

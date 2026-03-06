@@ -6,6 +6,12 @@ import { ServiceRegistry } from '../services/service.registry';
 export function packsRouter(services: ServiceRegistry): Router {
   const router = Router();
 
+  router.get('/packs', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      res.json(await services.packs.listAll());
+    } catch (err) { next(err); }
+  });
+
   router.get('/kits/:kitId/packs', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
     try {
       res.json(await services.packs.list(parseInt(req.params.kitId as string, 10)));
@@ -21,7 +27,8 @@ export function packsRouter(services: ServiceRegistry): Router {
   router.post('/kits/:kitId/packs', requireQuartermaster, async (req: Request, res: Response, next: NextFunction) => {
     try {
       const user = req.user as User;
-      res.status(201).json(await services.packs.create(req.body, user.id, parseInt(req.params.kitId as string, 10)));
+      const templatePackId = req.body.templatePackId ? parseInt(req.body.templatePackId, 10) : undefined;
+      res.status(201).json(await services.packs.create(req.body, user.id, parseInt(req.params.kitId as string, 10), templatePackId));
     } catch (err) { next(err); }
   });
 
