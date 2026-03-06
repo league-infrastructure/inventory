@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Copy, Trash2, Plus, X, ClipboardCheck } from 'lucide-react';
+import { Copy, Trash2, Plus, X, ClipboardCheck, Printer } from 'lucide-react';
 import EditableCell from '../../components/EditableCell';
 import InventoryCheckSection from '../../components/InventoryCheckSection';
+import LabelPrintModal from '../../components/LabelPrintModal';
 
 interface Item {
   id: number;
@@ -92,6 +93,9 @@ export default function KitDetail() {
   const [suggestionIndex, setSuggestionIndex] = useState(-1);
   const [itemForms, setItemForms] = useState<Record<number, boolean>>({});
   const [newItem, setNewItem] = useState({ name: '', type: 'COUNTED', expectedQuantity: 1 });
+
+  // Label printing
+  const [showLabelModal, setShowLabelModal] = useState(false);
 
   // Computer add/remove
   const [showComputerAdd, setShowComputerAdd] = useState(false);
@@ -506,6 +510,12 @@ export default function KitDetail() {
         <div className="flex gap-2">
           {status === 'ACTIVE' && (
             <>
+              <button
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-primary text-white border-none cursor-pointer hover:bg-primary-hover"
+                onClick={() => setShowLabelModal(true)}
+              >
+                <Printer size={14} /> Print Labels
+              </button>
               <button
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-gray-600 text-white border-none cursor-pointer hover:bg-gray-700"
                 onClick={handleClone}
@@ -960,6 +970,15 @@ export default function KitDetail() {
           <p className="text-gray-400 text-sm">No computers in this kit.</p>
         )}
       </div>
+
+      {showLabelModal && (
+        <LabelPrintModal
+          kitId={Number(id)}
+          kitName={`${form.number} — ${form.name}`}
+          packs={packs}
+          onClose={() => setShowLabelModal(false)}
+        />
+      )}
     </div>
   );
 }
