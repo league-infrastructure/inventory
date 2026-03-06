@@ -51,7 +51,7 @@ export class ExportService {
         containerType: kit.containerType,
         description: kit.description || '',
         status: kit.status,
-        site: kit.site.name,
+        site: kit.site?.name ?? '',
         qrCode: kit.qrCode || '',
       });
     }

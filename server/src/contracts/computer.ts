@@ -13,12 +13,14 @@ export interface ComputerRecord {
   siteId: number | null;
   kitId: number | null;
   osId: number | null;
+  custodianId: number | null;
   createdAt: string;
   updatedAt: string;
   hostName: { id: number; name: string; computerId: number | null } | null;
   site: { id: number; name: string } | null;
   kit: { id: number; name: string } | null;
   os: { id: number; name: string } | null;
+  custodian: { id: number; displayName: string } | null;
 }
 
 export interface CreateComputerInput {

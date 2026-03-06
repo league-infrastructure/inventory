@@ -22,6 +22,7 @@ export class KitService extends BaseService<KitRecord, CreateKitInput, UpdateKit
       where,
       include: {
         site: { select: { id: true, name: true } },
+        custodian: { select: { id: true, displayName: true } },
         inventoryChecks: {
           select: { createdAt: true },
           orderBy: { createdAt: 'desc' },
@@ -44,6 +45,7 @@ export class KitService extends BaseService<KitRecord, CreateKitInput, UpdateKit
       where: { id },
       include: {
         site: { select: { id: true, name: true } },
+        custodian: { select: { id: true, displayName: true } },
         packs: {
           include: { items: true },
           orderBy: { name: 'asc' },
@@ -65,9 +67,6 @@ export class KitService extends BaseService<KitRecord, CreateKitInput, UpdateKit
     if (!input.name || typeof input.name !== 'string' || input.name.trim().length === 0) {
       throw new ValidationError('Name is required');
     }
-    if (!input.siteId || typeof input.siteId !== 'number') {
-      throw new ValidationError('siteId is required');
-    }
     if (input.containerType && !CONTAINER_TYPES.includes(input.containerType)) {
       throw new ValidationError('Invalid container type');
     }
@@ -76,9 +75,11 @@ export class KitService extends BaseService<KitRecord, CreateKitInput, UpdateKit
     const existing = await this.prisma.kit.findUnique({ where: { number: input.number } });
     if (existing) throw new ValidationError(`Kit number ${input.number} is already in use`);
 
-    const site = await this.prisma.site.findUnique({ where: { id: input.siteId } });
-    if (!site || !site.isActive) {
-      throw new ValidationError('Site not found or inactive');
+    if (input.siteId != null) {
+      const site = await this.prisma.site.findUnique({ where: { id: input.siteId } });
+      if (!site || !site.isActive) {
+        throw new ValidationError('Site not found or inactive');
+      }
     }
 
     const kit = await this.prisma.kit.create({
@@ -87,7 +88,7 @@ export class KitService extends BaseService<KitRecord, CreateKitInput, UpdateKit
         containerType: (input.containerType || 'BAG') as ContainerType,
         name: input.name.trim(),
         description: input.description || null,
-        siteId: input.siteId,
+        siteId: input.siteId || null,
       },
     });
 
@@ -95,7 +96,7 @@ export class KitService extends BaseService<KitRecord, CreateKitInput, UpdateKit
     const updated = await this.prisma.kit.update({
       where: { id: kit.id },
       data: { qrCode: qrPath },
-      include: { site: { select: { id: true, name: true } } },
+      include: { site: { select: { id: true, name: true } }, custodian: { select: { id: true, displayName: true } } },
     });
 
     await this.auditCreate(userId, kit.id, updated);
@@ -135,7 +136,7 @@ export class KitService extends BaseService<KitRecord, CreateKitInput, UpdateKit
         ...(input.siteId != null && { siteId: input.siteId }),
         ...(input.status != null && { status: input.status as KitStatus }),
       },
-      include: { site: { select: { id: true, name: true } } },
+      include: { site: { select: { id: true, name: true } }, custodian: { select: { id: true, displayName: true } } },
     });
 
     const auditEntries = this.buildAuditEntries(userId, id, existing, updated);
@@ -154,7 +155,7 @@ export class KitService extends BaseService<KitRecord, CreateKitInput, UpdateKit
     const updated = await this.prisma.kit.update({
       where: { id },
       data: { status: 'RETIRED' },
-      include: { site: { select: { id: true, name: true } } },
+      include: { site: { select: { id: true, name: true } }, custodian: { select: { id: true, displayName: true } } },
     });
 
     await this.writeAudit(this.createAuditEntry(userId, id, 'status', existing.status, 'RETIRED'));

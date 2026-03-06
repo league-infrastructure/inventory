@@ -26,9 +26,9 @@ describe('Report endpoints', () => {
     });
   });
 
-  describe('GET /api/reports/checked-out-by-person', () => {
+  describe('GET /api/reports/transferred-by-person', () => {
     it('returns 401 for unauthenticated requests', async () => {
-      const res = await request(app).get('/api/reports/checked-out-by-person');
+      const res = await request(app).get('/api/reports/transferred-by-person');
       expect(res.status).toBe(401);
     });
   });

@@ -142,7 +142,7 @@ describe('ServiceRegistry', () => {
     expect(reg.kits).toBeDefined();
     expect(reg.packs).toBeDefined();
     expect(reg.items).toBeDefined();
-    expect(reg.checkouts).toBeDefined();
+    expect(reg.transfers).toBeDefined();
   });
 
   it('create() accepts a custom PrismaClient', () => {

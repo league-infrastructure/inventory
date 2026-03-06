@@ -107,7 +107,7 @@ export class LabelService {
     this.addLabelContent(doc, qrBuffer,
       `Kit #${kit.number}`,
       kit.name,
-      [kit.site.name],
+      [kit.site?.name ?? 'No site'],
     );
 
     doc.end();
@@ -195,7 +195,7 @@ export class LabelService {
       this.addLabelContent(doc, kitQr,
         `Kit #${kit.number}`,
         kit.name,
-        [kit.site.name],
+        [kit.site?.name ?? 'No site'],
       );
       firstPage = false;
     }
@@ -259,7 +259,7 @@ export class LabelService {
 
     if (includeKit) {
       const qr = await this.generateQrDataUri(`/k/${kitId}`);
-      labels.push(this.renderLabelHtml(qr, `Kit #${kit.number}`, kit.name, [kit.site.name]));
+      labels.push(this.renderLabelHtml(qr, `Kit #${kit.number}`, kit.name, [kit.site?.name ?? 'No site']));
     }
 
     const selectedPacks = packIds.length > 0

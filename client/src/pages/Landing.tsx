@@ -3,12 +3,12 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../components/AppLayout';
 import { Tags, AlertTriangle, Clock, PackageCheck, Monitor, MapPin, Activity, Search } from 'lucide-react';
 
-interface CheckoutItem {
-  checkoutId: number;
-  kitId: number;
-  kitNumber: number;
-  kitName: string;
-  checkedOutAt: string;
+interface TransferredItem {
+  type: 'kit' | 'computer';
+  id: number;
+  number?: number;
+  name: string;
+  site: string | null;
 }
 
 interface IssueRecord {
@@ -79,7 +79,7 @@ export default function Landing() {
         {/* Quick links */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <QuickLink to="/kits" icon={Tags} label="Kits" />
-          <QuickLink to="/checkouts" icon={PackageCheck} label="Checked Out" />
+          <QuickLink to="/checkouts" icon={PackageCheck} label="Transferred Out" />
           <QuickLink to="/issues" icon={AlertTriangle} label="Issues" />
           <QuickLink to="/search" icon={Search} label="Search" />
           {isQM && <QuickLink to="/computers" icon={Monitor} label="Computers" />}
@@ -88,8 +88,8 @@ export default function Landing() {
           {isQM && <QuickLink to="/reports/audit-log" icon={Activity} label="Audit Log" />}
         </div>
 
-        {/* My checkouts */}
-        <MyCheckouts userId={user.id} />
+        {/* Transferred items */}
+        <TransferredOutWidget />
 
         {/* Open issues */}
         <OpenIssuesWidget />
@@ -116,37 +116,43 @@ function QuickLink({ to, icon: Icon, label }: { to: string; icon: any; label: st
   );
 }
 
-function MyCheckouts({ userId }: { userId: number }) {
-  const [data, setData] = useState<Record<string, CheckoutItem[]>>({});
+function TransferredOutWidget() {
+  const [data, setData] = useState<Record<string, TransferredItem[]>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/reports/checked-out-by-person')
+    fetch('/api/reports/transferred-by-person')
       .then((r) => r.ok ? r.json() : {})
       .then(setData)
       .finally(() => setLoading(false));
   }, []);
 
-  // Flatten all checkouts - the API groups by person name
-  const allCheckouts = Object.values(data).flat();
+  const allItems = Object.values(data).flat();
 
   return (
-    <DashboardCard title="Currently Checked Out" icon={PackageCheck} count={allCheckouts.length}>
+    <DashboardCard title="Transferred Out" icon={PackageCheck} count={allItems.length}>
       {loading && <p className="text-sm text-gray-400">Loading...</p>}
-      {!loading && allCheckouts.length === 0 && (
-        <p className="text-sm text-gray-400">No kits currently checked out</p>
+      {!loading && allItems.length === 0 && (
+        <p className="text-sm text-gray-400">No items currently transferred out</p>
       )}
-      {allCheckouts.slice(0, 5).map((co) => (
-        <div key={co.checkoutId} className="flex items-center justify-between py-2">
-          <Link to={`/kits/${co.kitId}`} className="text-sm text-primary hover:underline">
-            Kit #{co.kitNumber}: {co.kitName}
+      {allItems.slice(0, 5).map((item) => (
+        <div key={`${item.type}-${item.id}`} className="flex items-center justify-between py-2">
+          <Link
+            to={item.type === 'kit' ? `/kits/${item.id}` : `/computers/${item.id}`}
+            className="text-sm text-primary hover:underline"
+          >
+            {item.type === 'kit' ? `Kit #${item.number}: ${item.name}` : item.name}
           </Link>
-          <span className="text-xs text-gray-400">{new Date(co.checkedOutAt).toLocaleDateString()}</span>
+          <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+            item.type === 'kit' ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800'
+          }`}>
+            {item.type}
+          </span>
         </div>
       ))}
-      {allCheckouts.length > 5 && (
+      {allItems.length > 5 && (
         <Link to="/checkouts" className="text-xs text-primary hover:underline">
-          View all ({allCheckouts.length})
+          View all ({allItems.length})
         </Link>
       )}
     </DashboardCard>

@@ -59,7 +59,7 @@ function App() {
           <Route path="/sites" element={<SiteList />} />
           <Route path="/reports/audit-log" element={<AuditLogViewer />} />
           <Route path="/reports/inventory-age" element={<InventoryAgeReport />} />
-          <Route path="/reports/checked-out-by-person" element={<CheckedOutByPerson />} />
+          <Route path="/reports/transferred-by-person" element={<CheckedOutByPerson />} />
           <Route path="/account" element={<Account />} />
           <Route path="/admin" element={<AdminLogin />} />
           <Route element={<AdminLayout />}>

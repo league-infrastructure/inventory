@@ -14,12 +14,6 @@ const CONTAINER_TYPE_LABELS: Record<ContainerType, string> = {
   DUFFEL: 'Duffel',
 };
 
-interface Checkout {
-  id: number;
-  kitId: number;
-  user: { displayName: string };
-}
-
 interface Kit {
   id: number;
   number: number;
@@ -30,8 +24,8 @@ interface Kit {
   createdAt: string;
   updatedAt: string;
   lastInventoried: string | null;
-  site: { id: number; name: string };
-  _checkedOutBy?: string;
+  site: { id: number; name: string } | null;
+  custodian: { id: number; displayName: string } | null;
 }
 
 function kitDisplayName(kit: Kit): string {
@@ -59,17 +53,12 @@ export default function KitList() {
 
   const loadKits = useCallback(() => {
     setLoading(true);
-    Promise.all([
-      fetch('/api/kits?status=ACTIVE').then((r) => {
+    fetch('/api/kits?status=ACTIVE')
+      .then((r) => {
         if (!r.ok) throw new Error('Failed to load kits');
         return r.json();
-      }),
-      fetch('/api/checkouts?status=open').then((r) => r.ok ? r.json() : []),
-    ])
-      .then(([kitData, checkouts]: [Kit[], Checkout[]]) => {
-        const coByKit = new Map(checkouts.map((c) => [c.kitId, c.user.displayName]));
-        setKits(kitData.map((k) => ({ ...k, _checkedOutBy: coByKit.get(k.id) })));
       })
+      .then(setKits)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, []);
@@ -133,9 +122,9 @@ export default function KitList() {
                   >
                     <td className="px-4 py-3 font-medium text-gray-900">{kitDisplayName(kit)}</td>
                     <td className="px-4 py-3 text-gray-600">
-                      {kit._checkedOutBy ? (
-                        <span className="text-amber-600 font-medium">{kit._checkedOutBy}</span>
-                      ) : kit.site.name}
+                      {kit.custodian ? (
+                        <span className="text-amber-600 font-medium">{kit.custodian.displayName}</span>
+                      ) : kit.site?.name ?? '—'}
                     </td>
                     <td className="px-4 py-3">
                       <span className="inline-block text-xs px-2 py-0.5 rounded-full font-medium bg-green-100 text-green-700">

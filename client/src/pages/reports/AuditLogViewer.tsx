@@ -68,7 +68,7 @@ export default function AuditLogViewer() {
           className="border rounded px-2 py-1.5 text-sm"
         >
           <option value="">All Types</option>
-          {['Kit', 'Pack', 'Item', 'Computer', 'HostName', 'Site', 'Checkout'].map((t) => (
+          {['Kit', 'Pack', 'Item', 'Computer', 'HostName', 'Site', 'Transfer'].map((t) => (
             <option key={t} value={t}>{t}</option>
           ))}
         </select>

@@ -37,9 +37,9 @@ export function reportsRouter(services: ServiceRegistry): Router {
     } catch (err) { next(err); }
   });
 
-  router.get('/reports/checked-out-by-person', requireAuth, async (_req: Request, res: Response, next: NextFunction) => {
+  router.get('/reports/transferred-by-person', requireAuth, async (_req: Request, res: Response, next: NextFunction) => {
     try {
-      const data = await services.reports.getCheckedOutByPerson();
+      const data = await services.reports.getTransferredByPerson();
       res.json(data);
     } catch (err) { next(err); }
   });

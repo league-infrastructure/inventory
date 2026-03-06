@@ -19,11 +19,13 @@ export interface KitRecord {
   description: string | null;
   status: string;
   qrCode: string | null;
-  siteId: number;
+  siteId: number | null;
+  custodianId: number | null;
   createdAt: string;
   updatedAt: string;
   lastInventoried: string | null;
-  site: { id: number; name: string };
+  site: { id: number; name: string } | null;
+  custodian: { id: number; displayName: string } | null;
 }
 
 export interface KitDetailRecord extends KitRecord {
@@ -41,7 +43,7 @@ export interface CreateKitInput {
   containerType?: ContainerType;
   name: string;
   description?: string | null;
-  siteId: number;
+  siteId?: number | null;
 }
 
 export interface UpdateKitInput {
