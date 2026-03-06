@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Copy, Trash2, Plus, X } from 'lucide-react';
+import { Copy, Trash2, Plus, X, ClipboardCheck } from 'lucide-react';
 import EditableCell from '../../components/EditableCell';
+import InventoryCheckSection from '../../components/InventoryCheckSection';
 
 interface Item {
   id: number;
@@ -682,6 +683,9 @@ export default function KitDetail() {
           </div>
         )}
       </div>
+
+      {/* Inventory Check */}
+      <InventoryCheckSection kitId={Number(id)} packs={packs} computers={computers} />
 
       {/* Packs */}
       <div>

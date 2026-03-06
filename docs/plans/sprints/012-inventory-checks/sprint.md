@@ -1,12 +1,13 @@
 ---
 id: '012'
 title: Inventory Checks
-status: planning
+status: in-progress
 branch: sprint/012-inventory-checks
 use-cases:
-- UC-2.1
-- UC-2.2
-- UC-2.3
+- SUC-012-001
+- SUC-012-002
+- SUC-012-003
+- SUC-012-004
 ---
 
 # Sprint 012: Inventory Checks
@@ -48,43 +49,28 @@ items and flag anything missing.
 
 ### In Scope
 
-- Kit inventory check flow (UC-2.1)
-- Pack inventory check flow (UC-2.2)
-- Computer verification (UC-2.3)
+- Kit inventory check flow (SUC-012-001)
+- Pack inventory check flow (SUC-012-002)
+- Computer verification (SUC-012-003)
 - Discrepancy flagging
-- Inventory check history per Kit/Pack/Computer
+- Inventory check history per Kit/Pack (SUC-012-004)
 - Mobile-optimized checklist UI
 
 ### Out of Scope
 
-- Issue reporting workflow (sprint 008) — discrepancies are flagged but
+- Issue reporting workflow (sprint 013) — discrepancies are flagged but
   not yet managed as issues
-- Inventory age report (sprint 011)
+- Inventory age report (future)
 
 ## Test Strategy
 
 - Backend API tests: inventory check submission, discrepancy creation,
   last-inventoried date update.
-- Database tests: inventory check records, discrepancy linkage.
+- Service tests: start/submit checks, discrepancy flagging, history.
 - Frontend tests: checklist UI, quantity input, submission flow.
-
-## Architecture Notes
-
-- An inventory check is a record with a timestamp, user, and a set of
-  line items (one per Item/Computer in the Kit/Pack).
-- Each line item records: expected value, actual value, and a discrepancy
-  flag.
-- The checklist is generated from the Kit/Pack's current manifest at check
-  time.
-
-## Definition of Ready
-
-Before tickets can be created, all of the following must be true:
-
-- [ ] Sprint planning documents are complete (sprint.md, use cases, technical plan)
-- [ ] Architecture review passed
-- [ ] Stakeholder has approved the sprint plan
 
 ## Tickets
 
-(To be created after sprint approval.)
+- 001: Inventory Check Contract and Service
+- 002: Inventory Check Routes
+- 003: Frontend Inventory Check UI
