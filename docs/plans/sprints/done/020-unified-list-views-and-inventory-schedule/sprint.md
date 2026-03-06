@@ -1,7 +1,7 @@
 ---
-id: "020"
-title: "Unified List Views and Inventory Schedule"
-status: planning
+id: '020'
+title: Unified List Views and Inventory Schedule
+status: done
 branch: sprint/020-unified-list-views-and-inventory-schedule
 use-cases: []
 ---
