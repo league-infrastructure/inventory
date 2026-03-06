@@ -56,9 +56,6 @@ export class CheckoutService extends BaseService<CheckoutRecord, CreateCheckoutI
     if (!input.kitId || typeof input.kitId !== 'number') {
       throw new ValidationError('kitId is required and must be a number');
     }
-    if (!input.destinationSiteId || typeof input.destinationSiteId !== 'number') {
-      throw new ValidationError('destinationSiteId is required and must be a number');
-    }
 
     const kit = await this.prisma.kit.findUnique({ where: { id: input.kitId } });
     if (!kit) throw new NotFoundError('Kit not found');
@@ -69,14 +66,17 @@ export class CheckoutService extends BaseService<CheckoutRecord, CreateCheckoutI
     });
     if (openCheckout) throw new ValidationError('Kit already has an open checkout');
 
-    const site = await this.prisma.site.findUnique({ where: { id: input.destinationSiteId } });
-    if (!site || !site.isActive) throw new ValidationError('Destination site not found or inactive');
+    // Validate destination site if provided
+    if (input.destinationSiteId) {
+      const site = await this.prisma.site.findUnique({ where: { id: input.destinationSiteId } });
+      if (!site || !site.isActive) throw new ValidationError('Destination site not found or inactive');
+    }
 
     const checkout = await this.prisma.checkout.create({
       data: {
         kitId: input.kitId,
         userId,
-        destinationSiteId: input.destinationSiteId,
+        destinationSiteId: input.destinationSiteId ?? null,
       },
       include: CHECKOUT_INCLUDES,
     });

@@ -83,6 +83,7 @@ export class SiteService extends BaseService<SiteRecord, CreateSiteInput, Update
         ...(input.latitude !== undefined && { latitude: input.latitude ?? null }),
         ...(input.longitude !== undefined && { longitude: input.longitude ?? null }),
         ...(input.isHomeSite !== undefined && { isHomeSite: input.isHomeSite }),
+        ...(input.isActive !== undefined && { isActive: input.isActive }),
       },
     });
 

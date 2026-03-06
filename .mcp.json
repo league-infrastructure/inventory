@@ -5,6 +5,13 @@
       "args": [
         "mcp"
       ]
+    },
+    "inventory": {
+      "type": "http",
+      "url": "http://localhost:3000/api/mcp",
+      "headers": {
+        "Authorization": "Bearer f79fd4851a15b10e1494153a3b74160b958f7aa7fd1180027157ba0e7d25c79d"
+      }
     }
   }
 }

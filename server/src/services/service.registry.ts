@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, AuditSource } from '@prisma/client';
 import { prisma as defaultPrisma } from './prisma';
 import { AuditService } from './audit.service';
 import { QrService } from './qr.service';
@@ -9,6 +9,7 @@ import { KitService } from './kit.service';
 import { PackService } from './pack.service';
 import { ItemService } from './item.service';
 import { CheckoutService } from './checkout.service';
+import { TokenService } from './token.service';
 
 export class ServiceRegistry {
   readonly prisma: PrismaClient;
@@ -21,10 +22,11 @@ export class ServiceRegistry {
   readonly packs: PackService;
   readonly items: ItemService;
   readonly checkouts: CheckoutService;
+  readonly tokens: TokenService;
 
-  private constructor(prisma: PrismaClient) {
+  private constructor(prisma: PrismaClient, source: AuditSource = 'UI') {
     this.prisma = prisma;
-    this.audit = new AuditService(prisma);
+    this.audit = new AuditService(prisma, source);
     this.qr = new QrService(prisma);
     this.sites = new SiteService(prisma, this.audit);
     this.hostNames = new HostNameService(prisma, this.audit);
@@ -33,10 +35,11 @@ export class ServiceRegistry {
     this.packs = new PackService(prisma, this.audit);
     this.items = new ItemService(prisma, this.audit);
     this.checkouts = new CheckoutService(prisma, this.audit);
+    this.tokens = new TokenService(prisma);
   }
 
-  static create(prisma?: PrismaClient): ServiceRegistry {
-    return new ServiceRegistry(prisma ?? defaultPrisma);
+  static create(prisma?: PrismaClient, source?: AuditSource): ServiceRegistry {
+    return new ServiceRegistry(prisma ?? defaultPrisma, source);
   }
 
   /**
@@ -57,6 +60,7 @@ export class ServiceRegistry {
     await p.hostName.deleteMany();
     await p.site.deleteMany();
     await p.auditLog.deleteMany();
+    await p.apiToken.deleteMany();
     await p.quartermasterPattern.deleteMany();
   }
 }

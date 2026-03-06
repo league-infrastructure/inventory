@@ -97,14 +97,12 @@ describe('CheckoutService', () => {
   });
 
   it('create delegates to checkOut', async () => {
-    // Create a fresh kit for this test
     const kit2 = await getRegistry().kits.create({ number: (getSuffix() % 100000) + 201, name: `svc-test-${getSuffix()}-co-kit2`, siteId }, getUserId());
     const co = await getRegistry().checkouts.create({
       kitId: kit2.id,
       destinationSiteId: siteId,
     }, getUserId());
     expect(co.kitId).toBe(kit2.id);
-    // Check in so cleanup works
     await getRegistry().checkouts.checkIn(co.id, { returnSiteId: siteId }, getUserId());
   });
 
@@ -115,10 +113,20 @@ describe('CheckoutService', () => {
     expect(result.checkedInAt).not.toBeNull();
   });
 
-  it('throws ValidationError for missing destinationSiteId', async () => {
+  it('checks out without destinationSiteId', async () => {
+    const kit4 = await getRegistry().kits.create({ number: (getSuffix() % 100000) + 203, name: `svc-test-${getSuffix()}-co-kit4`, siteId }, getUserId());
+    const co = await getRegistry().checkouts.checkOut({ kitId: kit4.id }, getUserId());
+    expect(co.id).toBeDefined();
+    expect(co.kitId).toBe(kit4.id);
+    expect(co.destinationSiteId).toBeNull();
+    await getRegistry().checkouts.checkIn(co.id, { returnSiteId: siteId }, getUserId());
+  });
+
+  it('throws ValidationError for invalid destinationSiteId', async () => {
+    const kit5 = await getRegistry().kits.create({ number: (getSuffix() % 100000) + 204, name: `svc-test-${getSuffix()}-co-kit5`, siteId }, getUserId());
     await expect(getRegistry().checkouts.checkOut({
-      kitId,
-      destinationSiteId: 0,
-    } as any, getUserId())).rejects.toThrow(ValidationError);
+      kitId: kit5.id,
+      destinationSiteId: 999999,
+    }, getUserId())).rejects.toThrow(ValidationError);
   });
 });

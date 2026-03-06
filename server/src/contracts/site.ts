@@ -24,6 +24,7 @@ export interface UpdateSiteInput {
   latitude?: number | null;
   longitude?: number | null;
   isHomeSite?: boolean;
+  isActive?: boolean;
 }
 
 export interface NearestSiteResult {

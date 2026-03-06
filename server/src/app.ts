@@ -17,10 +17,13 @@ import { qrRouter } from './routes/qr';
 import { computersRouter } from './routes/computers';
 import { hostnamesRouter } from './routes/hostnames';
 import { checkoutsRouter } from './routes/checkouts';
+import { tokensRouter } from './routes/tokens';
 import { errorHandler } from './middleware/errorHandler';
 import { logBuffer } from './services/logBuffer';
 import { prisma } from './services/prisma';
 import { ServiceRegistry } from './services/service.registry';
+import { tokenAuth } from './middleware/tokenAuth';
+import { createMcpHandler } from './mcp/server';
 
 const app = express();
 
@@ -106,7 +109,12 @@ app.use('/api', qrRouter(services));
 app.use('/api', computersRouter(services));
 app.use('/api', hostnamesRouter(services));
 app.use('/api', checkoutsRouter(services));
+app.use('/api', tokensRouter(services));
 app.use('/api', adminRouter);
+
+// MCP server — token-authenticated endpoint for external AI clients
+const mcpTokenAuth = tokenAuth(services.tokens, prisma);
+app.all('/api/mcp', mcpTokenAuth, createMcpHandler(prisma));
 
 // Test-only auth bypass: allows automated tests to create sessions
 // without going through Google OAuth. Never loaded in production.

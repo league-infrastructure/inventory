@@ -57,8 +57,27 @@ export class HostNameService extends BaseService<HostNameRecord, CreateHostNameI
     return hostname as unknown as HostNameRecord;
   }
 
-  async update(_id: number, _input: never, _userId: number): Promise<HostNameRecord> {
-    throw new ValidationError('Host names cannot be updated');
+  async update(id: number, input: { name?: string }, _userId: number): Promise<HostNameRecord> {
+    const existing = await this.prisma.hostName.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundError('Host name not found');
+
+    if (!input.name || typeof input.name !== 'string' || input.name.trim().length === 0) {
+      throw new ValidationError('Name is required');
+    }
+
+    const trimmedName = input.name.trim();
+    if (trimmedName === existing.name) {
+      return existing as unknown as HostNameRecord;
+    }
+
+    const dup = await this.prisma.hostName.findFirst({ where: { name: trimmedName } });
+    if (dup) throw new ConflictError('Host name already exists');
+
+    const updated = await this.prisma.hostName.update({
+      where: { id },
+      data: { name: trimmedName },
+    });
+    return updated as unknown as HostNameRecord;
   }
 
   async delete(id: number): Promise<void> {

@@ -11,7 +11,11 @@ export interface AuditEntry {
 }
 
 export class AuditService {
-  constructor(private prisma: PrismaClient) {}
+  private defaultSource: AuditSource;
+
+  constructor(private prisma: PrismaClient, defaultSource: AuditSource = 'UI') {
+    this.defaultSource = defaultSource;
+  }
 
   async write(entries: AuditEntry | AuditEntry[]): Promise<void> {
     const list = Array.isArray(entries) ? entries : [entries];
@@ -25,7 +29,7 @@ export class AuditService {
         field: e.field,
         oldValue: e.oldValue,
         newValue: e.newValue,
-        source: e.source ?? 'UI',
+        source: e.source ?? this.defaultSource,
       })),
     });
   }
@@ -37,7 +41,7 @@ export class AuditService {
     oldObj: Record<string, any>,
     newObj: Record<string, any>,
     fields: string[],
-    source: AuditSource = 'UI',
+    source?: AuditSource,
   ): AuditEntry[] {
     const entries: AuditEntry[] = [];
     for (const field of fields) {
@@ -51,7 +55,7 @@ export class AuditService {
           field,
           oldValue: oldVal != null ? String(oldVal) : null,
           newValue: newVal != null ? String(newVal) : null,
-          source,
+          source: source ?? this.defaultSource,
         });
       }
     }

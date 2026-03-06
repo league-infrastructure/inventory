@@ -32,7 +32,6 @@ interface CheckoutRecord {
   checkedOutAt: string;
   checkedInAt: string | null;
   user: { id: number; displayName: string };
-  destinationSite: { id: number; name: string };
   returnSite: { id: number; name: string } | null;
 }
 
@@ -76,7 +75,7 @@ export default function KitDetail() {
 
   // Checkout state
   const [checkoutHistory, setCheckoutHistory] = useState<CheckoutRecord[]>([]);
-  const [checkoutMode, setCheckoutMode] = useState<'idle' | 'checkout' | 'checkin'>('idle');
+  const [checkoutMode, setCheckoutMode] = useState<'idle' | 'checkin'>('idle');
   const [checkoutSiteId, setCheckoutSiteId] = useState<number | ''>('');
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
@@ -252,10 +251,23 @@ export default function KitDetail() {
   }
 
   async function startCheckout() {
-    setCheckoutMode('checkout');
-    setCheckoutSiteId('');
-    const nearestId = await requestNearestSite();
-    if (nearestId) setCheckoutSiteId(nearestId);
+    setCheckoutLoading(true);
+    setCheckoutError(null);
+    try {
+      const res = await fetch('/api/checkouts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kitId: Number(id) }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Checkout failed');
+      }
+      await fetchCheckoutHistory();
+    } catch (e: any) {
+      setCheckoutError(e.message);
+    }
+    setCheckoutLoading(false);
   }
 
   async function startCheckin() {
@@ -265,27 +277,7 @@ export default function KitDetail() {
     if (nearestId) setCheckoutSiteId(nearestId);
   }
 
-  async function confirmCheckout() {
-    if (!checkoutSiteId) return;
-    setCheckoutLoading(true);
-    setCheckoutError(null);
-    try {
-      const res = await fetch('/api/checkouts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ kitId: Number(id), destinationSiteId: checkoutSiteId }),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Checkout failed');
-      }
-      setCheckoutMode('idle');
-      await fetchCheckoutHistory();
-    } catch (e: any) {
-      setCheckoutError(e.message);
-    }
-    setCheckoutLoading(false);
-  }
+  // confirmCheckout removed — checkout is now immediate via startCheckout
 
   async function confirmCheckin() {
     if (!openCheckout || !checkoutSiteId) return;
@@ -587,8 +579,7 @@ export default function KitDetail() {
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
             <p className="text-sm text-gray-800">
               <span className="font-medium">Checked out</span> by{' '}
-              <span className="font-medium">{openCheckout.user.displayName}</span> to{' '}
-              <span className="font-medium">{openCheckout.destinationSite.name}</span> on{' '}
+              <span className="font-medium">{openCheckout.user.displayName}</span> on{' '}
               {new Date(openCheckout.checkedOutAt).toLocaleDateString(undefined, {
                 year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
               })}
@@ -642,49 +633,13 @@ export default function KitDetail() {
           <div className="bg-green-50 border border-green-200 rounded-lg p-4">
             <p className="text-sm text-gray-600">This kit is available for checkout.</p>
 
-            {checkoutMode !== 'checkout' && (
-              <button
-                className="mt-3 px-4 py-2 text-sm font-medium rounded-lg bg-primary text-white border-none cursor-pointer hover:bg-primary-hover"
-                onClick={startCheckout}
-                disabled={geoLoading}
-              >
-                {geoLoading ? 'Getting location...' : 'Check Out'}
-              </button>
-            )}
-
-            {checkoutMode === 'checkout' && (
-              <div className="mt-3 space-y-2">
-                <label className="block">
-                  <span className="text-sm font-medium text-gray-700">Destination site</span>
-                  <select
-                    value={checkoutSiteId}
-                    onChange={(e) => setCheckoutSiteId(parseInt(e.target.value, 10))}
-                    className={inputClass}
-                    required
-                  >
-                    <option value="">Select a site...</option>
-                    {sites.map((s) => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
-                    ))}
-                  </select>
-                </label>
-                <div className="flex gap-2 pt-1">
-                  <button
-                    className="px-4 py-2 text-sm font-medium rounded-lg bg-primary text-white border-none cursor-pointer hover:bg-primary-hover disabled:opacity-50"
-                    onClick={confirmCheckout}
-                    disabled={checkoutLoading || !checkoutSiteId}
-                  >
-                    {checkoutLoading ? 'Checking out...' : 'Confirm Check Out'}
-                  </button>
-                  <button
-                    className="px-4 py-2 text-sm font-medium rounded-lg bg-gray-500 text-white border-none cursor-pointer hover:bg-gray-600"
-                    onClick={() => setCheckoutMode('idle')}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            )}
+            <button
+              className="mt-3 px-4 py-2 text-sm font-medium rounded-lg bg-primary text-white border-none cursor-pointer hover:bg-primary-hover disabled:opacity-50"
+              onClick={startCheckout}
+              disabled={checkoutLoading}
+            >
+              {checkoutLoading ? 'Checking out...' : 'Check Out'}
+            </button>
           </div>
         ) : (
           <p className="text-sm text-gray-500">Kit is {status.toLowerCase()} and cannot be checked out.</p>
@@ -701,7 +656,6 @@ export default function KitDetail() {
                 <thead>
                   <tr className="border-b border-gray-200">
                     <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500">User</th>
-                    <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500">Destination</th>
                     <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500">Checked Out</th>
                     <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500">Return Site</th>
                     <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500">Checked In</th>
@@ -711,7 +665,6 @@ export default function KitDetail() {
                   {checkoutHistory.map((c) => (
                     <tr key={c.id} className="border-b border-gray-100">
                       <td className="px-4 py-2">{c.user.displayName}</td>
-                      <td className="px-4 py-2 text-gray-600">{c.destinationSite.name}</td>
                       <td className="px-4 py-2 text-gray-600">
                         {new Date(c.checkedOutAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                       </td>

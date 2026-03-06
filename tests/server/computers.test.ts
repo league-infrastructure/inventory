@@ -1,10 +1,25 @@
 process.env.NODE_ENV = 'test';
+if (!process.env.DATABASE_URL) {
+  process.env.DATABASE_URL = 'postgresql://app:devpassword@localhost:5433/app';
+}
 
+import { PrismaClient } from '@prisma/client';
 import { createAuthAgent, createUnauthenticatedAgent } from './helpers/auth';
+
+const prisma = new PrismaClient();
 
 describe('Computers API', () => {
   const agent = createAuthAgent('QUARTERMASTER');
   const unauthed = createUnauthenticatedAgent();
+  const createdIds: number[] = [];
+
+  afterAll(async () => {
+    for (const id of createdIds) {
+      await prisma.hostName.updateMany({ where: { computerId: id }, data: { computerId: null } });
+      await prisma.computer.delete({ where: { id } }).catch(() => {});
+    }
+    await prisma.$disconnect();
+  });
 
   describe('GET /api/computers', () => {
     it('returns 200 with array', async () => {
@@ -26,6 +41,7 @@ describe('Computers API', () => {
         .send({ serialNumber: 'SN-TEST-001', model: 'ThinkPad T14' });
       expect(res.status).toBe(201);
       expect(res.body.id).toBeDefined();
+      createdIds.push(res.body.id);
       expect(res.body.qrCode).toMatch(/^\/c\/\d+$/);
       expect(res.body.serialNumber).toBe('SN-TEST-001');
       expect(res.body.model).toBe('ThinkPad T14');
@@ -38,6 +54,7 @@ describe('Computers API', () => {
         .send({});
       expect(res.status).toBe(201);
       expect(res.body.id).toBeDefined();
+      createdIds.push(res.body.id);
     });
 
     it('returns 400 for invalid disposition', async () => {
@@ -55,6 +72,7 @@ describe('Computers API', () => {
         .post('/api/computers')
         .send({ model: 'Detail Test' });
       expect(created.status).toBe(201);
+      createdIds.push(created.body.id);
 
       const res = await agent.get(`/api/computers/${created.body.id}`);
       expect(res.status).toBe(200);
@@ -75,6 +93,7 @@ describe('Computers API', () => {
       const created = await agent
         .post('/api/computers')
         .send({ model: 'Before Update' });
+      createdIds.push(created.body.id);
 
       const res = await agent
         .put(`/api/computers/${created.body.id}`)
@@ -97,6 +116,7 @@ describe('Computers API', () => {
       const created = await agent
         .post('/api/computers')
         .send({});
+      createdIds.push(created.body.id);
 
       const res = await agent
         .patch(`/api/computers/${created.body.id}/disposition`)
@@ -109,6 +129,7 @@ describe('Computers API', () => {
       const created = await agent
         .post('/api/computers')
         .send({});
+      createdIds.push(created.body.id);
 
       const res = await agent
         .patch(`/api/computers/${created.body.id}/disposition`)

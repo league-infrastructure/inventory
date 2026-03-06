@@ -1,0 +1,175 @@
+import { useState, useEffect } from 'react';
+import { useAuth } from '../../components/AppLayout';
+import { Copy, RefreshCw, Key } from 'lucide-react';
+
+interface TokenInfo {
+  id: number;
+  prefix: string;
+  token?: string;
+}
+
+function buildSnippet(serverUrl: string, token: string): string {
+  return JSON.stringify({
+    mcpServers: {
+      inventory: {
+        url: `${serverUrl}/api/mcp`,
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    },
+  }, null, 2);
+}
+
+export default function Account() {
+  const { user } = useAuth();
+  const [tokenInfo, setTokenInfo] = useState<TokenInfo | null>(null);
+  const [snippet, setSnippet] = useState<string>('');
+  const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const serverUrl = window.location.origin;
+
+  useEffect(() => {
+    fetch('/api/tokens')
+      .then((r) => r.ok ? r.json() : [])
+      .then((tokens: any[]) => {
+        if (tokens.length > 0) {
+          const t = tokens[0];
+          setTokenInfo({ id: t.id, prefix: t.prefix });
+          setSnippet(buildSnippet(serverUrl, `${t.prefix}...`));
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [serverUrl]);
+
+  async function generateToken() {
+    setGenerating(true);
+    setError(null);
+    try {
+      // Revoke existing token if present
+      if (tokenInfo) {
+        await fetch(`/api/tokens/${tokenInfo.id}`, { method: 'DELETE' });
+      }
+
+      const res = await fetch('/api/tokens', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ label: 'mcp' }),
+      });
+      if (!res.ok) throw new Error('Failed to create token');
+      const data = await res.json();
+      setTokenInfo({ id: data.id, prefix: data.prefix, token: data.token });
+      setSnippet(buildSnippet(serverUrl, data.token));
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  async function handleRegenerate() {
+    if (!confirm('This will disconnect any clients using the current token. Continue?')) return;
+    await generateToken();
+  }
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(snippet);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Fallback
+      const ta = document.createElement('textarea');
+      ta.value = snippet;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  }
+
+  if (!user) {
+    return <p className="text-gray-500">Please sign in to view your account.</p>;
+  }
+
+  return (
+    <div className="max-w-2xl">
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">Account</h1>
+
+      {/* Profile section */}
+      <section className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
+        <h2 className="text-lg font-semibold text-gray-800 mb-4">Profile</h2>
+        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+          <dt className="text-gray-500">Name</dt>
+          <dd className="text-gray-900">{user.displayName}</dd>
+          <dt className="text-gray-500">Email</dt>
+          <dd className="text-gray-900">{user.email}</dd>
+          <dt className="text-gray-500">Role</dt>
+          <dd className="text-gray-900">{user.role === 'QUARTERMASTER' ? 'Quartermaster' : 'Instructor'}</dd>
+        </dl>
+      </section>
+
+      {/* MCP Configuration section */}
+      <section className="bg-white rounded-lg border border-gray-200 p-6">
+        <h2 className="text-lg font-semibold text-gray-800 mb-2">MCP Connection</h2>
+        <p className="text-sm text-gray-500 mb-4">
+          Copy this configuration into your AI client (Claude Desktop, Claude Code, etc.)
+          to connect to the inventory MCP server.
+        </p>
+
+        {loading ? (
+          <div className="text-sm text-gray-400">Loading...</div>
+        ) : !tokenInfo ? (
+          <button
+            onClick={generateToken}
+            disabled={generating}
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm hover:bg-primary-hover disabled:opacity-50"
+          >
+            <Key size={16} />
+            {generating ? 'Generating...' : 'Generate Token'}
+          </button>
+        ) : (
+          <>
+            <div className="relative">
+              <pre className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-xs overflow-x-auto whitespace-pre">
+                {snippet}
+              </pre>
+              <button
+                onClick={handleCopy}
+                className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 bg-white border border-gray-300 rounded text-xs text-gray-600 hover:bg-gray-50"
+              >
+                <Copy size={12} />
+                {copied ? 'Copied!' : 'Copy'}
+              </button>
+            </div>
+
+            {tokenInfo.token && (
+              <p className="mt-2 text-xs text-amber-600">
+                The full token is shown above. It will not be displayed again after you leave this page.
+              </p>
+            )}
+
+            <button
+              onClick={handleRegenerate}
+              disabled={generating}
+              className="mt-4 flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 bg-white disabled:opacity-50"
+            >
+              <RefreshCw size={14} />
+              {generating ? 'Regenerating...' : 'Regenerate Token'}
+            </button>
+          </>
+        )}
+
+        {error && (
+          <p className="mt-2 text-sm text-red-600">{error}</p>
+        )}
+      </section>
+    </div>
+  );
+}

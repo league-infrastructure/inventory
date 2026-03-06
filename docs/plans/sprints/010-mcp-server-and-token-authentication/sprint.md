@@ -1,9 +1,15 @@
 ---
 id: '010'
 title: MCP Server and Token Authentication
-status: planning
+status: ticketing
 branch: sprint/010-mcp-server-and-token-authentication
-use-cases: []
+use-cases:
+- SUC-001
+- SUC-002
+- SUC-003
+- SUC-004
+- SUC-005
+- SUC-006
 ---
 
 # Sprint 010: MCP Server and Token Authentication
@@ -60,6 +66,8 @@ authenticate an external model as acting on behalf of a specific user.
 - Token-based authentication middleware for MCP endpoints
 - AI audit log extension (flag + prompt storage)
 - Token-authenticated requests carry the user's identity and role
+- Documentation: `docs/mcp.md` explaining MCP server setup, token
+  creation, connecting external AI clients, and available tools
 
 ### Out of Scope
 

@@ -6,6 +6,8 @@ export interface PackRecord {
   description: string | null;
   qrCode: string | null;
   kitId: number;
+  createdAt: string;
+  updatedAt: string;
   items: ItemRecord[];
 }
 

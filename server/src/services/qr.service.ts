@@ -14,7 +14,7 @@ export class QrService {
   private baseUrl: string;
 
   constructor(private prisma: PrismaClient, baseUrl?: string) {
-    this.baseUrl = baseUrl ?? process.env.APP_BASE_URL ?? 'http://localhost:5173';
+    this.baseUrl = baseUrl ?? process.env.QR_DOMAIN ?? process.env.APP_BASE_URL ?? 'http://localhost:5173';
   }
 
   async generateDataUrl(path: string): Promise<string> {

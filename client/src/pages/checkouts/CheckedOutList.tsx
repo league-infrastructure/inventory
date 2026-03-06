@@ -8,7 +8,6 @@ interface Checkout {
   checkedOutAt: string;
   kit: { id: number; name: string };
   user: { id: number; displayName: string };
-  destinationSite: { id: number; name: string };
 }
 
 export default function CheckedOutList() {
@@ -49,7 +48,6 @@ export default function CheckedOutList() {
               <tr className="border-b border-gray-200">
                 <SortableHeader label="Kit Name" sortKey="kit.name" currentSort={sort} onSort={toggleSort} filterValue={filters['kit.name']} onFilter={setFilter} />
                 <SortableHeader label="Checked Out By" sortKey="user.displayName" currentSort={sort} onSort={toggleSort} filterValue={filters['user.displayName']} onFilter={setFilter} />
-                <SortableHeader label="Destination Site" sortKey="destinationSite.name" currentSort={sort} onSort={toggleSort} filterValue={filters['destinationSite.name']} onFilter={setFilter} />
                 <SortableHeader label="Checkout Time" sortKey="checkedOutAt" currentSort={sort} onSort={toggleSort} />
               </tr>
             </thead>
@@ -62,7 +60,6 @@ export default function CheckedOutList() {
                 >
                   <td className="px-4 py-3 font-medium text-gray-900">{checkout.kit.name}</td>
                   <td className="px-4 py-3 text-gray-600">{checkout.user.displayName}</td>
-                  <td className="px-4 py-3 text-gray-600">{checkout.destinationSite.name}</td>
                   <td className="px-4 py-3 text-gray-600">
                     {new Date(checkout.checkedOutAt).toLocaleString()}
                   </td>
