@@ -1,7 +1,7 @@
 ---
 id: '014'
 title: Label Printing
-status: in-progress
+status: done
 branch: sprint/014-label-printing
 use-cases:
 - SUC-014-001
