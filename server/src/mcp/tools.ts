@@ -361,6 +361,17 @@ export function registerTools(server: McpServer): void {
     });
   });
 
+  server.tool('update_hostname', 'Rename a host name', {
+    id: z.number(),
+    name: z.string(),
+  }, async ({ id, name }) => {
+    return safeCall(async () => {
+      requireQM();
+      const { services, user } = getContext();
+      return ok(await services.hostNames.update(id, { name }, user.id));
+    });
+  });
+
   server.tool('delete_hostname', 'Delete an unassigned host name', {
     id: z.number(),
   }, async ({ id }) => {
