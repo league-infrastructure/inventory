@@ -1,4 +1,4 @@
-import { useState, FormEvent } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield } from 'lucide-react';
 
@@ -6,7 +6,19 @@ export default function AdminLogin() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [checking, setChecking] = useState(true);
   const navigate = useNavigate();
+
+  // Auto-redirect if user already has admin access (ADMIN role or session)
+  useEffect(() => {
+    fetch('/api/admin/check')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.authenticated) navigate('/admin/env', { replace: true });
+      })
+      .catch(() => {})
+      .finally(() => setChecking(false));
+  }, [navigate]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -32,6 +44,8 @@ export default function AdminLogin() {
       setLoading(false);
     }
   }
+
+  if (checking) return null;
 
   return (
     <div className="max-w-sm mx-auto mt-20">

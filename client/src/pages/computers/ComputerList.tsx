@@ -41,14 +41,14 @@ export default function ComputerList() {
   const [dispositionFilter, setDispositionFilter] = useState('ACTIVE');
   const [transferComputerId, setTransferComputerId] = useState<number | null>(null);
 
-  const computersWithWhere = useMemo(() => computers.map((c) => ({
+  const enriched = useMemo(() => computers.map((c) => ({
     ...c,
-    _where: c.custodian ? `1:${c.custodian.displayName}` : c.kit ? `2:Kit: ${c.kit.name}` : c.site ? `3:${c.site.name}` : '4:',
-    _whereDisplay: c.custodian?.displayName ?? (c.kit ? `Kit: ${c.kit.name}` : c.site?.name ?? null),
-    _whereType: c.custodian ? 'person' as const : c.kit ? 'kit' as const : c.site ? 'site' as const : null,
+    _custodian: c.custodian?.displayName ?? '',
+    _location: c.site?.name ?? '',
+    _kit: c.kit?.name ?? '',
   })), [computers]);
 
-  const { processed: sorted, sort, toggleSort, filters, setFilter } = useTableSort(computersWithWhere, { key: 'hostName.name', direction: 'asc' });
+  const { processed: sorted, sort, toggleSort, filters, setFilter } = useTableSort(enriched, { key: 'hostName.name', direction: 'asc' });
 
   function loadComputers() {
     setLoading(true);
@@ -124,7 +124,9 @@ export default function ComputerList() {
                 <SortableHeader label="Host Name" sortKey="hostName.name" currentSort={sort} onSort={toggleSort} filterValue={filters['hostName.name']} onFilter={setFilter} />
                 <SortableHeader label="Model" sortKey="model" currentSort={sort} onSort={toggleSort} filterValue={filters['model']} onFilter={setFilter} />
                 <SortableHeader label="Disposition" sortKey="disposition" currentSort={sort} onSort={toggleSort} filterValue={filters['disposition']} onFilter={setFilter} />
-                <SortableHeader label="Where" sortKey="_where" currentSort={sort} onSort={toggleSort} filterValue={filters['_whereDisplay']} onFilter={(_, v) => setFilter('_whereDisplay', v)} className="hidden sm:table-cell" />
+                <SortableHeader label="Custodian" sortKey="_custodian" currentSort={sort} onSort={toggleSort} filterValue={filters['_custodian']} onFilter={setFilter} className="hidden sm:table-cell" />
+                <SortableHeader label="Location" sortKey="_location" currentSort={sort} onSort={toggleSort} filterValue={filters['_location']} onFilter={setFilter} className="hidden sm:table-cell" />
+                <SortableHeader label="Kit" sortKey="_kit" currentSort={sort} onSort={toggleSort} filterValue={filters['_kit']} onFilter={setFilter} className="hidden sm:table-cell" />
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 hidden sm:table-cell">Actions</th>
               </tr>
             </thead>
@@ -145,20 +147,26 @@ export default function ComputerList() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-gray-600 hidden sm:table-cell">
-                    {c._whereType === 'person' ? (
+                    {c.custodian ? (
                       <span className="inline-flex items-center gap-1.5 text-amber-600 font-medium">
                         <User size={14} className="shrink-0" />
-                        {c._whereDisplay}
+                        {c.custodian.displayName}
                       </span>
-                    ) : c._whereType === 'kit' ? (
-                      <span className="inline-flex items-center gap-1.5 text-gray-500">
-                        <Archive size={14} className="shrink-0 text-gray-400" />
-                        {c._whereDisplay}
-                      </span>
-                    ) : c._whereType === 'site' ? (
+                    ) : '—'}
+                  </td>
+                  <td className="px-4 py-3 text-gray-600 hidden sm:table-cell">
+                    {c.site ? (
                       <span className="inline-flex items-center gap-1.5">
                         <Building2 size={14} className="shrink-0 text-gray-400" />
-                        {c._whereDisplay}
+                        {c.site.name}
+                      </span>
+                    ) : '—'}
+                  </td>
+                  <td className="px-4 py-3 text-gray-600 hidden sm:table-cell">
+                    {c.kit ? (
+                      <span className="inline-flex items-center gap-1.5">
+                        <Archive size={14} className="shrink-0 text-gray-400" />
+                        {c.kit.name}
                       </span>
                     ) : '—'}
                   </td>

@@ -21,12 +21,13 @@ export const testAuthRouter = Router();
 /**
  * POST /api/test/login
  * For Supertest: creates an authenticated session with the given role.
- * Body: { role?: 'INSTRUCTOR' | 'QUARTERMASTER', email?: string }
+ * Body: { role?: 'INSTRUCTOR' | 'QUARTERMASTER' | 'ADMIN', email?: string }
  *
  * Upserts a real User record so Passport's deserializeUser can find it.
  */
 testAuthRouter.post('/test/login', async (req: Request, res: Response) => {
-  const role: UserRole = req.body.role === 'QUARTERMASTER' ? 'QUARTERMASTER' : 'INSTRUCTOR';
+  const validRoles: UserRole[] = ['INSTRUCTOR', 'QUARTERMASTER', 'ADMIN'];
+  const role: UserRole = validRoles.includes(req.body.role) ? req.body.role : 'INSTRUCTOR';
   const email = req.body.email || `test-${role.toLowerCase()}@jointheleague.org`;
   const googleId = `test-google-${role.toLowerCase()}`;
 
@@ -63,7 +64,8 @@ testAuthRouter.post('/test/login', async (req: Request, res: Response) => {
  * The browser receives a session cookie for subsequent navigation.
  */
 testAuthRouter.get('/auth/test-login', async (req: Request, res: Response) => {
-  const role: UserRole = req.query.role === 'QUARTERMASTER' ? 'QUARTERMASTER' : 'INSTRUCTOR';
+  const validRoles: UserRole[] = ['INSTRUCTOR', 'QUARTERMASTER', 'ADMIN'];
+  const role: UserRole = validRoles.includes(req.query.role as UserRole) ? (req.query.role as UserRole) : 'INSTRUCTOR';
   const googleId = `test-google-${role.toLowerCase()}`;
 
   const email = `test-${role.toLowerCase()}@jointheleague.org`;

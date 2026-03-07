@@ -38,11 +38,12 @@ model Session {
 enum UserRole {
   INSTRUCTOR
   QUARTERMASTER
+  ADMIN
 }
 
 model User {
   id          Int      @id @default(autoincrement())
-  googleId    String   @unique
+  googleId    String?  @unique
   email       String   @unique
   displayName String
   avatar      String?

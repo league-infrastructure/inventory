@@ -26,50 +26,62 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
           return done(null, false, { message: 'Only jointheleague.org accounts are allowed' });
         }
 
-        // Upsert user in database
-        const user = await prisma.user.upsert({
-          where: { googleId: profile.id },
-          update: {
-            displayName: profile.displayName || '',
-            avatar: profile.photos?.[0]?.value || null,
-            email,
-          },
-          create: {
-            googleId: profile.id,
-            email,
-            displayName: profile.displayName || '',
-            avatar: profile.photos?.[0]?.value || null,
-          },
-        });
+        // Find existing user by googleId or email, then create/update
+        let user = await prisma.user.findUnique({ where: { googleId: profile.id } });
+        if (!user) {
+          user = await prisma.user.findUnique({ where: { email } });
+        }
 
-        // Check Quartermaster patterns to determine role
-        const patterns = await prisma.quartermasterPattern.findMany();
-        let role: 'INSTRUCTOR' | 'QUARTERMASTER' = 'INSTRUCTOR';
-        for (const p of patterns) {
-          if (p.isRegex) {
-            try {
-              if (new RegExp(p.pattern, 'i').test(email)) {
+        if (user) {
+          user = await prisma.user.update({
+            where: { id: user.id },
+            data: {
+              googleId: profile.id,
+              displayName: profile.displayName || '',
+              avatar: profile.photos?.[0]?.value || null,
+              email,
+            },
+          });
+        } else {
+          user = await prisma.user.create({
+            data: {
+              googleId: profile.id,
+              email,
+              displayName: profile.displayName || '',
+              avatar: profile.photos?.[0]?.value || null,
+            },
+          });
+        }
+
+        // Check Quartermaster patterns to determine role (skip if ADMIN)
+        if (user.role !== 'ADMIN') {
+          const patterns = await prisma.quartermasterPattern.findMany();
+          let role: 'INSTRUCTOR' | 'QUARTERMASTER' = 'INSTRUCTOR';
+          for (const p of patterns) {
+            if (p.isRegex) {
+              try {
+                if (new RegExp(p.pattern, 'i').test(email)) {
+                  role = 'QUARTERMASTER';
+                  break;
+                }
+              } catch {
+                // Invalid regex — skip
+              }
+            } else {
+              if (email.toLowerCase() === p.pattern.toLowerCase()) {
                 role = 'QUARTERMASTER';
                 break;
               }
-            } catch {
-              // Invalid regex — skip
-            }
-          } else {
-            if (email.toLowerCase() === p.pattern.toLowerCase()) {
-              role = 'QUARTERMASTER';
-              break;
             }
           }
-        }
 
-        // Update role if changed
-        if (user.role !== role) {
-          await prisma.user.update({
-            where: { id: user.id },
-            data: { role },
-          });
-          user.role = role;
+          if (user.role !== role) {
+            await prisma.user.update({
+              where: { id: user.id },
+              data: { role },
+            });
+            user.role = role;
+          }
         }
 
         done(null, user);

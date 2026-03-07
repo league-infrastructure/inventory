@@ -8,6 +8,7 @@ import { adminLogsRouter } from './logs';
 import { adminSessionsRouter } from './sessions';
 import { adminQuartermastersRouter } from './quartermasters';
 import { adminBackupRouter } from './backup';
+import { adminUsersRouter } from './users';
 
 export const adminRouter = Router();
 
@@ -25,3 +26,4 @@ adminRouter.use('/admin', adminLogsRouter);
 adminRouter.use('/admin', adminSessionsRouter);
 adminRouter.use('/admin', adminQuartermastersRouter);
 adminRouter.use('/admin', adminBackupRouter);
+adminRouter.use('/admin', adminUsersRouter);

@@ -10,5 +10,9 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
   if (req.session.isAdmin) {
     return next();
   }
+  const user = req.user as any;
+  if (user?.role === 'ADMIN') {
+    return next();
+  }
   res.status(401).json({ error: 'Admin authentication required' });
 }
