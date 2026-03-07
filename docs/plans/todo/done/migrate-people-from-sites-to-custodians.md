@@ -1,6 +1,6 @@
 ---
 type: todo
-status: pending
+status: done
 priority: medium
 ---
 
