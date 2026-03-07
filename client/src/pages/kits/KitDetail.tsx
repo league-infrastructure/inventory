@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Copy, Trash2, Plus, X, Printer } from 'lucide-react';
+import { Copy, Trash2, Plus, X, Printer, User, Building2 } from 'lucide-react';
 import EditableCell from '../../components/EditableCell';
 import InventoryCheckSection from '../../components/InventoryCheckSection';
 import LabelPrintModal from '../../components/LabelPrintModal';
@@ -548,15 +548,27 @@ export default function KitDetail() {
       <div className="mb-8">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Custody</h2>
 
-        <div className="bg-white border border-gray-200 rounded-lg p-4">
-          <p className="text-sm text-gray-800">
-            <span className="font-medium">Custodian:</span>{' '}
+        <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-2">
+          <p className="text-sm text-gray-800 inline-flex items-center gap-1.5">
+            <User size={14} className="shrink-0 text-gray-400" />
+            <span className="font-medium">Who:</span>{' '}
             {custodianName ? (
               <span className="text-amber-600 font-medium">{custodianName}</span>
             ) : (
               <span className="text-green-600">Admin (storeroom)</span>
             )}
           </p>
+          <p className="text-sm text-gray-800 inline-flex items-center gap-1.5">
+            <Building2 size={14} className="shrink-0 text-gray-400" />
+            <span className="font-medium">Where:</span>{' '}
+            {form.siteId ? (
+              <span>{sites.find((s) => s.id === form.siteId)?.name ?? '—'}</span>
+            ) : (
+              <span className="text-gray-400">No site</span>
+            )}
+          </p>
+
+        </div>
 
           {status === 'ACTIVE' && (
             <button
@@ -566,7 +578,6 @@ export default function KitDetail() {
               Transfer
             </button>
           )}
-        </div>
 
         {transferError && <p className="text-red-600 text-sm mt-2">{transferError}</p>}
 

@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { User, Building2, Archive } from 'lucide-react';
 
 interface Site { id: number; name: string; }
 interface Kit { id: number; name: string; }
+interface Custodian { id: number; displayName: string; }
 interface HostName { id: number; name: string; computerId: number | null; }
 
 const DISPOSITIONS = [
@@ -57,6 +59,7 @@ export default function ComputerDetail() {
   const [sites, setSites] = useState<Site[]>([]);
   const [kits, setKits] = useState<Kit[]>([]);
   const [hostNames, setHostNames] = useState<HostName[]>([]);
+  const [custodianName, setCustodianName] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -85,6 +88,7 @@ export default function ComputerDetail() {
         setForm(initial);
         savedForm.current = initial;
         setQrCode(c.qrCode || null);
+        setCustodianName(c.custodian?.displayName ?? null);
         setSites(s);
         setKits(k);
         setHostNames(h);
@@ -170,6 +174,40 @@ export default function ComputerDetail() {
           <code className="text-xs text-gray-500">{qrCode}</code>
         </div>
       )}
+
+      {/* Custody */}
+      <div className="mb-6 bg-white border border-gray-200 rounded-lg p-4">
+        <h2 className="text-sm font-semibold text-gray-700 mb-2">Custody</h2>
+        <div className="space-y-1.5">
+          <p className="text-sm text-gray-800 inline-flex items-center gap-1.5">
+            <User size={14} className="shrink-0 text-gray-400" />
+            <span className="font-medium">Who:</span>{' '}
+            {custodianName ? (
+              <span className="text-amber-600 font-medium">{custodianName}</span>
+            ) : (
+              <span className="text-green-600">Admin (storeroom)</span>
+            )}
+          </p>
+          <p className="text-sm text-gray-800 inline-flex items-center gap-1.5">
+            <Building2 size={14} className="shrink-0 text-gray-400" />
+            <span className="font-medium">Where:</span>{' '}
+            {form.siteId ? (
+              <span>{sites.find((s) => s.id === form.siteId)?.name ?? '—'}</span>
+            ) : (
+              <span className="text-gray-400">No site</span>
+            )}
+          </p>
+          {form.kitId && (
+            <p className="text-sm text-gray-800 inline-flex items-center gap-1.5">
+              <Archive size={14} className="shrink-0 text-gray-400" />
+              <span className="font-medium">Kit:</span>{' '}
+              <Link to={`/kits/${form.kitId}`} className="text-primary hover:underline">
+                {kits.find((k) => k.id === form.kitId)?.name ?? `Kit #${form.kitId}`}
+              </Link>
+            </p>
+          )}
+        </div>
+      </div>
 
       {saveError && <p className="text-red-600 text-sm mb-4">{saveError}</p>}
 
