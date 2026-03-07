@@ -61,6 +61,10 @@ export class ComputerService extends BaseService<ComputerRecord, CreateComputerI
   }
 
   async create(input: CreateComputerInput, userId: number): Promise<ComputerRecord> {
+    if (!input.serialNumber && !input.serviceTag && !input.model) {
+      throw new ValidationError('At least one identifying field (serialNumber, serviceTag, or model) is required');
+    }
+
     if (input.disposition && !Object.values(ComputerDisposition).includes(input.disposition as ComputerDisposition)) {
       throw new ValidationError('Invalid disposition value');
     }
