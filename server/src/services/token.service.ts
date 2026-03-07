@@ -94,6 +94,17 @@ export class TokenService {
   }
 
   async validate(rawToken: string): Promise<TokenValidationResult> {
+    // Default dev token — bypasses DB, assumes first quartermaster
+    const defaultToken = process.env.MCP_DEFAULT_TOKEN;
+    if (defaultToken && rawToken === defaultToken) {
+      const qm = await this.prisma.user.findFirst({
+        where: { role: 'QUARTERMASTER' },
+        orderBy: { id: 'asc' },
+      });
+      if (!qm) throw new Error('No quartermaster user found for default token');
+      return { userId: qm.id, role: qm.role };
+    }
+
     const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
 
     const token = await this.prisma.apiToken.findUnique({ where: { tokenHash } });

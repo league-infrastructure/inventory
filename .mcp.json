@@ -10,7 +10,7 @@
       "type": "http",
       "url": "http://localhost:5173/api/mcp",
       "headers": {
-        "Authorization": "Bearer cfbbbe28e39e6ed0854a8a6f9c1579bc6cd1e665ee4bdd40964309ee0e4adcee"
+        "Authorization": "Bearer 359dde89d0ac9a6b1c9540a8a596fcc2e44b8709b551956b3afccdaf651c7cd0"
       }
     }
   }

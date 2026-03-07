@@ -131,13 +131,14 @@ export function registerTools(server: McpServer): void {
     });
   });
 
-  server.tool('update_kit', 'Update an existing kit', {
+  server.tool('update_kit', 'Update an existing kit. Set siteId/custodianId to null to clear the association.', {
     id: z.number(),
     number: z.number().optional(),
     containerType: z.string().optional(),
     name: z.string().optional(),
     description: z.string().optional(),
-    siteId: z.number().optional(),
+    siteId: z.number().nullable().optional(),
+    custodianId: z.number().nullable().optional(),
     status: z.string().optional(),
   }, async ({ id, ...input }) => {
     return safeCall(async () => {
@@ -337,10 +338,11 @@ export function registerTools(server: McpServer): void {
     disposition: z.string().optional(),
     dateReceived: z.string().optional(),
     notes: z.string().optional(),
-    siteId: z.number().optional(),
-    kitId: z.number().optional(),
-    osId: z.number().optional(),
-    hostNameId: z.number().optional(),
+    siteId: z.number().nullable().optional(),
+    kitId: z.number().nullable().optional(),
+    osId: z.number().nullable().optional(),
+    custodianId: z.number().nullable().optional(),
+    hostNameId: z.number().nullable().optional(),
   }, async (args) => {
     return safeCall(async () => {
       requireQM();
@@ -349,7 +351,7 @@ export function registerTools(server: McpServer): void {
     });
   });
 
-  server.tool('update_computer', 'Update an existing computer', {
+  server.tool('update_computer', 'Update an existing computer. Set kitId/siteId/custodianId/hostNameId to null to clear the association.', {
     id: z.number(),
     serialNumber: z.string().optional(),
     serviceTag: z.string().optional(),
@@ -359,10 +361,11 @@ export function registerTools(server: McpServer): void {
     disposition: z.string().optional(),
     dateReceived: z.string().optional(),
     notes: z.string().optional(),
-    siteId: z.number().optional(),
-    kitId: z.number().optional(),
-    osId: z.number().optional(),
-    hostNameId: z.number().optional(),
+    siteId: z.number().nullable().optional(),
+    kitId: z.number().nullable().optional(),
+    osId: z.number().nullable().optional(),
+    custodianId: z.number().nullable().optional(),
+    hostNameId: z.number().nullable().optional(),
   }, async ({ id, ...input }) => {
     return safeCall(async () => {
       requireQM();
