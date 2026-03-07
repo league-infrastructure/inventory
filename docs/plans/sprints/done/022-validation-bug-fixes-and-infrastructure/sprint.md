@@ -1,7 +1,7 @@
 ---
-id: "022"
-title: "Validation, Bug Fixes, and Infrastructure"
-status: in-progress
+id: '022'
+title: Validation, Bug Fixes, and Infrastructure
+status: done
 branch: sprint/022-validation-bug-fixes-and-infrastructure
 ---
 
