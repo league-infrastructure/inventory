@@ -1,5 +1,8 @@
 ---
-status: pending
+status: done
+sprint: '022'
+tickets:
+- '002'
 ---
 
 # Require minimum fields when creating computers

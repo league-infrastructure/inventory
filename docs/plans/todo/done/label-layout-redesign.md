@@ -1,5 +1,8 @@
 ---
-status: pending
+status: done
+sprint: '022'
+tickets:
+- '001'
 ---
 
 # Redesign label layout to match spec

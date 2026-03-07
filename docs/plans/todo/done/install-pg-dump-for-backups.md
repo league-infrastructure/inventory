@@ -1,7 +1,10 @@
 ---
 type: todo
-status: pending
+status: done
 priority: medium
+sprint: '022'
+tickets:
+- '006'
 ---
 
 # Install pg_dump in server Docker container for backups

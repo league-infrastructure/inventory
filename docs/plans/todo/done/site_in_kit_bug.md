@@ -1,3 +1,9 @@
+---
+status: done
+sprint: '022'
+tickets:
+- '005'
+---
 # Inventory System Bug Report — Computer/Kit Site Inconsistencies
 
 **Date:** 2026-03-06  
