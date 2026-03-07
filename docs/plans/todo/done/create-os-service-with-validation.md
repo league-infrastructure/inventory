@@ -1,5 +1,8 @@
 ---
-status: pending
+status: done
+sprint: '022'
+tickets:
+- '004'
 ---
 
 # Create OsService with proper validation

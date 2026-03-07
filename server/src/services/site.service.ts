@@ -47,6 +47,13 @@ export class SiteService extends BaseService<SiteRecord, CreateSiteInput, Update
       throw new ValidationError('Longitude must be a valid number');
     }
 
+    if (input.isHomeSite) {
+      await this.prisma.site.updateMany({
+        where: { isHomeSite: true },
+        data: { isHomeSite: false },
+      });
+    }
+
     const site = await this.prisma.site.create({
       data: {
         name: input.name.trim(),
@@ -73,6 +80,13 @@ export class SiteService extends BaseService<SiteRecord, CreateSiteInput, Update
     }
     if (input.longitude != null && typeof input.longitude !== 'number') {
       throw new ValidationError('Longitude must be a valid number');
+    }
+
+    if (input.isHomeSite) {
+      await this.prisma.site.updateMany({
+        where: { isHomeSite: true, id: { not: id } },
+        data: { isHomeSite: false },
+      });
     }
 
     const updated = await this.prisma.site.update({

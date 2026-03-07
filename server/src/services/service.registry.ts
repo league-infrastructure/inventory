@@ -17,6 +17,7 @@ import { ExportService } from './export.service';
 import { ImportService } from './import.service';
 import { SearchService } from './search.service';
 import { ReportService } from './report.service';
+import { OsService } from './os.service';
 
 export class ServiceRegistry {
   readonly prisma: PrismaClient;
@@ -37,6 +38,7 @@ export class ServiceRegistry {
   readonly imports: ImportService;
   readonly search: SearchService;
   readonly reports: ReportService;
+  readonly os: OsService;
 
   private constructor(prisma: PrismaClient, source: AuditSource = 'UI') {
     this.prisma = prisma;
@@ -57,6 +59,7 @@ export class ServiceRegistry {
     this.imports = new ImportService(prisma, this.audit);
     this.search = new SearchService(prisma);
     this.reports = new ReportService(prisma);
+    this.os = new OsService(prisma, this.audit);
   }
 
   static create(prisma?: PrismaClient, source?: AuditSource): ServiceRegistry {

@@ -270,8 +270,7 @@ export function registerTools(server: McpServer): void {
   server.tool('list_operating_systems', 'List all operating systems', {}, async () => {
     return safeCall(async () => {
       const { services } = getContext();
-      const items = await services.prisma.operatingSystem.findMany({ orderBy: { name: 'asc' } });
-      return ok(items);
+      return ok(await services.os.list());
     });
   });
 
@@ -280,9 +279,8 @@ export function registerTools(server: McpServer): void {
   }, async ({ name }) => {
     return safeCall(async () => {
       requireQM();
-      const { services } = getContext();
-      const os = await services.prisma.operatingSystem.create({ data: { name } });
-      return ok(os);
+      const { services, user } = getContext();
+      return ok(await services.os.create({ name }, user.id));
     });
   });
 
@@ -292,9 +290,8 @@ export function registerTools(server: McpServer): void {
   }, async ({ id, name }) => {
     return safeCall(async () => {
       requireQM();
-      const { services } = getContext();
-      const os = await services.prisma.operatingSystem.update({ where: { id }, data: { name } });
-      return ok(os);
+      const { services, user } = getContext();
+      return ok(await services.os.update(id, { name }, user.id));
     });
   });
 
@@ -304,11 +301,7 @@ export function registerTools(server: McpServer): void {
     return safeCall(async () => {
       requireQM();
       const { services } = getContext();
-      const count = await services.prisma.computer.count({ where: { osId: id } });
-      if (count > 0) {
-        throw new Error(`Cannot delete: ${count} computer(s) still using this OS`);
-      }
-      await services.prisma.operatingSystem.delete({ where: { id } });
+      await services.os.delete(id);
       return ok({ deleted: true });
     });
   });

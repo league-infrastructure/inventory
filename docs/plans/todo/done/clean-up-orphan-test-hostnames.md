@@ -1,5 +1,8 @@
 ---
-status: pending
+status: done
+sprint: '022'
+tickets:
+- '007'
 ---
 
 # Clean up orphan test hostnames

@@ -48,19 +48,18 @@ describe('Computers API', () => {
       expect(res.body.disposition).toBe('ACTIVE');
     });
 
-    it('creates a computer with no fields (all optional)', async () => {
+    it('rejects a computer with no identifying fields', async () => {
       const res = await agent
         .post('/api/computers')
         .send({});
-      expect(res.status).toBe(201);
-      expect(res.body.id).toBeDefined();
-      createdIds.push(res.body.id);
+      expect(res.status).toBe(400);
+      expect(res.body.error).toMatch(/identifying field/i);
     });
 
     it('returns 400 for invalid disposition', async () => {
       const res = await agent
         .post('/api/computers')
-        .send({ disposition: 'INVALID' });
+        .send({ model: 'Test', disposition: 'INVALID' });
       expect(res.status).toBe(400);
     });
   });
@@ -115,7 +114,7 @@ describe('Computers API', () => {
     it('changes disposition', async () => {
       const created = await agent
         .post('/api/computers')
-        .send({});
+        .send({ model: 'Disposition Test' });
       createdIds.push(created.body.id);
 
       const res = await agent
@@ -128,7 +127,7 @@ describe('Computers API', () => {
     it('returns 400 for invalid disposition', async () => {
       const created = await agent
         .post('/api/computers')
-        .send({});
+        .send({ model: 'Disposition Invalid Test' });
       createdIds.push(created.body.id);
 
       const res = await agent
