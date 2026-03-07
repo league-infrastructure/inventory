@@ -8,3 +8,4 @@ export * from './transfer';
 export * from './inventoryCheck';
 export * from './issue';
 export * from './user';
+export * from './operatingSystem';
