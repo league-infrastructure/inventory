@@ -41,6 +41,14 @@ export default function LabelPrintModal({ kitId, kitName, packs, onClose }: Prop
   }
 
   async function handlePrint() {
+    // Open window synchronously to avoid popup blocker (must be in click handler)
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('Popup blocked — please allow popups for this site.');
+      return;
+    }
+    printWindow.document.write('<html><body><p>Generating labels...</p></body></html>');
+
     setGenerating(true);
     try {
       const packIds = Array.from(selectedPacks);
@@ -49,15 +57,16 @@ export default function LabelPrintModal({ kitId, kitName, packs, onClose }: Prop
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ packIds, includeKit }),
       });
-      if (!res.ok) throw new Error('Failed to generate labels');
+      if (!res.ok) {
+        printWindow.close();
+        throw new Error('Failed to generate labels');
+      }
 
       const html = await res.text();
-      const printWindow = window.open('', '_blank');
-      if (printWindow) {
-        printWindow.document.write(html);
-        printWindow.document.close();
-        printWindow.onafterprint = () => printWindow.close();
-      }
+      printWindow.document.open();
+      printWindow.document.write(html);
+      printWindow.document.close();
+      printWindow.focus();
     } catch (e) {
       console.error('Label generation failed:', e);
     }
