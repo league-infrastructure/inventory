@@ -151,7 +151,13 @@ export function imageRouter(services: ServiceRegistry): Router {
         return res.redirect(image.url);
       }
 
-      // Binary image: serve directly
+      // S3-backed image: redirect to Spaces public URL
+      if (image.objectKey) {
+        const publicUrl = services.images.getPublicUrl(image.objectKey);
+        return res.redirect(publicUrl);
+      }
+
+      // Legacy bytea image: serve directly
       if (!image.data) return res.status(404).json({ error: 'Image has no data' });
 
       res.set('Content-Type', image.mimeType);

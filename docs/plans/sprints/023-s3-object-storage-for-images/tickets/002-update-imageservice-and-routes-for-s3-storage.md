@@ -1,7 +1,7 @@
 ---
 id: "002"
 title: "Update ImageService and routes for S3 storage"
-status: todo
+status: done
 use-cases: [SUC-001, SUC-002, SUC-003]
 depends-on: ["001"]
 ---
@@ -17,13 +17,13 @@ S3 objects on image removal.
 
 ## Acceptance Criteria
 
-- [ ] `create()` uploads to S3 and stores `objectKey` (no `data` in DB)
-- [ ] `delete()` removes S3 object before deleting DB record
-- [ ] `GET /api/images/:id` redirects to Spaces URL for S3 images
-- [ ] `GET /api/images/:id` still serves bytea for legacy images
-- [ ] `GET /api/images/:id` still redirects for URL-based images
-- [ ] Photos display correctly in the UI after upload
-- [ ] Server compiles and tests pass
+- [x] `create()` uploads to S3 and stores `objectKey` (no `data` in DB)
+- [x] `delete()` removes S3 object before deleting DB record
+- [x] `GET /api/images/:id` redirects to Spaces URL for S3 images
+- [x] `GET /api/images/:id` still serves bytea for legacy images
+- [x] `GET /api/images/:id` still redirects for URL-based images
+- [x] Photos display correctly in the UI after upload
+- [x] Server compiles and tests pass
 
 ## Testing
 
