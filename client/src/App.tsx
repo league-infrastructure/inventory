@@ -28,6 +28,7 @@ import Account from './pages/account/Account';
 import AdminTokens from './pages/admin/AdminTokens';
 import ImportExport from './pages/admin/ImportExport';
 import UsersPanel from './pages/admin/UsersPanel';
+import CategoriesPanel from './pages/admin/CategoriesPanel';
 import AuditLogViewer from './pages/reports/AuditLogViewer';
 import InventoryAgeReport from './pages/reports/InventoryAgeReport';
 import CheckedOutByPerson from './pages/reports/CheckedOutByPerson';
@@ -71,6 +72,7 @@ function App() {
             <Route path="/admin/sessions" element={<SessionViewer />} />
             <Route path="/admin/permissions" element={<PermissionsPanel />} />
             <Route path="/admin/tokens" element={<AdminTokens />} />
+            <Route path="/admin/categories" element={<CategoriesPanel />} />
             <Route path="/admin/import-export" element={<ImportExport />} />
             <Route path="/admin/users" element={<UsersPanel />} />
           </Route>

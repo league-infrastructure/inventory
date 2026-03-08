@@ -22,11 +22,13 @@ export interface KitRecord {
   siteId: number | null;
   custodianId: number | null;
   imageId: number | null;
+  categoryId: number | null;
   createdAt: string;
   updatedAt: string;
   lastInventoried: string | null;
   site: { id: number; name: string } | null;
   custodian: { id: number; displayName: string } | null;
+  category: { id: number; name: string } | null;
 }
 
 export interface KitDetailRecord extends KitRecord {
@@ -53,6 +55,7 @@ export interface UpdateKitInput {
   name?: string;
   description?: string | null;
   siteId?: number;
+  categoryId?: number | null;
   custodianId?: number | null;
   status?: string;
 }

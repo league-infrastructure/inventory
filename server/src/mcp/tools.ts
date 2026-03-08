@@ -3,6 +3,11 @@ import { z } from 'zod';
 import { mcpContext } from './context';
 import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
+// Some MCP clients serialize numbers as strings when the JSON Schema uses
+// anyOf (e.g. nullable optional numbers). This schema accepts both and
+// coerces strings to numbers.
+const zIdParam = () => z.union([z.number(), z.string().transform(Number)]).nullable().optional();
+
 function getContext() {
   const ctx = mcpContext.getStore();
   if (!ctx) throw new Error('MCP context not available');
@@ -137,8 +142,9 @@ export function registerTools(server: McpServer): void {
     containerType: z.string().optional(),
     name: z.string().optional(),
     description: z.string().optional(),
-    siteId: z.number().nullable().optional(),
-    custodianId: z.number().nullable().optional(),
+    siteId: zIdParam(),
+    custodianId: zIdParam(),
+    categoryId: zIdParam(),
     status: z.string().optional(),
   }, async ({ id, ...input }) => {
     return safeCall(async () => {
@@ -331,11 +337,11 @@ export function registerTools(server: McpServer): void {
     disposition: z.string().optional(),
     dateReceived: z.string().optional(),
     notes: z.string().optional(),
-    siteId: z.number().nullable().optional(),
-    kitId: z.number().nullable().optional(),
-    osId: z.number().nullable().optional(),
-    custodianId: z.number().nullable().optional(),
-    hostNameId: z.number().nullable().optional(),
+    siteId: zIdParam(),
+    kitId: zIdParam(),
+    osId: zIdParam(),
+    custodianId: zIdParam(),
+    hostNameId: zIdParam(),
   }, async (args) => {
     return safeCall(async () => {
       requireQM();
@@ -354,11 +360,12 @@ export function registerTools(server: McpServer): void {
     disposition: z.string().optional(),
     dateReceived: z.string().optional(),
     notes: z.string().optional(),
-    siteId: z.number().nullable().optional(),
-    kitId: z.number().nullable().optional(),
-    osId: z.number().nullable().optional(),
-    custodianId: z.number().nullable().optional(),
-    hostNameId: z.number().nullable().optional(),
+    siteId: zIdParam(),
+    kitId: zIdParam(),
+    osId: zIdParam(),
+    custodianId: zIdParam(),
+    hostNameId: zIdParam(),
+    categoryId: zIdParam(),
   }, async ({ id, ...input }) => {
     return safeCall(async () => {
       requireQM();
@@ -506,8 +513,8 @@ export function registerTools(server: McpServer): void {
 
   server.tool('transfer_kit', 'Transfer a kit to a new custodian and/or site', {
     kitId: z.number(),
-    custodianId: z.number().nullable().optional(),
-    siteId: z.number().nullable().optional(),
+    custodianId: zIdParam(),
+    siteId: zIdParam(),
     notes: z.string().optional(),
   }, async ({ kitId, custodianId, siteId, notes }) => {
     return safeCall(async () => {
@@ -524,8 +531,8 @@ export function registerTools(server: McpServer): void {
 
   server.tool('transfer_computer', 'Transfer a standalone computer to a new custodian and/or site. Computer must not be in a kit.', {
     computerId: z.number(),
-    custodianId: z.number().nullable().optional(),
-    siteId: z.number().nullable().optional(),
+    custodianId: zIdParam(),
+    siteId: zIdParam(),
     notes: z.string().optional(),
   }, async ({ computerId, custodianId, siteId, notes }) => {
     return safeCall(async () => {
@@ -537,6 +544,51 @@ export function registerTools(server: McpServer): void {
         siteId,
         notes,
       }, user.id));
+    });
+  });
+
+  // ── Notes ──────────────────────────────────────────────────────────
+  server.tool('list_notes', 'List notes for a Kit, Pack, or Computer', {
+    objectType: z.enum(['Kit', 'Pack', 'Computer']),
+    objectId: z.number(),
+  }, async ({ objectType, objectId }) => {
+    return safeCall(async () => {
+      const { services } = getContext();
+      return ok(await services.notes.list(objectType, objectId));
+    });
+  });
+
+  server.tool('create_note', 'Add a note to a Kit, Pack, or Computer', {
+    objectType: z.enum(['Kit', 'Pack', 'Computer']),
+    objectId: z.number(),
+    text: z.string(),
+  }, async (args) => {
+    return safeCall(async () => {
+      requireQM();
+      const { services, user } = getContext();
+      return ok(await services.notes.create(args, user.id));
+    });
+  });
+
+  server.tool('update_note', 'Update an existing note', {
+    id: z.number(),
+    text: z.string(),
+  }, async ({ id, text }) => {
+    return safeCall(async () => {
+      requireQM();
+      const { services, user } = getContext();
+      return ok(await services.notes.update(id, { text }, user.id));
+    });
+  });
+
+  server.tool('delete_note', 'Delete a note', {
+    id: z.number(),
+  }, async ({ id }) => {
+    return safeCall(async () => {
+      requireQM();
+      const { services } = getContext();
+      await services.notes.delete(id);
+      return ok({ deleted: true });
     });
   });
 }

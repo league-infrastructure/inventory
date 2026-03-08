@@ -15,6 +15,7 @@ export interface ComputerRecord {
   osId: number | null;
   custodianId: number | null;
   imageId: number | null;
+  categoryId: number | null;
   createdAt: string;
   updatedAt: string;
   hostName: { id: number; name: string; computerId: number | null } | null;
@@ -22,6 +23,7 @@ export interface ComputerRecord {
   kit: { id: number; name: string } | null;
   os: { id: number; name: string } | null;
   custodian: { id: number; displayName: string } | null;
+  category: { id: number; name: string } | null;
 }
 
 export interface CreateComputerInput {
@@ -37,6 +39,7 @@ export interface CreateComputerInput {
   siteId?: number | null;
   kitId?: number | null;
   osId?: number | null;
+  categoryId?: number | null;
   custodianId?: number | null;
   hostNameId?: number | null;
 }

@@ -59,6 +59,7 @@ model User {
   inventoryChecks    InventoryCheck[]
   auditLogs          AuditLog[]
   apiTokens          ApiToken[]
+  notes              Note[]
 }
 
 model Site {
@@ -99,12 +100,14 @@ model Kit {
   siteId        Int?
   custodianId   Int?
   imageId       Int?
+  categoryId    Int?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
   site      Site?      @relation(fields: [siteId], references: [id])
   custodian User?      @relation("KitCustodian", fields: [custodianId], references: [id])
   image     Image?     @relation(fields: [imageId], references: [id])
+  category  Category?  @relation(fields: [categoryId], references: [id])
   packs     Pack[]
   computers Computer[]
   inventoryChecks InventoryCheck[] @relation("KitInventoryCheck")
@@ -112,6 +115,7 @@ model Kit {
   @@index([siteId])
   @@index([custodianId])
   @@index([imageId])
+  @@index([categoryId])
 }
 
 model Pack {
@@ -191,6 +195,7 @@ model Computer {
   osId            Int?
   custodianId     Int?
   imageId         Int?
+  categoryId      Int?
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
 
@@ -199,6 +204,7 @@ model Computer {
   os        OperatingSystem?  @relation(fields: [osId], references: [id])
   custodian User?             @relation("ComputerCustodian", fields: [custodianId], references: [id])
   image     Image?            @relation(fields: [imageId], references: [id])
+  category  Category?         @relation(fields: [categoryId], references: [id])
   hostName  HostName?
 
   @@index([siteId])
@@ -206,6 +212,7 @@ model Computer {
   @@index([osId])
   @@index([custodianId])
   @@index([imageId])
+  @@index([categoryId])
 }
 
 model HostName {
@@ -350,6 +357,31 @@ model QuartermasterPattern {
   isRegex   Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Category {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  kits      Kit[]
+  computers Computer[]
+}
+
+model Note {
+  id         Int      @id @default(autoincrement())
+  objectType String   // 'Kit' | 'Pack' | 'Computer'
+  objectId   Int
+  text       String
+  userId     Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([objectType, objectId])
+  @@index([userId])
 }
 
 model Image {

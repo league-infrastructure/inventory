@@ -27,6 +27,7 @@ interface Kit {
   lastInventoried: string | null;
   site: { id: number; name: string } | null;
   custodian: { id: number; displayName: string } | null;
+  category: { id: number; name: string } | null;
 }
 
 function kitDisplayName(kit: Kit): string {
@@ -52,9 +53,11 @@ export default function KitList() {
     ...kit,
     _custodian: kit.custodian?.displayName ?? '',
     _location: kit.site?.name ?? '',
+    _category: kit.category?.name ?? '',
+    _container: CONTAINER_TYPE_LABELS[kit.containerType] || kit.containerType,
   })), [kits]);
 
-  const { processed: sorted, sort, toggleSort, filters, setFilter } = useTableSort(kitsWithColumns, { key: 'name', direction: 'asc' });
+  const { processed: sorted, sort, toggleSort, filters, setFilter } = useTableSort(kitsWithColumns, { key: 'number', direction: 'asc' });
 
   const loadKits = useCallback(() => {
     setLoading(true);
@@ -123,10 +126,12 @@ export default function KitList() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200">
-                <SortableHeader label="Name" sortKey="name" currentSort={sort} onSort={toggleSort} filterValue={filters['name']} onFilter={setFilter} />
+                <SortableHeader label="#" sortKey="number" currentSort={sort} onSort={toggleSort} filterValue={filters['number']} onFilter={setFilter} />
+                <SortableHeader label="Category" sortKey="_category" currentSort={sort} onSort={toggleSort} filterValue={filters['_category']} onFilter={setFilter} />
+                <SortableHeader label="Container" sortKey="_container" currentSort={sort} onSort={toggleSort} filterValue={filters['_container']} onFilter={setFilter} />
+                <SortableHeader label="Description" sortKey="name" currentSort={sort} onSort={toggleSort} filterValue={filters['name']} onFilter={setFilter} />
                 <SortableHeader label="Custodian" sortKey="_custodian" currentSort={sort} onSort={toggleSort} filterValue={filters['_custodian']} onFilter={setFilter} />
                 <SortableHeader label="Location" sortKey="_location" currentSort={sort} onSort={toggleSort} filterValue={filters['_location']} onFilter={setFilter} />
-                <SortableHeader label="Status" sortKey="status" currentSort={sort} onSort={toggleSort} filterValue={filters['status']} onFilter={setFilter} />
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500">Actions</th>
               </tr>
             </thead>
@@ -140,7 +145,10 @@ export default function KitList() {
                     className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
                     onClick={() => navigate(`/kits/${kit.id}`)}
                   >
-                    <td className="px-4 py-3 font-medium text-gray-900">{kitDisplayName(kit)}</td>
+                    <td className="px-4 py-3 font-medium text-gray-900">{kit.number}</td>
+                    <td className="px-4 py-3 text-gray-600">{kit._category || '—'}</td>
+                    <td className="px-4 py-3 text-gray-600">{kit._container}</td>
+                    <td className="px-4 py-3 text-gray-900">{kit.name}</td>
                     <td className="px-4 py-3 text-gray-600">
                       {kit._custodian ? (
                         <span className="inline-flex items-center gap-1.5 text-amber-600 font-medium">
@@ -156,11 +164,6 @@ export default function KitList() {
                           {kit._location}
                         </span>
                       ) : '—'}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="inline-block text-xs px-2 py-0.5 rounded-full font-medium bg-green-100 text-green-700">
-                        {kit.status}
-                      </span>
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1.5">
