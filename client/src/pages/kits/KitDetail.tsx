@@ -729,7 +729,17 @@ export default function KitDetail() {
                 </span>
                 {pack.qrCode && <code className="ml-2 text-xs bg-gray-100 px-1.5 py-0.5 rounded">{pack.qrCode}</code>}
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 items-center">
+                <PhotoUpload
+                  objectType="Pack"
+                  objectId={pack.id}
+                  imageId={pack.imageId ?? null}
+                  onUpdate={() => {
+                    fetch(`/api/kits/${id}`).then((r) => r.ok ? r.json() : null)
+                      .then((kit) => { if (kit) setPacks(kit.packs); });
+                  }}
+                  compact
+                />
                 <button
                   className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded bg-primary text-white border-none cursor-pointer"
                   onClick={() => setItemForms((prev) => ({ ...prev, [pack.id]: true }))}
@@ -744,16 +754,6 @@ export default function KitDetail() {
                 </button>
               </div>
             </div>
-
-            <PhotoUpload
-              objectType="Pack"
-              objectId={pack.id}
-              imageId={pack.imageId ?? null}
-              onUpdate={() => {
-                fetch(`/api/kits/${id}`).then((r) => r.ok ? r.json() : null)
-                  .then((kit) => { if (kit) setPacks(kit.packs); });
-              }}
-            />
 
             {itemForms[pack.id] && (
               <div className="flex flex-wrap gap-2 mb-3 items-center">

@@ -6,9 +6,10 @@ interface PhotoUploadProps {
   objectId: number;
   imageId: number | null;
   onUpdate: () => void;
+  compact?: boolean;
 }
 
-export default function PhotoUpload({ objectType, objectId, imageId, onUpdate }: PhotoUploadProps) {
+export default function PhotoUpload({ objectType, objectId, imageId, onUpdate, compact }: PhotoUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showUrlInput, setShowUrlInput] = useState(false);
@@ -84,6 +85,55 @@ export default function PhotoUpload({ objectType, objectId, imageId, onUpdate }:
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (file) handleUpload(file);
+  }
+
+  if (compact) {
+    return (
+      <div className="inline-flex items-center gap-2">
+        {imageId ? (
+          <>
+            <img
+              src={`/api/images/${imageId}`}
+              alt={`${objectType} photo`}
+              className="w-8 h-8 rounded object-cover border border-gray-200"
+            />
+            <button
+              onClick={() => fileRef.current?.click()}
+              disabled={uploading}
+              className="text-gray-400 hover:text-gray-600 bg-transparent border-none cursor-pointer p-0.5"
+              title="Replace photo"
+            >
+              <Upload size={12} />
+            </button>
+            <button
+              onClick={handleDelete}
+              className="text-gray-400 hover:text-red-600 bg-transparent border-none cursor-pointer p-0.5"
+              title="Remove photo"
+            >
+              <Trash2 size={12} />
+            </button>
+          </>
+        ) : (
+          <button
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded text-gray-500 bg-gray-50 border border-gray-200 cursor-pointer hover:bg-gray-100 hover:text-gray-700 disabled:opacity-50"
+            title="Add photo"
+          >
+            <Camera size={12} />
+            {uploading ? 'Uploading...' : 'Photo'}
+          </button>
+        )}
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          onChange={handleFileChange}
+          className="hidden"
+        />
+        {error && <span className="text-red-600 text-xs">{error}</span>}
+      </div>
+    );
   }
 
   return (

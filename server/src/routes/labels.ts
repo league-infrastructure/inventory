@@ -38,8 +38,9 @@ export function labelsRouter(services: ServiceRegistry): Router {
   router.post('/labels/kit/:id/batch', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
     try {
       const id = parseInt(req.params.id as string, 10);
-      const packIds: number[] = req.body.packIds || [];
+      const packIds: number[] = Array.isArray(req.body.packIds) ? req.body.packIds : [];
       const includeKit: boolean = req.body.includeKit !== false;
+      console.log('[labels] batch request:', { kitId: id, packIds, includeKit, rawBody: req.body });
       const html = await services.labels.generateBatchHtml(id, packIds, includeKit);
       res.setHeader('Content-Type', 'text/html');
       res.send(html);
