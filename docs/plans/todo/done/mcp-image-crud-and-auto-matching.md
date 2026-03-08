@@ -1,5 +1,5 @@
 ---
-status: pending
+status: done
 ---
 
 # MCP Image CRUD and Auto-Matching by Serial Number
