@@ -4,6 +4,7 @@ import { mcpContext } from './context';
 import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { hasQMAccess } from '../contracts';
 
 // MCP clients struggle with anyOf schemas (nullable/optional numbers).
 // This helper accepts number, null, or string — coercing string numbers
@@ -22,7 +23,7 @@ function getContext() {
 
 function requireQM(): void {
   const { user } = getContext();
-  if (user.role !== 'QUARTERMASTER') {
+  if (!hasQMAccess(user.role)) {
     throw new Error('Quartermaster access required');
   }
 }

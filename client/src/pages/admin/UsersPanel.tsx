@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Plus, Pencil, Trash2, Save, X, UserPlus } from 'lucide-react';
+import { USER_ROLES, ROLE_BADGE_STYLES } from '../../lib/roles';
 
 interface User {
   id: number;
@@ -16,16 +17,8 @@ interface User {
   };
 }
 
-const ROLES = ['INSTRUCTOR', 'QUARTERMASTER', 'ADMIN'] as const;
-
-const roleBadge = (role: string) => {
-  const styles: Record<string, string> = {
-    ADMIN: 'bg-purple-50 text-purple-700',
-    QUARTERMASTER: 'bg-blue-50 text-blue-700',
-    INSTRUCTOR: 'bg-green-50 text-green-700',
-  };
-  return styles[role] || 'bg-gray-50 text-gray-700';
-};
+const roleBadge = (role: string) =>
+  ROLE_BADGE_STYLES[role as keyof typeof ROLE_BADGE_STYLES] || 'bg-gray-50 text-gray-700';
 
 export default function UsersPanel() {
   const [users, setUsers] = useState<User[]>([]);
@@ -176,7 +169,7 @@ export default function UsersPanel() {
                 onChange={(e) => setCreateForm({ ...createForm, role: e.target.value })}
                 className="block px-3 py-1.5 text-sm border border-gray-300 rounded-md"
               >
-                {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+                {USER_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
               </select>
             </label>
             <div className="flex gap-1">
@@ -246,7 +239,7 @@ export default function UsersPanel() {
                           onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
                           className="px-2 py-1 text-sm border border-gray-300 rounded"
                         >
-                          {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+                          {USER_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
                         </select>
                       </td>
                       <td></td>

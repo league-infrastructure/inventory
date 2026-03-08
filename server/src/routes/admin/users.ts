@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { prisma } from '../../services/prisma';
+import { USER_ROLES } from '../../contracts';
 
 export const adminUsersRouter = Router();
 
@@ -67,7 +68,7 @@ adminUsersRouter.post('/users', async (req, res, next) => {
       return res.status(400).json({ error: 'Email is required' });
     }
 
-    const validRoles = ['INSTRUCTOR', 'QUARTERMASTER', 'ADMIN'];
+    const validRoles: readonly string[] = USER_ROLES;
     if (role && !validRoles.includes(role)) {
       return res.status(400).json({ error: `Invalid role. Must be one of: ${validRoles.join(', ')}` });
     }
@@ -100,7 +101,7 @@ adminUsersRouter.put('/users/:id', async (req, res, next) => {
     if (!existing) return res.status(404).json({ error: 'User not found' });
 
     const { displayName, email, role } = req.body;
-    const validRoles = ['INSTRUCTOR', 'QUARTERMASTER', 'ADMIN'];
+    const validRoles: readonly string[] = USER_ROLES;
     if (role && !validRoles.includes(role)) {
       return res.status(400).json({ error: `Invalid role. Must be one of: ${validRoles.join(', ')}` });
     }

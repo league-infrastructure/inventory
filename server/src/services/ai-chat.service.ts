@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { ServiceRegistry } from './service.registry';
 import { User } from '@prisma/client';
+import { hasQMAccess } from '../contracts';
 
 /** Tool definition in Anthropic format */
 interface ToolDef {
@@ -171,7 +172,7 @@ export class AiChatService {
    */
   getToolsForRole(role: string): Anthropic.Tool[] {
     const allTools = getToolDefinitions();
-    const filtered = role === 'QUARTERMASTER'
+    const filtered = hasQMAccess(role)
       ? allTools
       : allTools.filter(t => !t.requiresQM);
 

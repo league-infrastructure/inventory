@@ -12,20 +12,7 @@ interface Computer {
   kit: { id: number; name: string } | null;
 }
 
-const INACTIVE_DISPOSITIONS = [
-  'NEEDS_REPAIR', 'IN_REPAIR', 'SCRAPPED', 'LOST', 'DECOMMISSIONED',
-];
-
-function dispositionClasses(d: string): string {
-  switch (d) {
-    case 'NEEDS_REPAIR': return 'bg-amber-100 text-amber-700';
-    case 'IN_REPAIR': return 'bg-orange-100 text-orange-700';
-    case 'SCRAPPED': return 'bg-gray-100 text-gray-600';
-    case 'LOST': return 'bg-red-100 text-red-700';
-    case 'DECOMMISSIONED': return 'bg-gray-100 text-gray-500';
-    default: return 'bg-gray-100 text-gray-600';
-  }
-}
+import { INACTIVE_DISPOSITIONS, dispositionClasses } from '../../lib/dispositions';
 
 export default function InactiveComputers() {
   const navigate = useNavigate();

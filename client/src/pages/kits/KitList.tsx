@@ -5,15 +5,8 @@ import { useTableSort } from '../../lib/useTableSort';
 import SortableHeader from '../../components/SortableHeader';
 import InventoryCheckModal from '../../components/InventoryCheckModal';
 import TransferModal from '../../components/TransferModal';
-
-type ContainerType = 'BAG' | 'LARGE_TOTE' | 'SMALL_TOTE' | 'DUFFEL';
-
-const CONTAINER_TYPE_LABELS: Record<ContainerType, string> = {
-  BAG: 'Bag',
-  LARGE_TOTE: 'Large Tote',
-  SMALL_TOTE: 'Small Tote',
-  DUFFEL: 'Duffel',
-};
+import type { ContainerType } from '../../lib/containers';
+import { CONTAINER_TYPE_LABELS } from '../../lib/containers';
 
 interface Kit {
   id: number;

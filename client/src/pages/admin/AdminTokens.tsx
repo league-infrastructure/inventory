@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Trash2 } from 'lucide-react';
+import { ROLE_SHORT_LABELS } from '../../lib/roles';
 
 interface AdminToken {
   id: number;
@@ -109,7 +110,7 @@ export default function AdminTokens() {
                     </td>
                     <td className="py-2 pr-4">
                       <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100">
-                        {token.role === 'QUARTERMASTER' ? 'QM' : 'Inst'}
+                        {ROLE_SHORT_LABELS[token.role as keyof typeof ROLE_SHORT_LABELS] || token.role}
                       </span>
                     </td>
                     <td className="py-2 pr-4 text-gray-500 text-xs">{formatDate(token.createdAt)}</td>

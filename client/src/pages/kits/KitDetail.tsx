@@ -6,6 +6,8 @@ import InventoryCheckSection from '../../components/InventoryCheckSection';
 import LabelPrintModal from '../../components/LabelPrintModal';
 import PhotoUpload from '../../components/PhotoUpload';
 import NotesSection from '../../components/NotesSection';
+import type { ContainerType } from '../../lib/containers';
+import { CONTAINER_TYPE_LABELS } from '../../lib/containers';
 
 interface Item {
   id: number;
@@ -46,14 +48,6 @@ interface TransferRecord {
 
 interface Site { id: number; name: string; }
 
-type ContainerType = 'BAG' | 'LARGE_TOTE' | 'SMALL_TOTE' | 'DUFFEL';
-
-const CONTAINER_TYPE_LABELS: Record<ContainerType, string> = {
-  BAG: 'Bag',
-  LARGE_TOTE: 'Large Tote',
-  SMALL_TOTE: 'Small Tote',
-  DUFFEL: 'Duffel',
-};
 
 interface Category { id: number; name: string; }
 
