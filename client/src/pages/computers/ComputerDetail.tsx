@@ -186,8 +186,6 @@ export default function ComputerDetail() {
         </div>
       )}
 
-      <PhotoUpload objectType="Computer" objectId={parseInt(id!, 10)} imageId={imageId} onUpdate={loadComputer} />
-
       {/* Custody */}
       <div className="mb-6 bg-white border border-gray-200 rounded-lg p-4">
         <h2 className="text-sm font-semibold text-gray-700 mb-2">Custody</h2>
@@ -324,6 +322,8 @@ export default function ComputerDetail() {
           </div>
         )}
       </form>
+
+      <PhotoUpload objectType="Computer" objectId={parseInt(id!, 10)} imageId={imageId} onUpdate={loadComputer} />
 
       {showTransfer && (
         <TransferModal
