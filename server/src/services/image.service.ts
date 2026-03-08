@@ -83,10 +83,33 @@ export class ImageService {
     });
   }
 
-  /** Create an image record from a URL (no binary data stored). */
+  /** Create an image record from a URL. Fetches the image to extract metadata. */
   async createFromUrl(url: string, fileName?: string): Promise<ImageRecord> {
+    let mimeType = 'image/unknown';
+    let size = 0;
+    let width = 0;
+    let height = 0;
+    let checksum = '';
+
+    try {
+      const response = await fetch(url);
+      if (response.ok) {
+        const buffer = Buffer.from(await response.arrayBuffer());
+        size = buffer.length;
+        checksum = crypto.createHash('sha256').update(buffer).digest('hex');
+        const metadata = await sharp(buffer).metadata();
+        width = metadata.width || 0;
+        height = metadata.height || 0;
+        if (metadata.format) {
+          mimeType = `image/${metadata.format}`;
+        }
+      }
+    } catch {
+      // Non-blocking — we still create the record with defaults
+    }
+
     return this.prisma.image.create({
-      data: { url, fileName: fileName || null },
+      data: { url, fileName: fileName || null, mimeType, size, width, height, checksum },
       select: IMAGE_SELECT,
     });
   }
