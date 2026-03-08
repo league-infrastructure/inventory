@@ -17,6 +17,7 @@ const COMPUTER_INCLUDES = {
   kit: { select: { id: true, name: true } },
   os: { select: { id: true, name: true } },
   custodian: { select: { id: true, displayName: true } },
+  category: { select: { id: true, name: true } },
 };
 
 export class ComputerService extends BaseService<ComputerRecord, CreateComputerInput, UpdateComputerInput> {
@@ -110,6 +111,7 @@ export class ComputerService extends BaseService<ComputerRecord, CreateComputerI
         kitId: input.kitId || null,
         custodianId: effectiveCustodianId,
         osId: input.osId || null,
+        categoryId: input.categoryId || null,
       },
     });
 
@@ -182,6 +184,7 @@ export class ComputerService extends BaseService<ComputerRecord, CreateComputerI
     if (input.notes !== undefined) data.notes = input.notes || null;
     if (input.kitId !== undefined) data.kitId = input.kitId;
     if (input.osId !== undefined) data.osId = input.osId;
+    if (input.categoryId !== undefined) data.categoryId = input.categoryId;
 
     // When assigning to a kit, sync siteId and custodianId from the kit
     if (assignedKit) {

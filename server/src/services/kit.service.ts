@@ -23,6 +23,7 @@ export class KitService extends BaseService<KitRecord, CreateKitInput, UpdateKit
       include: {
         site: { select: { id: true, name: true } },
         custodian: { select: { id: true, displayName: true } },
+        category: { select: { id: true, name: true } },
         inventoryChecks: {
           select: { createdAt: true },
           orderBy: { createdAt: 'desc' },
@@ -46,6 +47,7 @@ export class KitService extends BaseService<KitRecord, CreateKitInput, UpdateKit
       include: {
         site: { select: { id: true, name: true } },
         custodian: { select: { id: true, displayName: true } },
+        category: { select: { id: true, name: true } },
         packs: {
           include: { items: true },
           orderBy: { name: 'asc' },
@@ -96,7 +98,7 @@ export class KitService extends BaseService<KitRecord, CreateKitInput, UpdateKit
     const updated = await this.prisma.kit.update({
       where: { id: kit.id },
       data: { qrCode: qrPath },
-      include: { site: { select: { id: true, name: true } }, custodian: { select: { id: true, displayName: true } } },
+      include: { site: { select: { id: true, name: true } }, custodian: { select: { id: true, displayName: true } }, category: { select: { id: true, name: true } } },
     });
 
     await this.auditCreate(userId, kit.id, updated);
@@ -134,9 +136,10 @@ export class KitService extends BaseService<KitRecord, CreateKitInput, UpdateKit
         ...(input.name != null && { name: input.name.trim() }),
         ...(input.description !== undefined && { description: input.description || null }),
         ...(input.siteId != null && { siteId: input.siteId }),
+        ...(input.categoryId !== undefined && { categoryId: input.categoryId }),
         ...(input.status != null && { status: input.status as KitStatus }),
       },
-      include: { site: { select: { id: true, name: true } }, custodian: { select: { id: true, displayName: true } } },
+      include: { site: { select: { id: true, name: true } }, custodian: { select: { id: true, displayName: true } }, category: { select: { id: true, name: true } } },
     });
 
     // Cascade siteId/custodianId changes to member computers
@@ -168,7 +171,7 @@ export class KitService extends BaseService<KitRecord, CreateKitInput, UpdateKit
     const updated = await this.prisma.kit.update({
       where: { id },
       data: { status: 'RETIRED' },
-      include: { site: { select: { id: true, name: true } }, custodian: { select: { id: true, displayName: true } } },
+      include: { site: { select: { id: true, name: true } }, custodian: { select: { id: true, displayName: true } }, category: { select: { id: true, name: true } } },
     });
 
     await this.writeAudit(this.createAuditEntry(userId, id, 'status', existing.status, 'RETIRED'));
@@ -236,6 +239,7 @@ export class KitService extends BaseService<KitRecord, CreateKitInput, UpdateKit
       where: { id: newKit.id },
       include: {
         site: { select: { id: true, name: true } },
+        category: { select: { id: true, name: true } },
         packs: { include: { items: true } },
         computers: { include: { hostName: true }, orderBy: { id: 'asc' } },
       },

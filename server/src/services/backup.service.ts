@@ -1,9 +1,27 @@
-import { execFile } from 'child_process';
+import { exec } from 'child_process';
 import { promisify } from 'util';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const execFileAsync = promisify(execFile);
+const execAsync = promisify(exec);
+
+/** Find the running postgres container name */
+async function findPgContainer(): Promise<string> {
+  const { stdout } = await execAsync(
+    'docker ps --filter "ancestor=postgres:16-alpine" --format "{{.Names}}"'
+  );
+  const name = stdout.trim().split('\n')[0];
+  if (!name) throw new Error('No postgres container running');
+  return name;
+}
+
+/** Build a container-internal DB URL (localhost:5432) from the host-facing DATABASE_URL */
+function containerDbUrl(): string {
+  const dbUrl = process.env.DATABASE_URL;
+  if (!dbUrl) throw new Error('DATABASE_URL not configured');
+  const parsed = new URL(dbUrl);
+  return `postgresql://${parsed.username}:${parsed.password}@localhost:5432${parsed.pathname}`;
+}
 
 export interface BackupInfo {
   filename: string;
@@ -26,20 +44,18 @@ export class BackupService {
 
   async createBackup(): Promise<BackupInfo> {
     this.ensureDir();
-    const dbUrl = process.env.DATABASE_URL;
-    if (!dbUrl) throw new Error('DATABASE_URL not configured');
+    const container = await findPgContainer();
+    const url = containerDbUrl();
 
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const filename = `backup-${timestamp}.dump`;
     const filePath = path.join(this.backupDir, filename);
 
-    await execFileAsync('pg_dump', [
-      '--format=custom',
-      '--no-owner',
-      '--no-acl',
-      `--file=${filePath}`,
-      dbUrl,
-    ]);
+    // Run pg_dump inside the postgres container, pipe stdout to local file
+    await execAsync(
+      `docker exec ${container} pg_dump --format=custom --no-owner --no-acl "${url}" > "${filePath}"`,
+      { maxBuffer: 50 * 1024 * 1024 },
+    );
 
     const stats = fs.statSync(filePath);
     return {
@@ -67,8 +83,8 @@ export class BackupService {
   }
 
   async restoreBackup(filename: string): Promise<void> {
-    const dbUrl = process.env.DATABASE_URL;
-    if (!dbUrl) throw new Error('DATABASE_URL not configured');
+    const container = await findPgContainer();
+    const url = containerDbUrl();
 
     // Sanitize filename to prevent path traversal
     const sanitized = path.basename(filename);
@@ -77,14 +93,11 @@ export class BackupService {
       throw new Error(`Backup file not found: ${sanitized}`);
     }
 
-    await execFileAsync('pg_restore', [
-      '--clean',
-      '--if-exists',
-      '--no-owner',
-      '--no-acl',
-      `--dbname=${dbUrl}`,
-      filePath,
-    ]);
+    // Pipe the local dump file into pg_restore inside the container
+    await execAsync(
+      `cat "${filePath}" | docker exec -i ${container} pg_restore --clean --if-exists --no-owner --no-acl --dbname="${url}"`,
+      { maxBuffer: 50 * 1024 * 1024 },
+    );
   }
 
   async deleteBackup(filename: string): Promise<void> {

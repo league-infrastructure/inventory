@@ -142,7 +142,7 @@ export class LabelService {
 
     // === CONTENT ROW — RIGHT COLUMN (name) ===
     const contentHeight = LABEL_HEIGHT_PT - contentTop - MARGIN;
-    const nameFontSize = name.length > 40 ? 14 : name.length > 25 ? 16 : 20;
+    const nameFontSize = name.length > 40 ? 22 : name.length > 20 ? 28 : 36;
 
     // Estimate text height to vertically center
     doc.fontSize(nameFontSize).font('Helvetica-Bold');
@@ -302,7 +302,7 @@ export class LabelService {
             <img class="qr" src="${qrDataUri}" />
           </div>
           <div class="right-col">
-            <div class="name">${this.escapeHtml(name)}</div>
+            <div class="name${name.length > 40 ? ' very-long' : name.length > 20 ? ' long' : ''}">${this.escapeHtml(name)}</div>
           </div>
         </div>
       </div>`;
@@ -403,11 +403,15 @@ export class LabelService {
     justify-content: center;
   }
   .name {
-    font-size: 16pt;
+    font-size: 32pt;
     font-weight: bold;
     text-align: center;
-    line-height: 1.2;
+    line-height: 1.1;
+    word-break: break-word;
+    overflow: hidden;
   }
+  .name.long { font-size: 24pt; }
+  .name.very-long { font-size: 18pt; }
   @media print {
     html, body { width: 102mm; height: 59mm; }
     body { padding: 0; margin: 0; }

@@ -4,6 +4,7 @@ import {
   Home, Monitor, Tags, PackageCheck, MapPin, Shield, Menu, X, LogOut, ChevronDown, UserCircle, AlertTriangle, Search, BarChart3, Package, Box,
 } from 'lucide-react';
 import AiChat from './AiChat';
+import { ROLE_SHORT_LABELS, hasQMAccess } from '../lib/roles';
 
 interface AuthUser {
   id: number;
@@ -23,23 +24,23 @@ export function useAuth() {
 }
 
 const navItems = [
-  { to: '/', label: 'Home', icon: Home, roles: null },
-  { to: '/kits', label: 'Kits', icon: Tags, roles: null,
+  { to: '/', label: 'Home', icon: Home },
+  { to: '/kits', label: 'Kits', icon: Tags,
     children: [{ to: '/packs', label: 'Packs' }, { to: '/kits/retired', label: 'Retired Kits' }],
   },
-  { to: '/checkouts', label: 'Transferred Out', icon: PackageCheck, roles: null },
-  { to: '/issues', label: 'Issues', icon: AlertTriangle, roles: null },
-  { to: '/computers', label: 'Computers', icon: Monitor, roles: ['QUARTERMASTER'],
+  { to: '/checkouts', label: 'Transferred Out', icon: PackageCheck },
+  { to: '/issues', label: 'Issues', icon: AlertTriangle },
+  { to: '/computers', label: 'Computers', icon: Monitor, qmOnly: true,
     children: [{ to: '/hostnames', label: 'Host Names' }, { to: '/computers/inactive', label: 'Inactive Computers' }],
   },
-  { to: '/sites', label: 'Sites', icon: MapPin, roles: ['QUARTERMASTER'] },
-  { to: '/reports/audit-log', label: 'Reports', icon: BarChart3, roles: ['QUARTERMASTER'],
+  { to: '/sites', label: 'Sites', icon: MapPin, qmOnly: true },
+  { to: '/reports/audit-log', label: 'Reports', icon: BarChart3, qmOnly: true,
     children: [
       { to: '/reports/inventory-age', label: 'Inventory Age' },
       { to: '/reports/transferred-by-person', label: 'By Person' },
     ],
   },
-  { to: '/admin', label: 'Admin', icon: Shield, roles: null },
+  { to: '/admin', label: 'Admin', icon: Shield },
 ];
 
 // Search result types
@@ -186,7 +187,7 @@ export default function AppLayout() {
   }
 
   const filteredNav = navItems.filter(
-    (item) => !item.roles || (user && item.roles.includes(user.role))
+    (item) => !item.qmOnly || (user && hasQMAccess(user.role))
   );
 
   const showSidebar = !loading && !!user;
@@ -322,7 +323,7 @@ export default function AppLayout() {
                     )}
                     <span className="hidden sm:inline text-sm">{user.displayName}</span>
                     <span className="hidden sm:inline text-xs px-2 py-0.5 rounded-full bg-primary text-white">
-                      {user.role === 'QUARTERMASTER' ? 'QM' : 'Inst'}
+                      {ROLE_SHORT_LABELS[user.role as keyof typeof ROLE_SHORT_LABELS] || user.role}
                     </span>
                     <ChevronDown size={14} />
                   </button>

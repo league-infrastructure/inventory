@@ -4,6 +4,10 @@ import { Copy, Trash2, Plus, X, Printer, User, Building2 } from 'lucide-react';
 import EditableCell from '../../components/EditableCell';
 import InventoryCheckSection from '../../components/InventoryCheckSection';
 import LabelPrintModal from '../../components/LabelPrintModal';
+import PhotoUpload from '../../components/PhotoUpload';
+import NotesSection from '../../components/NotesSection';
+import type { ContainerType } from '../../lib/containers';
+import { CONTAINER_TYPE_LABELS } from '../../lib/containers';
 
 interface Item {
   id: number;
@@ -17,6 +21,7 @@ interface Pack {
   name: string;
   description: string | null;
   qrCode: string | null;
+  imageId: number | null;
   items: Item[];
 }
 
@@ -43,14 +48,8 @@ interface TransferRecord {
 
 interface Site { id: number; name: string; }
 
-type ContainerType = 'BAG' | 'LARGE_TOTE' | 'SMALL_TOTE' | 'DUFFEL';
 
-const CONTAINER_TYPE_LABELS: Record<ContainerType, string> = {
-  BAG: 'Bag',
-  LARGE_TOTE: 'Large Tote',
-  SMALL_TOTE: 'Small Tote',
-  DUFFEL: 'Duffel',
-};
+interface Category { id: number; name: string; }
 
 interface FormState {
   number: number | '';
@@ -58,6 +57,7 @@ interface FormState {
   name: string;
   description: string;
   siteId: number | '';
+  categoryId: number | '';
 }
 
 export default function KitDetail() {
@@ -70,7 +70,7 @@ export default function KitDetail() {
   const [dirty, setDirty] = useState(false);
   const [cloning, setCloning] = useState(false);
 
-  const [form, setForm] = useState<FormState>({ number: '', containerType: 'BAG', name: '', description: '', siteId: '' });
+  const [form, setForm] = useState<FormState>({ number: '', containerType: 'BAG', name: '', description: '', siteId: '', categoryId: '' });
   const savedForm = useRef<FormState>(form);
 
   const [status, setStatus] = useState('ACTIVE');
@@ -78,10 +78,12 @@ export default function KitDetail() {
   const [packs, setPacks] = useState<Pack[]>([]);
   const [computers, setComputers] = useState<Computer[]>([]);
   const [sites, setSites] = useState<Site[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
 
   // Transfer state
   const [transferHistory, setTransferHistory] = useState<TransferRecord[]>([]);
   const [custodianName, setCustodianName] = useState<string | null>(null);
+  const [imageId, setImageId] = useState<number | null>(null);
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [transferLoading, setTransferLoading] = useState(false);
   const [transferError, setTransferError] = useState<string | null>(null);
@@ -113,15 +115,18 @@ export default function KitDetail() {
       }),
       fetch('/api/sites').then((r) => r.json()),
       fetch(`/api/transfers/history/Kit/${id}`).then((r) => r.ok ? r.json() : []),
+      fetch('/api/categories').then((r) => r.json()),
     ])
-      .then(([kit, s, history]) => {
+      .then(([kit, s, history, cats]) => {
         const initial: FormState = {
           number: kit.number,
           containerType: kit.containerType,
           name: kit.name,
           description: kit.description || '',
           siteId: kit.site?.id ?? '',
+          categoryId: kit.category?.id ?? '',
         };
+        setCategories(cats);
         setForm(initial);
         savedForm.current = initial;
         setStatus(kit.status);
@@ -130,6 +135,7 @@ export default function KitDetail() {
         setComputers(kit.computers);
         setSites(s);
         setCustodianName(kit.custodian?.displayName ?? null);
+        setImageId(kit.imageId ?? null);
         setTransferHistory(history);
       })
       .catch((e) => setError(e.message))
@@ -175,6 +181,8 @@ export default function KitDetail() {
     const body: any = {};
     if (field === 'siteId') {
       body.siteId = parseInt(value, 10);
+    } else if (field === 'categoryId') {
+      body.categoryId = value ? parseInt(value, 10) : null;
     } else if (field === 'number') {
       body.number = parseInt(value, 10);
     } else {
@@ -197,6 +205,7 @@ export default function KitDetail() {
         name: updated.name,
         description: updated.description || '',
         siteId: updated.site?.id ?? '',
+        categoryId: updated.category?.id ?? '',
       };
       setForm(next);
       savedForm.current = next;
@@ -535,6 +544,17 @@ export default function KitDetail() {
               />
             </div>
           </div>
+          <div>
+            <span className="text-sm font-medium text-gray-500">Category</span>
+            <div className="text-sm text-gray-700 mt-0.5">
+              <EditableCell
+                value={String(form.categoryId)}
+                onSave={(v) => updateKitField('categoryId', v)}
+                as="select"
+                options={[{ value: '', label: 'None' }, ...categories.map((c) => ({ value: String(c.id), label: c.name }))]}
+              />
+            </div>
+          </div>
         </div>
         <div>
           <span className="text-sm font-medium text-gray-500">Description</span>
@@ -709,7 +729,17 @@ export default function KitDetail() {
                 </span>
                 {pack.qrCode && <code className="ml-2 text-xs bg-gray-100 px-1.5 py-0.5 rounded">{pack.qrCode}</code>}
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 items-center">
+                <PhotoUpload
+                  objectType="Pack"
+                  objectId={pack.id}
+                  imageId={pack.imageId ?? null}
+                  onUpdate={() => {
+                    fetch(`/api/kits/${id}`).then((r) => r.ok ? r.json() : null)
+                      .then((kit) => { if (kit) setPacks(kit.packs); });
+                  }}
+                  compact
+                />
                 <button
                   className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded bg-primary text-white border-none cursor-pointer"
                   onClick={() => setItemForms((prev) => ({ ...prev, [pack.id]: true }))}
@@ -814,6 +844,8 @@ export default function KitDetail() {
             ) : (
               <p className="text-gray-400 text-sm">No items in this pack.</p>
             )}
+
+            <NotesSection objectType="Pack" objectId={pack.id} />
           </div>
         ))}
       </div>
@@ -899,6 +931,18 @@ export default function KitDetail() {
           <p className="text-gray-400 text-sm">No computers in this kit.</p>
         )}
       </div>
+
+      <PhotoUpload
+        objectType="Kit"
+        objectId={Number(id)}
+        imageId={imageId}
+        onUpdate={() => {
+          fetch(`/api/kits/${id}`).then((r) => r.ok ? r.json() : null)
+            .then((kit) => { if (kit) setImageId(kit.imageId ?? null); });
+        }}
+      />
+
+      <NotesSection objectType="Kit" objectId={Number(id)} />
 
       {showLabelModal && (
         <LabelPrintModal

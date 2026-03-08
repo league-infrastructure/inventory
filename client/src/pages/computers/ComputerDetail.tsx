@@ -1,29 +1,18 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { User, Building2, Archive } from 'lucide-react';
+import { User, Building2, Archive, ArrowRightLeft } from 'lucide-react';
+import TransferModal from '../../components/TransferModal';
+import PhotoUpload from '../../components/PhotoUpload';
+import NotesSection from '../../components/NotesSection';
 
 interface Site { id: number; name: string; }
 interface Kit { id: number; name: string; }
 interface Custodian { id: number; displayName: string; }
 interface HostName { id: number; name: string; computerId: number | null; }
 
-const DISPOSITIONS = [
-  'ACTIVE', 'LOANED', 'NEEDS_REPAIR', 'IN_REPAIR',
-  'SCRAPPED', 'LOST', 'DECOMMISSIONED',
-];
+import { DISPOSITIONS, dispositionClasses } from '../../lib/dispositions';
 
-function dispositionClasses(d: string): string {
-  switch (d) {
-    case 'ACTIVE': return 'bg-green-100 text-green-700';
-    case 'LOANED': return 'bg-blue-100 text-blue-700';
-    case 'NEEDS_REPAIR': return 'bg-amber-100 text-amber-700';
-    case 'IN_REPAIR': return 'bg-orange-100 text-orange-700';
-    case 'SCRAPPED': return 'bg-gray-100 text-gray-600';
-    case 'LOST': return 'bg-red-100 text-red-700';
-    case 'DECOMMISSIONED': return 'bg-gray-100 text-gray-500';
-    default: return 'bg-gray-100 text-gray-600';
-  }
-}
+interface Category { id: number; name: string; }
 
 interface FormState {
   serialNumber: string;
@@ -37,6 +26,7 @@ interface FormState {
   siteId: number | '';
   kitId: number | '';
   hostNameId: number | '';
+  categoryId: number | '';
 }
 
 export default function ComputerDetail() {
@@ -52,7 +42,7 @@ export default function ComputerDetail() {
   const [form, setForm] = useState<FormState>({
     serialNumber: '', serviceTag: '', model: '', defaultUsername: '',
     defaultPassword: '', disposition: 'ACTIVE', dateReceived: '',
-    notes: '', siteId: '', kitId: '', hostNameId: '',
+    notes: '', siteId: '', kitId: '', hostNameId: '', categoryId: '',
   });
   const savedForm = useRef<FormState>(form);
 
@@ -60,8 +50,12 @@ export default function ComputerDetail() {
   const [kits, setKits] = useState<Kit[]>([]);
   const [hostNames, setHostNames] = useState<HostName[]>([]);
   const [custodianName, setCustodianName] = useState<string | null>(null);
+  const [imageId, setImageId] = useState<number | null>(null);
+  const [showTransfer, setShowTransfer] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
 
-  useEffect(() => {
+  function loadComputer() {
+    setLoading(true);
     Promise.all([
       fetch(`/api/computers/${id}`).then((r) => {
         if (!r.ok) throw new Error('Computer not found');
@@ -70,8 +64,9 @@ export default function ComputerDetail() {
       fetch('/api/sites').then((r) => r.json()),
       fetch('/api/kits').then((r) => r.json()),
       fetch('/api/hostnames').then((r) => r.json()),
+      fetch('/api/categories').then((r) => r.json()),
     ])
-      .then(([c, s, k, h]) => {
+      .then(([c, s, k, h, cats]) => {
         const initial: FormState = {
           serialNumber: c.serialNumber || '',
           serviceTag: c.serviceTag || '',
@@ -84,17 +79,25 @@ export default function ComputerDetail() {
           siteId: c.site?.id || '',
           kitId: c.kit?.id || '',
           hostNameId: c.hostName?.id || '',
+          categoryId: c.category?.id || '',
         };
         setForm(initial);
         savedForm.current = initial;
+        setDirty(false);
         setQrCode(c.qrCode || null);
         setCustodianName(c.custodian?.displayName ?? null);
+        setImageId(c.imageId ?? null);
         setSites(s);
         setKits(k);
         setHostNames(h);
+        setCategories(cats);
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    loadComputer();
 
     fetch(`/api/qr/c/${id}`)
       .then((r) => r.ok ? r.json() : null)
@@ -131,6 +134,7 @@ export default function ComputerDetail() {
         siteId: form.siteId || null,
         kitId: form.kitId || null,
         hostNameId: form.hostNameId || null,
+        categoryId: form.categoryId || null,
       };
       const res = await fetch(`/api/computers/${id}`, {
         method: 'PUT',
@@ -209,6 +213,16 @@ export default function ComputerDetail() {
         </div>
       </div>
 
+      {!form.kitId && (
+        <button
+          onClick={() => setShowTransfer(true)}
+          className="mb-6 inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg bg-blue-50 text-blue-700 border border-blue-200 cursor-pointer hover:bg-blue-100"
+        >
+          <ArrowRightLeft size={16} />
+          Transfer
+        </button>
+      )}
+
       {saveError && <p className="text-red-600 text-sm mb-4">{saveError}</p>}
 
       <form onSubmit={handleSave} className="space-y-4">
@@ -280,6 +294,16 @@ export default function ComputerDetail() {
         </div>
 
         <label className="block">
+          <span className="text-sm font-medium text-gray-700">Category</span>
+          <select value={form.categoryId} onChange={(e) => updateField('categoryId', e.target.value ? parseInt(e.target.value, 10) : '')} className={inputClass}>
+            <option value="">None</option>
+            {categories.map((cat) => (
+              <option key={cat.id} value={cat.id}>{cat.name}</option>
+            ))}
+          </select>
+        </label>
+
+        <label className="block">
           <span className="text-sm font-medium text-gray-700">Date Received</span>
           <input type="date" value={form.dateReceived} onChange={(e) => updateField('dateReceived', e.target.value)} className={inputClass} />
         </label>
@@ -301,6 +325,19 @@ export default function ComputerDetail() {
           </div>
         )}
       </form>
+
+      <PhotoUpload objectType="Computer" objectId={parseInt(id!, 10)} imageId={imageId} onUpdate={loadComputer} />
+
+      <NotesSection objectType="Computer" objectId={parseInt(id!, 10)} />
+
+      {showTransfer && (
+        <TransferModal
+          objectType="Computer"
+          objectId={parseInt(id!, 10)}
+          onClose={() => setShowTransfer(false)}
+          onComplete={loadComputer}
+        />
+      )}
     </div>
   );
 }

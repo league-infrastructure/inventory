@@ -18,6 +18,9 @@ import { ImportService } from './import.service';
 import { SearchService } from './search.service';
 import { ReportService } from './report.service';
 import { OsService } from './os.service';
+import { ImageService } from './image.service';
+import { CategoryService } from './category.service';
+import { NoteService } from './note.service';
 
 export class ServiceRegistry {
   readonly prisma: PrismaClient;
@@ -39,6 +42,9 @@ export class ServiceRegistry {
   readonly search: SearchService;
   readonly reports: ReportService;
   readonly os: OsService;
+  readonly images: ImageService;
+  readonly categories: CategoryService;
+  readonly notes: NoteService;
 
   private constructor(prisma: PrismaClient, source: AuditSource = 'UI') {
     this.prisma = prisma;
@@ -60,6 +66,9 @@ export class ServiceRegistry {
     this.search = new SearchService(prisma);
     this.reports = new ReportService(prisma);
     this.os = new OsService(prisma, this.audit);
+    this.images = new ImageService(prisma);
+    this.categories = new CategoryService(prisma, this.audit);
+    this.notes = new NoteService(prisma);
   }
 
   static create(prisma?: PrismaClient, source?: AuditSource): ServiceRegistry {
@@ -72,6 +81,7 @@ export class ServiceRegistry {
    */
   async clearAll(): Promise<void> {
     const p = this.prisma;
+    await p.note.deleteMany();
     await p.inventoryCheckLine.deleteMany();
     await p.inventoryCheck.deleteMany();
     await p.issue.deleteMany();
@@ -87,5 +97,7 @@ export class ServiceRegistry {
     await p.auditLog.deleteMany();
     await p.apiToken.deleteMany();
     await p.quartermasterPattern.deleteMany();
+    await p.image.deleteMany();
+    await p.category.deleteMany();
   }
 }

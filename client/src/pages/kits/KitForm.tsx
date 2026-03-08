@@ -1,14 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-
-type ContainerType = 'BAG' | 'LARGE_TOTE' | 'SMALL_TOTE' | 'DUFFEL';
-
-const CONTAINER_OPTIONS: { value: ContainerType; label: string }[] = [
-  { value: 'BAG', label: 'Bag' },
-  { value: 'LARGE_TOTE', label: 'Large Tote' },
-  { value: 'SMALL_TOTE', label: 'Small Tote' },
-  { value: 'DUFFEL', label: 'Duffel' },
-];
+import type { ContainerType } from '../../lib/containers';
+import { CONTAINER_OPTIONS } from '../../lib/containers';
 
 interface Site {
   id: number;

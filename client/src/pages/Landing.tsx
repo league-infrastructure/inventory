@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../components/AppLayout';
 import { Tags, AlertTriangle, Clock, PackageCheck, Monitor, MapPin, Activity, Search } from 'lucide-react';
+import { hasQMAccess } from '../lib/roles';
 
 interface TransferredItem {
   type: 'kit' | 'computer';
@@ -62,7 +63,7 @@ export default function Landing() {
     );
   }
 
-  const isQM = user.role === 'QUARTERMASTER';
+  const isQM = hasQMAccess(user.role);
 
   return (
     <div>

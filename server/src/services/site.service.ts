@@ -4,6 +4,31 @@ import { BaseService } from './base.service';
 import { NotFoundError, ValidationError } from './errors';
 import { SiteRecord, CreateSiteInput, UpdateSiteInput, NearestSiteResult } from '../contracts';
 
+const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search';
+
+/** Geocode an address string to lat/lng using Nominatim. Returns null on failure. */
+async function geocodeAddress(address: string): Promise<{ latitude: number; longitude: number } | null> {
+  try {
+    const params = new URLSearchParams({
+      q: address,
+      format: 'json',
+      limit: '1',
+    });
+    const res = await fetch(`${NOMINATIM_URL}?${params}`, {
+      headers: { 'User-Agent': 'JTL-Inventory/1.0 (inventory@jointheleague.org)' },
+    });
+    if (!res.ok) return null;
+    const results = await res.json();
+    if (!Array.isArray(results) || results.length === 0) return null;
+    const lat = parseFloat(results[0].lat);
+    const lon = parseFloat(results[0].lon);
+    if (isNaN(lat) || isNaN(lon)) return null;
+    return { latitude: lat, longitude: lon };
+  } catch {
+    return null;
+  }
+}
+
 function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371;
   const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -54,12 +79,23 @@ export class SiteService extends BaseService<SiteRecord, CreateSiteInput, Update
       });
     }
 
+    let latitude = input.latitude ?? null;
+    let longitude = input.longitude ?? null;
+
+    if (input.address && latitude == null && longitude == null) {
+      const coords = await geocodeAddress(input.address);
+      if (coords) {
+        latitude = coords.latitude;
+        longitude = coords.longitude;
+      }
+    }
+
     const site = await this.prisma.site.create({
       data: {
         name: input.name.trim(),
         address: input.address || null,
-        latitude: input.latitude ?? null,
-        longitude: input.longitude ?? null,
+        latitude,
+        longitude,
         isHomeSite: input.isHomeSite ?? false,
       },
     });
@@ -89,13 +125,32 @@ export class SiteService extends BaseService<SiteRecord, CreateSiteInput, Update
       });
     }
 
+    // Re-geocode if address changed and no explicit lat/lng provided
+    let geocodedLat: number | null | undefined = input.latitude;
+    let geocodedLon: number | null | undefined = input.longitude;
+
+    if (input.address !== undefined && input.address !== existing.address
+        && input.latitude === undefined && input.longitude === undefined) {
+      if (input.address) {
+        const coords = await geocodeAddress(input.address);
+        if (coords) {
+          geocodedLat = coords.latitude;
+          geocodedLon = coords.longitude;
+        }
+      } else {
+        // Address cleared — clear coordinates too
+        geocodedLat = null;
+        geocodedLon = null;
+      }
+    }
+
     const updated = await this.prisma.site.update({
       where: { id },
       data: {
         ...(input.name != null && { name: input.name.trim() }),
         ...(input.address !== undefined && { address: input.address || null }),
-        ...(input.latitude !== undefined && { latitude: input.latitude ?? null }),
-        ...(input.longitude !== undefined && { longitude: input.longitude ?? null }),
+        ...(geocodedLat !== undefined && { latitude: geocodedLat ?? null }),
+        ...(geocodedLon !== undefined && { longitude: geocodedLon ?? null }),
         ...(input.isHomeSite !== undefined && { isHomeSite: input.isHomeSite }),
         ...(input.isActive !== undefined && { isActive: input.isActive }),
       },

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../components/AppLayout';
 import { Copy, RefreshCw, Key } from 'lucide-react';
+import { ROLE_LABELS } from '../../lib/roles';
 
 interface TokenInfo {
   id: number;
@@ -110,7 +111,7 @@ export default function Account() {
           <dt className="text-gray-500">Email</dt>
           <dd className="text-gray-900">{user.email}</dd>
           <dt className="text-gray-500">Role</dt>
-          <dd className="text-gray-900">{user.role === 'QUARTERMASTER' ? 'Quartermaster' : 'Instructor'}</dd>
+          <dd className="text-gray-900">{ROLE_LABELS[user.role as keyof typeof ROLE_LABELS] || user.role}</dd>
         </dl>
       </section>
 

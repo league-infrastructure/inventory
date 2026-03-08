@@ -5,15 +5,8 @@ import { useTableSort } from '../../lib/useTableSort';
 import SortableHeader from '../../components/SortableHeader';
 import InventoryCheckModal from '../../components/InventoryCheckModal';
 import TransferModal from '../../components/TransferModal';
-
-type ContainerType = 'BAG' | 'LARGE_TOTE' | 'SMALL_TOTE' | 'DUFFEL';
-
-const CONTAINER_TYPE_LABELS: Record<ContainerType, string> = {
-  BAG: 'Bag',
-  LARGE_TOTE: 'Large Tote',
-  SMALL_TOTE: 'Small Tote',
-  DUFFEL: 'Duffel',
-};
+import type { ContainerType } from '../../lib/containers';
+import { CONTAINER_TYPE_LABELS } from '../../lib/containers';
 
 interface Kit {
   id: number;
@@ -27,6 +20,7 @@ interface Kit {
   lastInventoried: string | null;
   site: { id: number; name: string } | null;
   custodian: { id: number; displayName: string } | null;
+  category: { id: number; name: string } | null;
 }
 
 function kitDisplayName(kit: Kit): string {
@@ -48,14 +42,15 @@ export default function KitList() {
   const [justChecked, setJustChecked] = useState<Set<number>>(new Set());
   const [inventoryInterval, setInventoryInterval] = useState(60);
 
-  const kitsWithWhere = useMemo(() => kits.map((kit) => ({
+  const kitsWithColumns = useMemo(() => kits.map((kit) => ({
     ...kit,
-    _where: kit.custodian ? `1:${kit.custodian.displayName}` : kit.site ? `2:${kit.site.name}` : '3:',
-    _whereDisplay: kit.custodian?.displayName ?? kit.site?.name ?? null,
-    _whereType: kit.custodian ? 'person' as const : kit.site ? 'site' as const : null,
+    _custodian: kit.custodian?.displayName ?? '',
+    _location: kit.site?.name ?? '',
+    _category: kit.category?.name ?? '',
+    _container: CONTAINER_TYPE_LABELS[kit.containerType] || kit.containerType,
   })), [kits]);
 
-  const { processed: sorted, sort, toggleSort, filters, setFilter } = useTableSort(kitsWithWhere, { key: 'name', direction: 'asc' });
+  const { processed: sorted, sort, toggleSort, filters, setFilter } = useTableSort(kitsWithColumns, { key: 'number', direction: 'asc' });
 
   const loadKits = useCallback(() => {
     setLoading(true);
@@ -124,9 +119,13 @@ export default function KitList() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200">
-                <SortableHeader label="Name" sortKey="name" currentSort={sort} onSort={toggleSort} filterValue={filters['name']} onFilter={setFilter} />
-                <SortableHeader label="Where" sortKey="_where" currentSort={sort} onSort={toggleSort} filterValue={filters['_whereDisplay']} onFilter={(_, v) => setFilter('_whereDisplay', v)} />
-                <SortableHeader label="Status" sortKey="status" currentSort={sort} onSort={toggleSort} filterValue={filters['status']} onFilter={setFilter} />
+                <SortableHeader label="#" sortKey="number" currentSort={sort} onSort={toggleSort} filterValue={filters['number']} onFilter={setFilter} />
+                <SortableHeader label="Category" sortKey="_category" currentSort={sort} onSort={toggleSort} filterValue={filters['_category']} onFilter={setFilter} />
+                <SortableHeader label="Container" sortKey="_container" currentSort={sort} onSort={toggleSort} filterValue={filters['_container']} onFilter={setFilter} />
+                <SortableHeader label="Description" sortKey="name" currentSort={sort} onSort={toggleSort} filterValue={filters['name']} onFilter={setFilter} />
+                <SortableHeader label="Custodian" sortKey="_custodian" currentSort={sort} onSort={toggleSort} filterValue={filters['_custodian']} onFilter={setFilter} />
+                <SortableHeader label="Location" sortKey="_location" currentSort={sort} onSort={toggleSort} filterValue={filters['_location']} onFilter={setFilter} />
+                <SortableHeader label="Last Inventory" sortKey="lastInventoried" currentSort={sort} onSort={toggleSort} />
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500">Actions</th>
               </tr>
             </thead>
@@ -140,24 +139,30 @@ export default function KitList() {
                     className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
                     onClick={() => navigate(`/kits/${kit.id}`)}
                   >
-                    <td className="px-4 py-3 font-medium text-gray-900">{kitDisplayName(kit)}</td>
+                    <td className="px-4 py-3 font-medium text-gray-900">{kit.number}</td>
+                    <td className="px-4 py-3 text-gray-600">{kit._category || '—'}</td>
+                    <td className="px-4 py-3 text-gray-600">{kit._container}</td>
+                    <td className="px-4 py-3 text-gray-900">{kit.name}</td>
                     <td className="px-4 py-3 text-gray-600">
-                      {kit._whereType === 'person' ? (
+                      {kit._custodian ? (
                         <span className="inline-flex items-center gap-1.5 text-amber-600 font-medium">
                           <User size={14} className="shrink-0" />
-                          {kit._whereDisplay}
-                        </span>
-                      ) : kit._whereType === 'site' ? (
-                        <span className="inline-flex items-center gap-1.5">
-                          <Building2 size={14} className="shrink-0 text-gray-400" />
-                          {kit._whereDisplay}
+                          {kit._custodian}
                         </span>
                       ) : '—'}
                     </td>
-                    <td className="px-4 py-3">
-                      <span className="inline-block text-xs px-2 py-0.5 rounded-full font-medium bg-green-100 text-green-700">
-                        {kit.status}
-                      </span>
+                    <td className="px-4 py-3 text-gray-600">
+                      {kit._location ? (
+                        <span className="inline-flex items-center gap-1.5">
+                          <Building2 size={14} className="shrink-0 text-gray-400" />
+                          {kit._location}
+                        </span>
+                      ) : '—'}
+                    </td>
+                    <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
+                      {kit.lastInventoried
+                        ? new Date(kit.lastInventoried).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+                        : '—'}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1.5">

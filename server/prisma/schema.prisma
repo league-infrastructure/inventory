@@ -36,6 +36,7 @@ model Session {
 // ─── Inventory models ─────────────────────────────────────────────
 
 enum UserRole {
+  CUSTODIAN
   INSTRUCTOR
   QUARTERMASTER
   ADMIN
@@ -59,6 +60,7 @@ model User {
   inventoryChecks    InventoryCheck[]
   auditLogs          AuditLog[]
   apiTokens          ApiToken[]
+  notes              Note[]
 }
 
 model Site {
@@ -98,17 +100,23 @@ model Kit {
   qrCode        String?       @unique
   siteId        Int?
   custodianId   Int?
+  imageId       Int?
+  categoryId    Int?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
   site      Site?      @relation(fields: [siteId], references: [id])
   custodian User?      @relation("KitCustodian", fields: [custodianId], references: [id])
+  image     Image?     @relation(fields: [imageId], references: [id])
+  category  Category?  @relation(fields: [categoryId], references: [id])
   packs     Pack[]
   computers Computer[]
   inventoryChecks InventoryCheck[] @relation("KitInventoryCheck")
 
   @@index([siteId])
   @@index([custodianId])
+  @@index([imageId])
+  @@index([categoryId])
 }
 
 model Pack {
@@ -120,12 +128,16 @@ model Pack {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  imageId     Int?
+
   kit   Kit    @relation(fields: [kitId], references: [id], onDelete: Cascade)
+  image Image? @relation(fields: [imageId], references: [id])
   items Item[]
   issues Issue[]
   inventoryChecks InventoryCheck[] @relation("PackInventoryCheck")
 
   @@index([kitId])
+  @@index([imageId])
 }
 
 enum ItemType {
@@ -183,6 +195,8 @@ model Computer {
   kitId           Int?
   osId            Int?
   custodianId     Int?
+  imageId         Int?
+  categoryId      Int?
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
 
@@ -190,12 +204,16 @@ model Computer {
   kit       Kit?              @relation(fields: [kitId], references: [id])
   os        OperatingSystem?  @relation(fields: [osId], references: [id])
   custodian User?             @relation("ComputerCustodian", fields: [custodianId], references: [id])
+  image     Image?            @relation(fields: [imageId], references: [id])
+  category  Category?         @relation(fields: [categoryId], references: [id])
   hostName  HostName?
 
   @@index([siteId])
   @@index([kitId])
   @@index([osId])
   @@index([custodianId])
+  @@index([imageId])
+  @@index([categoryId])
 }
 
 model HostName {
@@ -340,4 +358,47 @@ model QuartermasterPattern {
   isRegex   Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Category {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  kits      Kit[]
+  computers Computer[]
+}
+
+model Note {
+  id         Int      @id @default(autoincrement())
+  objectType String   // 'Kit' | 'Pack' | 'Computer'
+  objectId   Int
+  text       String
+  userId     Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([objectType, objectId])
+  @@index([userId])
+}
+
+model Image {
+  id        Int      @id @default(autoincrement())
+  url       String?
+  objectKey String?
+  fileName  String?
+  data      Bytes?
+  mimeType  String   @default("image/webp")
+  size      Int      @default(0)
+  width     Int      @default(0)
+  height    Int      @default(0)
+  checksum  String   @default("")
+  createdAt DateTime @default(now())
+
+  computers Computer[]
+  kits      Kit[]
+  packs     Pack[]
 }

@@ -5,10 +5,7 @@ interface Site { id: number; name: string; }
 interface Kit { id: number; name: string; }
 interface HostName { id: number; name: string; computerId: number | null; }
 
-const DISPOSITIONS = [
-  'ACTIVE', 'LOANED', 'NEEDS_REPAIR', 'IN_REPAIR',
-  'SCRAPPED', 'LOST', 'DECOMMISSIONED',
-];
+import { DISPOSITIONS } from '../../lib/dispositions';
 
 export default function ComputerForm() {
   const { id } = useParams();

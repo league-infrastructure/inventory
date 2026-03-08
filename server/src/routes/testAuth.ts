@@ -11,6 +11,7 @@
 import { Router, Request, Response } from 'express';
 import { UserRole } from '@prisma/client';
 import { prisma } from '../services/prisma';
+import { USER_ROLES } from '../contracts';
 
 if (process.env.NODE_ENV === 'production') {
   throw new Error('testAuth routes must NEVER be loaded in production');
@@ -26,7 +27,7 @@ export const testAuthRouter = Router();
  * Upserts a real User record so Passport's deserializeUser can find it.
  */
 testAuthRouter.post('/test/login', async (req: Request, res: Response) => {
-  const validRoles: UserRole[] = ['INSTRUCTOR', 'QUARTERMASTER', 'ADMIN'];
+  const validRoles: readonly string[] = USER_ROLES;
   const role: UserRole = validRoles.includes(req.body.role) ? req.body.role : 'INSTRUCTOR';
   const email = req.body.email || `test-${role.toLowerCase()}@jointheleague.org`;
   const googleId = `test-google-${role.toLowerCase()}`;
@@ -64,7 +65,7 @@ testAuthRouter.post('/test/login', async (req: Request, res: Response) => {
  * The browser receives a session cookie for subsequent navigation.
  */
 testAuthRouter.get('/auth/test-login', async (req: Request, res: Response) => {
-  const validRoles: UserRole[] = ['INSTRUCTOR', 'QUARTERMASTER', 'ADMIN'];
+  const validRoles: readonly string[] = USER_ROLES;
   const role: UserRole = validRoles.includes(req.query.role as UserRole) ? (req.query.role as UserRole) : 'INSTRUCTOR';
   const googleId = `test-google-${role.toLowerCase()}`;
 

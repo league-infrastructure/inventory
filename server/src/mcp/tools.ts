@@ -2,6 +2,18 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { mcpContext } from './context';
 import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import { hasQMAccess } from '../contracts';
+
+// MCP clients struggle with anyOf schemas (nullable/optional numbers).
+// This helper accepts number, null, or string — coercing string numbers
+// to numbers and the string "null" to actual null.
+const zIdParam = () => z.union([
+  z.number(),
+  z.string().transform((s) => s === 'null' ? null : Number(s)),
+  z.null(),
+]).optional();
 
 function getContext() {
   const ctx = mcpContext.getStore();
@@ -11,7 +23,7 @@ function getContext() {
 
 function requireQM(): void {
   const { user } = getContext();
-  if (user.role !== 'QUARTERMASTER') {
+  if (!hasQMAccess(user.role)) {
     throw new Error('Quartermaster access required');
   }
 }
@@ -33,6 +45,14 @@ async function safeCall(fn: () => Promise<CallToolResult>): Promise<CallToolResu
 }
 
 export function registerTools(server: McpServer): void {
+  // ─── Version ────────────────────────────────────────────────────────
+
+  const pkg = JSON.parse(readFileSync(join(__dirname, '..', '..', '..', 'package.json'), 'utf-8'));
+
+  server.tool('get_version', 'Get the application version from package.json', {}, async () => {
+    return ok({ version: pkg.version, name: pkg.name });
+  });
+
   // ─── Sites ──────────────────────────────────────────────────────────
 
   server.tool('list_sites', 'List all active sites', {}, async () => {
@@ -137,8 +157,9 @@ export function registerTools(server: McpServer): void {
     containerType: z.string().optional(),
     name: z.string().optional(),
     description: z.string().optional(),
-    siteId: z.number().nullable().optional(),
-    custodianId: z.number().nullable().optional(),
+    siteId: zIdParam(),
+    custodianId: zIdParam(),
+    categoryId: zIdParam(),
     status: z.string().optional(),
   }, async ({ id, ...input }) => {
     return safeCall(async () => {
@@ -166,6 +187,33 @@ export function registerTools(server: McpServer): void {
       }
       await services.prisma.kit.delete({ where: { id } });
       return ok({ deleted: true });
+    });
+  });
+
+  server.tool('set_kit_last_inventoried', 'Set or clear the last inventoried date for a kit. Pass a date string to set, or "clear" to remove all inventory check records.', {
+    kitId: z.number(),
+    date: z.string().describe('ISO date string (e.g. "2026-03-07") to set, or "clear" to remove all inventory checks'),
+    notes: z.string().optional().describe('Optional notes for the inventory check'),
+  }, async ({ kitId, date, notes }) => {
+    return safeCall(async () => {
+      requireQM();
+      const { services, user } = getContext();
+      await services.kits.get(kitId);
+      if (date === 'clear') {
+        const { count } = await services.prisma.inventoryCheck.deleteMany({ where: { kitId } });
+        return ok({ cleared: true, kitId, deletedChecks: count });
+      }
+      const parsed = new Date(date);
+      if (isNaN(parsed.getTime())) throw new Error(`Invalid date: "${date}"`);
+      const check = await services.prisma.inventoryCheck.create({
+        data: {
+          kitId,
+          userId: user.id,
+          notes: notes || 'Date set via MCP',
+          createdAt: parsed,
+        },
+      });
+      return ok({ inventoryCheckId: check.id, kitId, date });
     });
   });
 
@@ -331,11 +379,11 @@ export function registerTools(server: McpServer): void {
     disposition: z.string().optional(),
     dateReceived: z.string().optional(),
     notes: z.string().optional(),
-    siteId: z.number().nullable().optional(),
-    kitId: z.number().nullable().optional(),
-    osId: z.number().nullable().optional(),
-    custodianId: z.number().nullable().optional(),
-    hostNameId: z.number().nullable().optional(),
+    siteId: zIdParam(),
+    kitId: zIdParam(),
+    osId: zIdParam(),
+    custodianId: zIdParam(),
+    hostNameId: zIdParam(),
   }, async (args) => {
     return safeCall(async () => {
       requireQM();
@@ -344,7 +392,7 @@ export function registerTools(server: McpServer): void {
     });
   });
 
-  server.tool('update_computer', 'Update an existing computer. Set kitId/siteId/custodianId/hostNameId to null to clear the association.', {
+  server.tool('update_computer', 'Update an existing computer. For nullable ID fields, pass null or "null" to clear. For lastInventoried, pass "clear" to remove.', {
     id: z.number(),
     serialNumber: z.string().optional(),
     serviceTag: z.string().optional(),
@@ -353,17 +401,21 @@ export function registerTools(server: McpServer): void {
     defaultPassword: z.string().optional(),
     disposition: z.string().optional(),
     dateReceived: z.string().optional(),
+    lastInventoried: z.string().optional().describe('ISO date string (e.g. "2026-03-07") to set, or "clear" to remove'),
     notes: z.string().optional(),
-    siteId: z.number().nullable().optional(),
-    kitId: z.number().nullable().optional(),
-    osId: z.number().nullable().optional(),
-    custodianId: z.number().nullable().optional(),
-    hostNameId: z.number().nullable().optional(),
+    siteId: zIdParam(),
+    kitId: zIdParam(),
+    osId: zIdParam(),
+    custodianId: zIdParam(),
+    hostNameId: zIdParam(),
+    categoryId: zIdParam(),
   }, async ({ id, ...input }) => {
     return safeCall(async () => {
       requireQM();
       const { services, user } = getContext();
-      return ok(await services.computers.update(id, input, user.id));
+      const cleaned: any = { ...input };
+      if (cleaned.lastInventoried === 'clear') cleaned.lastInventoried = null;
+      return ok(await services.computers.update(id, cleaned, user.id));
     });
   });
 
@@ -426,12 +478,88 @@ export function registerTools(server: McpServer): void {
     });
   });
 
+  // ─── Images ────────────────────────────────────────────────────────
+
+  server.tool('list_images', 'List images. Optionally filter by fileName substring.', {
+    search: z.string().optional().describe('Search by fileName (case-insensitive contains)'),
+  }, async ({ search }) => {
+    return safeCall(async () => {
+      const { services } = getContext();
+      const images = await services.images.list(search);
+      return ok(images.map(img => ({
+        ...img,
+        publicUrl: img.objectKey ? services.images.getPublicUrl(img.objectKey) : img.url,
+      })));
+    });
+  });
+
+  server.tool('get_image', 'Get image metadata by ID', { id: z.number() }, async ({ id }) => {
+    return safeCall(async () => {
+      const { services } = getContext();
+      const image = await services.images.getMeta(id);
+      if (!image) throw new Error(`Image ${id} not found`);
+      return ok({
+        ...image,
+        publicUrl: image.objectKey ? services.images.getPublicUrl(image.objectKey) : image.url,
+      });
+    });
+  });
+
+  server.tool('create_image', 'Create an image record from a URL', {
+    url: z.string().describe('URL of the image'),
+    fileName: z.string().optional().describe('Original filename for matching purposes'),
+  }, async ({ url, fileName }) => {
+    return safeCall(async () => {
+      requireQM();
+      const { services } = getContext();
+      return ok(await services.images.createFromUrl(url, fileName));
+    });
+  });
+
+  server.tool('delete_image', 'Delete an image record and remove from S3 if applicable. Unlinks from any attached computers/kits/packs.', {
+    id: z.number(),
+  }, async ({ id }) => {
+    return safeCall(async () => {
+      requireQM();
+      const { services } = getContext();
+      const image = await services.images.getMeta(id);
+      if (!image) throw new Error(`Image ${id} not found`);
+      await services.images.delete(id);
+      return ok({ deleted: true });
+    });
+  });
+
+  server.tool('attach_image', 'Attach an image to a Computer, Kit, or Pack (sets its imageId)', {
+    imageId: z.number(),
+    objectType: z.enum(['Computer', 'Kit', 'Pack']),
+    objectId: z.number(),
+  }, async ({ imageId, objectType, objectId }) => {
+    return safeCall(async () => {
+      requireQM();
+      const { services } = getContext();
+      await services.images.attach(imageId, objectType, objectId);
+      return ok({ attached: true, imageId, objectType, objectId });
+    });
+  });
+
+  server.tool('detach_image', 'Remove the image link from a Computer, Kit, or Pack (sets imageId to null)', {
+    objectType: z.enum(['Computer', 'Kit', 'Pack']),
+    objectId: z.number(),
+  }, async ({ objectType, objectId }) => {
+    return safeCall(async () => {
+      requireQM();
+      const { services } = getContext();
+      await services.images.detach(objectType, objectId);
+      return ok({ detached: true, objectType, objectId });
+    });
+  });
+
   // ─── Transfers ─────────────────────────────────────────────────────
 
   server.tool('transfer_kit', 'Transfer a kit to a new custodian and/or site', {
     kitId: z.number(),
-    custodianId: z.number().nullable().optional(),
-    siteId: z.number().nullable().optional(),
+    custodianId: zIdParam(),
+    siteId: zIdParam(),
     notes: z.string().optional(),
   }, async ({ kitId, custodianId, siteId, notes }) => {
     return safeCall(async () => {
@@ -448,8 +576,8 @@ export function registerTools(server: McpServer): void {
 
   server.tool('transfer_computer', 'Transfer a standalone computer to a new custodian and/or site. Computer must not be in a kit.', {
     computerId: z.number(),
-    custodianId: z.number().nullable().optional(),
-    siteId: z.number().nullable().optional(),
+    custodianId: zIdParam(),
+    siteId: zIdParam(),
     notes: z.string().optional(),
   }, async ({ computerId, custodianId, siteId, notes }) => {
     return safeCall(async () => {
@@ -461,6 +589,51 @@ export function registerTools(server: McpServer): void {
         siteId,
         notes,
       }, user.id));
+    });
+  });
+
+  // ── Notes ──────────────────────────────────────────────────────────
+  server.tool('list_notes', 'List notes for a Kit, Pack, or Computer', {
+    objectType: z.enum(['Kit', 'Pack', 'Computer']),
+    objectId: z.number(),
+  }, async ({ objectType, objectId }) => {
+    return safeCall(async () => {
+      const { services } = getContext();
+      return ok(await services.notes.list(objectType, objectId));
+    });
+  });
+
+  server.tool('create_note', 'Add a note to a Kit, Pack, or Computer', {
+    objectType: z.enum(['Kit', 'Pack', 'Computer']),
+    objectId: z.number(),
+    text: z.string(),
+  }, async (args) => {
+    return safeCall(async () => {
+      requireQM();
+      const { services, user } = getContext();
+      return ok(await services.notes.create(args, user.id));
+    });
+  });
+
+  server.tool('update_note', 'Update an existing note', {
+    id: z.number(),
+    text: z.string(),
+  }, async ({ id, text }) => {
+    return safeCall(async () => {
+      requireQM();
+      const { services, user } = getContext();
+      return ok(await services.notes.update(id, { text }, user.id));
+    });
+  });
+
+  server.tool('delete_note', 'Delete a note', {
+    id: z.number(),
+  }, async ({ id }) => {
+    return safeCall(async () => {
+      requireQM();
+      const { services } = getContext();
+      await services.notes.delete(id);
+      return ok({ deleted: true });
     });
   });
 }

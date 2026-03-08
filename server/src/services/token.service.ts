@@ -98,10 +98,10 @@ export class TokenService {
     const defaultToken = process.env.MCP_DEFAULT_TOKEN;
     if (defaultToken && rawToken === defaultToken) {
       const qm = await this.prisma.user.findFirst({
-        where: { role: 'QUARTERMASTER' },
+        where: { role: { in: ['QUARTERMASTER', 'ADMIN'] } },
         orderBy: { id: 'asc' },
       });
-      if (!qm) throw new Error('No quartermaster user found for default token');
+      if (!qm) throw new Error('No quartermaster/admin user found for default token');
       return { userId: qm.id, role: qm.role };
     }
 

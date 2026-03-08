@@ -35,7 +35,7 @@ export default function DatabaseViewer() {
   useEffect(() => {
     if (!selected) { setTableData(null); return; }
     setLoading(true);
-    fetch(`/api/admin/db/tables/${encodeURIComponent(selected)}?page=${page}&limit=50`)
+    fetch(`/api/admin/db/tables/${encodeURIComponent(selected)}?page=${page}&limit=20`)
       .then((r) => r.json())
       .then((d) => { setTableData(d); setLoading(false); })
       .catch(() => { setError('Failed to load table data'); setLoading(false); });
