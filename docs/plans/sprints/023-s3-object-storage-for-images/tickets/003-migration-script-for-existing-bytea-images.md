@@ -1,7 +1,7 @@
 ---
 id: "003"
 title: "Migration script for existing bytea images"
-status: todo
+status: done
 use-cases: [SUC-004]
 depends-on: ["001", "002"]
 ---
@@ -16,12 +16,12 @@ database to DigitalOcean Spaces. For each image with `data` but no
 
 ## Acceptance Criteria
 
-- [ ] Script at `server/src/scripts/migrate-images-to-s3.ts`
-- [ ] Processes all images where data IS NOT NULL AND objectKey IS NULL
-- [ ] Uploads each image to S3 with key `images/<checksum>.webp`
-- [ ] Updates Image record: sets objectKey, nulls data
-- [ ] Handles errors gracefully (logs and continues)
-- [ ] Images display correctly after migration
+- [x] Script at `server/src/scripts/migrate-images-to-s3.ts`
+- [x] Processes all images where data IS NOT NULL AND objectKey IS NULL
+- [x] Uploads each image to S3 with key `images/<checksum>.webp`
+- [x] Updates Image record: sets objectKey, nulls data
+- [x] Handles errors gracefully (logs and continues)
+- [x] Images display correctly after migration
 
 ## Testing
 
