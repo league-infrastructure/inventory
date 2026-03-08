@@ -45,7 +45,7 @@ adminDbRouter.get('/db/tables/:name', async (req, res, next) => {
   try {
     const { name } = req.params;
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
-    const limit = Math.min(200, Math.max(1, parseInt(req.query.limit as string) || 50));
+    const limit = Math.min(200, Math.max(1, parseInt(req.query.limit as string) || 20));
     const offset = (page - 1) * limit;
 
     // Validate table name exists (SQL injection prevention)
