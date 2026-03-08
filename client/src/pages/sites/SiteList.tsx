@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Plus, MapPin } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Plus, MapPin, Pencil, X, Check } from 'lucide-react';
 import { useTableSort } from '../../lib/useTableSort';
 import SortableHeader from '../../components/SortableHeader';
 
@@ -26,7 +26,15 @@ export default function SiteList() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  useEffect(() => {
+  // Editing state
+  const [editId, setEditId] = useState<number | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editAddress, setEditAddress] = useState('');
+  const [editHome, setEditHome] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+
+  const loadSites = useCallback(() => {
+    setLoading(true);
     fetch('/api/sites')
       .then((r) => {
         if (!r.ok) throw new Error('Failed to load sites');
@@ -36,6 +44,8 @@ export default function SiteList() {
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => { loadSites(); }, [loadSites]);
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -65,6 +75,48 @@ export default function SiteList() {
       setShowForm(false);
     } catch {
       setFormError('Network error');
+    }
+    setSaving(false);
+  }
+
+  function startEdit(site: Site) {
+    setEditId(site.id);
+    setEditName(site.name);
+    setEditAddress(site.address || '');
+    setEditHome(site.isHomeSite);
+    setEditError(null);
+  }
+
+  function cancelEdit() {
+    setEditId(null);
+    setEditError(null);
+  }
+
+  async function saveEdit() {
+    if (!editId) return;
+    setSaving(true);
+    setEditError(null);
+    try {
+      const res = await fetch(`/api/sites/${editId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: editName.trim(),
+          address: editAddress.trim() || null,
+          isHomeSite: editHome,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        setEditError(data.error || 'Failed to update site');
+        setSaving(false);
+        return;
+      }
+      const updated = await res.json();
+      setSites((prev) => prev.map((s) => s.id === updated.id ? updated : s));
+      setEditId(null);
+    } catch {
+      setEditError('Network error');
     }
     setSaving(false);
   }
@@ -148,35 +200,92 @@ export default function SiteList() {
                 <SortableHeader label="Name" sortKey="name" currentSort={sort} onSort={toggleSort} filterValue={filters['name']} onFilter={setFilter} />
                 <SortableHeader label="Address" sortKey="address" currentSort={sort} onSort={toggleSort} filterValue={filters['address']} onFilter={setFilter} />
                 <SortableHeader label="Home" sortKey="isHomeSite" currentSort={sort} onSort={toggleSort} className="w-20" />
-                <th className="px-4 py-3 w-12"></th>
+                <th className="px-4 py-3 w-24"></th>
               </tr>
             </thead>
             <tbody>
               {sorted.map((s) => (
-                <tr key={s.id} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium text-gray-900">
-                    <span className="inline-flex items-center gap-1.5">
-                      <MapPin size={14} className="text-gray-400" />
-                      {s.name}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-gray-600">{s.address || '—'}</td>
-                  <td className="px-4 py-3">
-                    {s.isHomeSite && (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">
-                        Home
+                editId === s.id ? (
+                  <tr key={s.id} className="border-b border-gray-100 bg-blue-50">
+                    <td className="px-4 py-2">
+                      <input
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                        autoFocus
+                      />
+                    </td>
+                    <td className="px-4 py-2">
+                      <input
+                        value={editAddress}
+                        onChange={(e) => setEditAddress(e.target.value)}
+                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                        placeholder="Address"
+                      />
+                    </td>
+                    <td className="px-4 py-2 text-center">
+                      <input type="checkbox" checked={editHome} onChange={(e) => setEditHome(e.target.checked)} />
+                    </td>
+                    <td className="px-4 py-2">
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={saveEdit}
+                          disabled={saving || !editName.trim()}
+                          className="inline-flex items-center p-1 text-green-600 bg-transparent border-none cursor-pointer hover:text-green-800 disabled:opacity-50"
+                          title="Save"
+                        >
+                          <Check size={16} />
+                        </button>
+                        <button
+                          onClick={cancelEdit}
+                          className="inline-flex items-center p-1 text-gray-500 bg-transparent border-none cursor-pointer hover:text-gray-700"
+                          title="Cancel"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                      {editError && <p className="text-red-600 text-xs mt-1">{editError}</p>}
+                    </td>
+                  </tr>
+                ) : (
+                  <tr
+                    key={s.id}
+                    className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
+                    onClick={() => startEdit(s)}
+                  >
+                    <td className="px-4 py-3 font-medium text-gray-900">
+                      <span className="inline-flex items-center gap-1.5">
+                        <MapPin size={14} className="text-gray-400" />
+                        {s.name}
                       </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <button
-                      onClick={() => handleDeactivate(s.id)}
-                      className="text-xs text-red-500 hover:text-red-700 bg-transparent border-none cursor-pointer"
-                    >
-                      Remove
-                    </button>
-                  </td>
-                </tr>
+                    </td>
+                    <td className="px-4 py-3 text-gray-600">{s.address || '—'}</td>
+                    <td className="px-4 py-3">
+                      {s.isHomeSite && (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">
+                          Home
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); startEdit(s); }}
+                          className="text-xs text-gray-500 hover:text-gray-700 bg-transparent border-none cursor-pointer"
+                          title="Edit"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleDeactivate(s.id); }}
+                          className="text-xs text-red-500 hover:text-red-700 bg-transparent border-none cursor-pointer"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                )
               ))}
             </tbody>
           </table>

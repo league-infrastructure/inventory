@@ -6,6 +6,29 @@ import { s3Client, DO_SPACES_BUCKET, SPACES_PUBLIC_URL } from './s3';
 
 const MAX_DIMENSION = 1600;
 
+export interface ImageRecord {
+  id: number;
+  url: string | null;
+  objectKey: string | null;
+  mimeType: string;
+  size: number;
+  width: number;
+  height: number;
+  checksum: string;
+}
+
+export interface ImageMeta extends ImageRecord {
+  createdAt: Date;
+}
+
+export interface ImageData {
+  url: string | null;
+  objectKey: string | null;
+  data: Uint8Array | null;
+  mimeType: string;
+  checksum: string;
+}
+
 export class ImageService {
   constructor(private prisma: PrismaClient) {}
 
@@ -13,7 +36,7 @@ export class ImageService {
    * Process raw image bytes: resize to max 1600px on longest side,
    * convert to WebP, compute metadata, and upload to S3.
    */
-  async create(inputBuffer: Buffer) {
+  async create(inputBuffer: Buffer): Promise<ImageRecord> {
     const processed = sharp(inputBuffer)
       .resize(MAX_DIMENSION, MAX_DIMENSION, { fit: 'inside', withoutEnlargement: true })
       .webp({ quality: 80 });
@@ -49,7 +72,7 @@ export class ImageService {
   }
 
   /** Create an image record from a URL (no binary data stored). */
-  async createFromUrl(url: string) {
+  async createFromUrl(url: string): Promise<ImageRecord> {
     return this.prisma.image.create({
       data: { url },
       select: { id: true, url: true, objectKey: true, mimeType: true, size: true, width: true, height: true, checksum: true },
@@ -57,7 +80,7 @@ export class ImageService {
   }
 
   /** Get image metadata without binary data. */
-  async getMeta(id: number) {
+  async getMeta(id: number): Promise<ImageMeta | null> {
     return this.prisma.image.findUnique({
       where: { id },
       select: { id: true, url: true, objectKey: true, mimeType: true, size: true, width: true, height: true, checksum: true, createdAt: true },
@@ -65,7 +88,7 @@ export class ImageService {
   }
 
   /** Get image serving info. */
-  async getData(id: number) {
+  async getData(id: number): Promise<ImageData | null> {
     return this.prisma.image.findUnique({
       where: { id },
       select: { url: true, objectKey: true, data: true, mimeType: true, checksum: true },
@@ -78,7 +101,7 @@ export class ImageService {
   }
 
   /** Delete an image by ID, removing from S3 if applicable. */
-  async delete(id: number) {
+  async delete(id: number): Promise<void> {
     const image = await this.prisma.image.findUnique({
       where: { id },
       select: { objectKey: true },
