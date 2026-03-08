@@ -45,8 +45,8 @@ export function imageRouter(services: ServiceRegistry): Router {
           return res.status(400).json({ error: 'objectId must be a number' });
         }
 
-        // Create the processed image
-        const image = await services.images.create(req.file.buffer);
+        // Create the processed image (preserve original filename for matching)
+        const image = await services.images.create(req.file.buffer, req.file.originalname);
 
         // Delete old image if replacing
         let oldImageId: number | null = null;

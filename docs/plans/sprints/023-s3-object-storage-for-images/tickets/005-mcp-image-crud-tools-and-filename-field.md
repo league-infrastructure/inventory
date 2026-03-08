@@ -1,7 +1,7 @@
 ---
 id: "005"
 title: "MCP image CRUD tools and fileName field"
-status: todo
+status: done
 use-cases: []
 depends-on: []
 ---
@@ -10,14 +10,24 @@ depends-on: []
 
 ## Description
 
-(What needs to be done and why.)
+Add a `fileName` field to the Image model for storing original upload
+filenames (supports auto-matching by serial number in future work).
+Create MCP tools for full image CRUD plus attach/detach to
+Computers, Kits, and Packs.
 
 ## Acceptance Criteria
 
-- [ ] (Criterion)
+- [x] `fileName String?` added to Image model with migration
+- [x] `ImageService` updated: `create()` and `createFromUrl()` accept optional fileName
+- [x] `ImageService.list(search?)` method added for listing/searching images
+- [x] `ImageService.attach()` and `detach()` methods added
+- [x] `ImageService.delete()` nulls out imageId on linked objects before deleting
+- [x] MCP tools added: `list_images`, `get_image`, `create_image`, `delete_image`, `attach_image`, `detach_image`
+- [x] Upload route passes original filename to `create()`
+- [x] `tsc --noEmit` passes cleanly
 
 ## Testing
 
-- **Existing tests to run**: (list test files/commands to verify no regressions)
-- **New tests to write**: (describe tests that validate this ticket's changes)
-- **Verification command**: `uv run pytest`
+- **Existing tests to run**: `npm run test:server` — 28/32 suites pass (4 pre-existing failures in auth/github/pike13/integrations)
+- **New tests to write**: MCP tool integration tests (deferred — no existing MCP test infrastructure)
+- **Verification command**: `cd server && npx tsc --noEmit`

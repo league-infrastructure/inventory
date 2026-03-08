@@ -356,6 +356,7 @@ model Image {
   id        Int      @id @default(autoincrement())
   url       String?
   objectKey String?
+  fileName  String?
   data      Bytes?
   mimeType  String   @default("image/webp")
   size      Int      @default(0)

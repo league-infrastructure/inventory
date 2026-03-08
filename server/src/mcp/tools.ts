@@ -426,6 +426,82 @@ export function registerTools(server: McpServer): void {
     });
   });
 
+  // ─── Images ────────────────────────────────────────────────────────
+
+  server.tool('list_images', 'List images. Optionally filter by fileName substring.', {
+    search: z.string().optional().describe('Search by fileName (case-insensitive contains)'),
+  }, async ({ search }) => {
+    return safeCall(async () => {
+      const { services } = getContext();
+      const images = await services.images.list(search);
+      return ok(images.map(img => ({
+        ...img,
+        publicUrl: img.objectKey ? services.images.getPublicUrl(img.objectKey) : img.url,
+      })));
+    });
+  });
+
+  server.tool('get_image', 'Get image metadata by ID', { id: z.number() }, async ({ id }) => {
+    return safeCall(async () => {
+      const { services } = getContext();
+      const image = await services.images.getMeta(id);
+      if (!image) throw new Error(`Image ${id} not found`);
+      return ok({
+        ...image,
+        publicUrl: image.objectKey ? services.images.getPublicUrl(image.objectKey) : image.url,
+      });
+    });
+  });
+
+  server.tool('create_image', 'Create an image record from a URL', {
+    url: z.string().describe('URL of the image'),
+    fileName: z.string().optional().describe('Original filename for matching purposes'),
+  }, async ({ url, fileName }) => {
+    return safeCall(async () => {
+      requireQM();
+      const { services } = getContext();
+      return ok(await services.images.createFromUrl(url, fileName));
+    });
+  });
+
+  server.tool('delete_image', 'Delete an image record and remove from S3 if applicable. Unlinks from any attached computers/kits/packs.', {
+    id: z.number(),
+  }, async ({ id }) => {
+    return safeCall(async () => {
+      requireQM();
+      const { services } = getContext();
+      const image = await services.images.getMeta(id);
+      if (!image) throw new Error(`Image ${id} not found`);
+      await services.images.delete(id);
+      return ok({ deleted: true });
+    });
+  });
+
+  server.tool('attach_image', 'Attach an image to a Computer, Kit, or Pack (sets its imageId)', {
+    imageId: z.number(),
+    objectType: z.enum(['Computer', 'Kit', 'Pack']),
+    objectId: z.number(),
+  }, async ({ imageId, objectType, objectId }) => {
+    return safeCall(async () => {
+      requireQM();
+      const { services } = getContext();
+      await services.images.attach(imageId, objectType, objectId);
+      return ok({ attached: true, imageId, objectType, objectId });
+    });
+  });
+
+  server.tool('detach_image', 'Remove the image link from a Computer, Kit, or Pack (sets imageId to null)', {
+    objectType: z.enum(['Computer', 'Kit', 'Pack']),
+    objectId: z.number(),
+  }, async ({ objectType, objectId }) => {
+    return safeCall(async () => {
+      requireQM();
+      const { services } = getContext();
+      await services.images.detach(objectType, objectId);
+      return ok({ detached: true, objectType, objectId });
+    });
+  });
+
   // ─── Transfers ─────────────────────────────────────────────────────
 
   server.tool('transfer_kit', 'Transfer a kit to a new custodian and/or site', {

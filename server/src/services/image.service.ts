@@ -6,10 +6,21 @@ import { s3Client, DO_SPACES_BUCKET, SPACES_PUBLIC_URL } from './s3';
 
 const MAX_DIMENSION = 1600;
 
+const IMAGE_SELECT = {
+  id: true, url: true, objectKey: true, fileName: true,
+  mimeType: true, size: true, width: true, height: true, checksum: true,
+} as const;
+
+const IMAGE_META_SELECT = {
+  ...IMAGE_SELECT,
+  createdAt: true,
+} as const;
+
 export interface ImageRecord {
   id: number;
   url: string | null;
   objectKey: string | null;
+  fileName: string | null;
   mimeType: string;
   size: number;
   width: number;
@@ -36,7 +47,7 @@ export class ImageService {
    * Process raw image bytes: resize to max 1600px on longest side,
    * convert to WebP, compute metadata, and upload to S3.
    */
-  async create(inputBuffer: Buffer): Promise<ImageRecord> {
+  async create(inputBuffer: Buffer, fileName?: string): Promise<ImageRecord> {
     const processed = sharp(inputBuffer)
       .resize(MAX_DIMENSION, MAX_DIMENSION, { fit: 'inside', withoutEnlargement: true })
       .webp({ quality: 80 });
@@ -61,21 +72,31 @@ export class ImageService {
     return this.prisma.image.create({
       data: {
         objectKey,
+        fileName: fileName || null,
         mimeType: 'image/webp',
         size,
         width,
         height,
         checksum,
       },
-      select: { id: true, url: true, objectKey: true, mimeType: true, size: true, width: true, height: true, checksum: true },
+      select: IMAGE_SELECT,
     });
   }
 
   /** Create an image record from a URL (no binary data stored). */
-  async createFromUrl(url: string): Promise<ImageRecord> {
+  async createFromUrl(url: string, fileName?: string): Promise<ImageRecord> {
     return this.prisma.image.create({
-      data: { url },
-      select: { id: true, url: true, objectKey: true, mimeType: true, size: true, width: true, height: true, checksum: true },
+      data: { url, fileName: fileName || null },
+      select: IMAGE_SELECT,
+    });
+  }
+
+  /** List all images with metadata. Optional search by fileName. */
+  async list(search?: string): Promise<ImageMeta[]> {
+    return this.prisma.image.findMany({
+      where: search ? { fileName: { contains: search, mode: 'insensitive' } } : undefined,
+      select: IMAGE_META_SELECT,
+      orderBy: { createdAt: 'desc' },
     });
   }
 
@@ -83,7 +104,7 @@ export class ImageService {
   async getMeta(id: number): Promise<ImageMeta | null> {
     return this.prisma.image.findUnique({
       where: { id },
-      select: { id: true, url: true, objectKey: true, mimeType: true, size: true, width: true, height: true, checksum: true, createdAt: true },
+      select: IMAGE_META_SELECT,
     });
   }
 
@@ -100,7 +121,8 @@ export class ImageService {
     return `${SPACES_PUBLIC_URL}/${objectKey}`;
   }
 
-  /** Delete an image by ID, removing from S3 if applicable. */
+  /** Delete an image by ID, removing from S3 if applicable.
+   *  Nulls out imageId on any linked computers, kits, or packs first. */
   async delete(id: number): Promise<void> {
     const image = await this.prisma.image.findUnique({
       where: { id },
@@ -114,6 +136,45 @@ export class ImageService {
       })).catch(() => {});
     }
 
+    // Null out references before deleting
+    await this.prisma.computer.updateMany({ where: { imageId: id }, data: { imageId: null } });
+    await this.prisma.kit.updateMany({ where: { imageId: id }, data: { imageId: null } });
+    await this.prisma.pack.updateMany({ where: { imageId: id }, data: { imageId: null } });
+
     await this.prisma.image.delete({ where: { id } });
+  }
+
+  /** Attach an image to a computer, kit, or pack. */
+  async attach(imageId: number, objectType: 'Computer' | 'Kit' | 'Pack', objectId: number): Promise<void> {
+    // Verify image exists
+    const image = await this.prisma.image.findUnique({ where: { id: imageId } });
+    if (!image) throw new Error(`Image ${imageId} not found`);
+
+    switch (objectType) {
+      case 'Computer':
+        await this.prisma.computer.update({ where: { id: objectId }, data: { imageId } });
+        break;
+      case 'Kit':
+        await this.prisma.kit.update({ where: { id: objectId }, data: { imageId } });
+        break;
+      case 'Pack':
+        await this.prisma.pack.update({ where: { id: objectId }, data: { imageId } });
+        break;
+    }
+  }
+
+  /** Detach an image from a computer, kit, or pack (set imageId to null). */
+  async detach(objectType: 'Computer' | 'Kit' | 'Pack', objectId: number): Promise<void> {
+    switch (objectType) {
+      case 'Computer':
+        await this.prisma.computer.update({ where: { id: objectId }, data: { imageId: null } });
+        break;
+      case 'Kit':
+        await this.prisma.kit.update({ where: { id: objectId }, data: { imageId: null } });
+        break;
+      case 'Pack':
+        await this.prisma.pack.update({ where: { id: objectId }, data: { imageId: null } });
+        break;
+    }
   }
 }
