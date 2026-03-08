@@ -4,6 +4,7 @@ import { Copy, Trash2, Plus, X, Printer, User, Building2 } from 'lucide-react';
 import EditableCell from '../../components/EditableCell';
 import InventoryCheckSection from '../../components/InventoryCheckSection';
 import LabelPrintModal from '../../components/LabelPrintModal';
+import PhotoUpload from '../../components/PhotoUpload';
 
 interface Item {
   id: number;
@@ -17,6 +18,7 @@ interface Pack {
   name: string;
   description: string | null;
   qrCode: string | null;
+  imageId: number | null;
   items: Item[];
 }
 
@@ -82,6 +84,7 @@ export default function KitDetail() {
   // Transfer state
   const [transferHistory, setTransferHistory] = useState<TransferRecord[]>([]);
   const [custodianName, setCustodianName] = useState<string | null>(null);
+  const [imageId, setImageId] = useState<number | null>(null);
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [transferLoading, setTransferLoading] = useState(false);
   const [transferError, setTransferError] = useState<string | null>(null);
@@ -130,6 +133,7 @@ export default function KitDetail() {
         setComputers(kit.computers);
         setSites(s);
         setCustodianName(kit.custodian?.displayName ?? null);
+        setImageId(kit.imageId ?? null);
         setTransferHistory(history);
       })
       .catch((e) => setError(e.message))
@@ -502,6 +506,16 @@ export default function KitDetail() {
         </div>
       )}
 
+      <PhotoUpload
+        objectType="Kit"
+        objectId={Number(id)}
+        imageId={imageId}
+        onUpdate={() => {
+          fetch(`/api/kits/${id}`).then((r) => r.ok ? r.json() : null)
+            .then((kit) => { if (kit) setImageId(kit.imageId ?? null); });
+        }}
+      />
+
       {saveError && <p className="text-red-600 text-sm mb-4">{saveError}</p>}
 
       {/* Kit fields — click to edit */}
@@ -724,6 +738,16 @@ export default function KitDetail() {
                 </button>
               </div>
             </div>
+
+            <PhotoUpload
+              objectType="Pack"
+              objectId={pack.id}
+              imageId={pack.imageId ?? null}
+              onUpdate={() => {
+                fetch(`/api/kits/${id}`).then((r) => r.ok ? r.json() : null)
+                  .then((kit) => { if (kit) setPacks(kit.packs); });
+              }}
+            />
 
             {itemForms[pack.id] && (
               <div className="flex flex-wrap gap-2 mb-3 items-center">

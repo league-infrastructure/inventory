@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { User, Building2, Archive } from 'lucide-react';
+import { User, Building2, Archive, ArrowRightLeft } from 'lucide-react';
+import TransferModal from '../../components/TransferModal';
+import PhotoUpload from '../../components/PhotoUpload';
 
 interface Site { id: number; name: string; }
 interface Kit { id: number; name: string; }
@@ -60,8 +62,11 @@ export default function ComputerDetail() {
   const [kits, setKits] = useState<Kit[]>([]);
   const [hostNames, setHostNames] = useState<HostName[]>([]);
   const [custodianName, setCustodianName] = useState<string | null>(null);
+  const [imageId, setImageId] = useState<number | null>(null);
+  const [showTransfer, setShowTransfer] = useState(false);
 
-  useEffect(() => {
+  function loadComputer() {
+    setLoading(true);
     Promise.all([
       fetch(`/api/computers/${id}`).then((r) => {
         if (!r.ok) throw new Error('Computer not found');
@@ -87,14 +92,20 @@ export default function ComputerDetail() {
         };
         setForm(initial);
         savedForm.current = initial;
+        setDirty(false);
         setQrCode(c.qrCode || null);
         setCustodianName(c.custodian?.displayName ?? null);
+        setImageId(c.imageId ?? null);
         setSites(s);
         setKits(k);
         setHostNames(h);
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    loadComputer();
 
     fetch(`/api/qr/c/${id}`)
       .then((r) => r.ok ? r.json() : null)
@@ -175,6 +186,8 @@ export default function ComputerDetail() {
         </div>
       )}
 
+      <PhotoUpload objectType="Computer" objectId={parseInt(id!, 10)} imageId={imageId} onUpdate={loadComputer} />
+
       {/* Custody */}
       <div className="mb-6 bg-white border border-gray-200 rounded-lg p-4">
         <h2 className="text-sm font-semibold text-gray-700 mb-2">Custody</h2>
@@ -208,6 +221,16 @@ export default function ComputerDetail() {
           )}
         </div>
       </div>
+
+      {!form.kitId && (
+        <button
+          onClick={() => setShowTransfer(true)}
+          className="mb-6 inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg bg-blue-50 text-blue-700 border border-blue-200 cursor-pointer hover:bg-blue-100"
+        >
+          <ArrowRightLeft size={16} />
+          Transfer
+        </button>
+      )}
 
       {saveError && <p className="text-red-600 text-sm mb-4">{saveError}</p>}
 
@@ -301,6 +324,15 @@ export default function ComputerDetail() {
           </div>
         )}
       </form>
+
+      {showTransfer && (
+        <TransferModal
+          objectType="Computer"
+          objectId={parseInt(id!, 10)}
+          onClose={() => setShowTransfer(false)}
+          onComplete={loadComputer}
+        />
+      )}
     </div>
   );
 }

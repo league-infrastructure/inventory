@@ -14,6 +14,7 @@ export interface ComputerRecord {
   kitId: number | null;
   osId: number | null;
   custodianId: number | null;
+  imageId: number | null;
   createdAt: string;
   updatedAt: string;
   hostName: { id: number; name: string; computerId: number | null } | null;

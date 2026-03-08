@@ -18,6 +18,7 @@ import { ImportService } from './import.service';
 import { SearchService } from './search.service';
 import { ReportService } from './report.service';
 import { OsService } from './os.service';
+import { ImageService } from './image.service';
 
 export class ServiceRegistry {
   readonly prisma: PrismaClient;
@@ -39,6 +40,7 @@ export class ServiceRegistry {
   readonly search: SearchService;
   readonly reports: ReportService;
   readonly os: OsService;
+  readonly images: ImageService;
 
   private constructor(prisma: PrismaClient, source: AuditSource = 'UI') {
     this.prisma = prisma;
@@ -60,6 +62,7 @@ export class ServiceRegistry {
     this.search = new SearchService(prisma);
     this.reports = new ReportService(prisma);
     this.os = new OsService(prisma, this.audit);
+    this.images = new ImageService(prisma);
   }
 
   static create(prisma?: PrismaClient, source?: AuditSource): ServiceRegistry {
@@ -87,5 +90,6 @@ export class ServiceRegistry {
     await p.auditLog.deleteMany();
     await p.apiToken.deleteMany();
     await p.quartermasterPattern.deleteMany();
+    await p.image.deleteMany();
   }
 }

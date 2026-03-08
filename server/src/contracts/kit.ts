@@ -21,6 +21,7 @@ export interface KitRecord {
   qrCode: string | null;
   siteId: number | null;
   custodianId: number | null;
+  imageId: number | null;
   createdAt: string;
   updatedAt: string;
   lastInventoried: string | null;

@@ -25,6 +25,7 @@ import { searchRouter } from './routes/search';
 import { reportsRouter } from './routes/reports';
 import { tokensRouter } from './routes/tokens';
 import { aiChatRouter } from './routes/ai-chat';
+import { imageRouter } from './routes/images';
 import { errorHandler } from './middleware/errorHandler';
 import { logBuffer } from './services/logBuffer';
 import { prisma } from './services/prisma';
@@ -124,6 +125,7 @@ app.use('/api', searchRouter(services));
 app.use('/api', reportsRouter(services));
 app.use('/api', tokensRouter(services));
 app.use('/api', aiChatRouter(services));
+app.use('/api', imageRouter(services));
 app.use('/api', adminRouter);
 
 // MCP server — token-authenticated endpoint for external AI clients
