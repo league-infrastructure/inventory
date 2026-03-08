@@ -1,7 +1,7 @@
 ---
-id: "023"
-title: "S3 Object Storage for Images"
-status: active
+id: '023'
+title: S3 Object Storage for Images
+status: done
 branch: sprint/023-s3-object-storage-for-images
 use-cases: []
 ---
