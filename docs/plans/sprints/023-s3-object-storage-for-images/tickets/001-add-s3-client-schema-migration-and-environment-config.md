@@ -1,7 +1,7 @@
 ---
 id: "001"
 title: "Add S3 client, schema migration, and environment config"
-status: todo
+status: done
 use-cases: []
 depends-on: []
 ---
@@ -16,12 +16,12 @@ and configure environment variables.
 
 ## Acceptance Criteria
 
-- [ ] `@aws-sdk/client-s3` installed in server
-- [ ] `server/src/services/s3.ts` exports configured S3Client and helpers
-- [ ] Prisma migration adds `objectKey String?` to Image model
-- [ ] `.env.template` has DO_SPACES_* variables
-- [ ] `.env` has DO_SPACES_* variables with real values
-- [ ] Server compiles cleanly
+- [x] `@aws-sdk/client-s3` installed in server
+- [x] `server/src/services/s3.ts` exports configured S3Client and helpers
+- [x] Prisma migration adds `objectKey String?` to Image model
+- [x] `.env.template` has DO_SPACES_* variables
+- [x] `.env` has DO_SPACES_* variables with real values
+- [x] Server compiles cleanly
 
 ## Testing
 

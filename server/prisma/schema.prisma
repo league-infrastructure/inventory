@@ -98,17 +98,20 @@ model Kit {
   qrCode        String?       @unique
   siteId        Int?
   custodianId   Int?
+  imageId       Int?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
   site      Site?      @relation(fields: [siteId], references: [id])
   custodian User?      @relation("KitCustodian", fields: [custodianId], references: [id])
+  image     Image?     @relation(fields: [imageId], references: [id])
   packs     Pack[]
   computers Computer[]
   inventoryChecks InventoryCheck[] @relation("KitInventoryCheck")
 
   @@index([siteId])
   @@index([custodianId])
+  @@index([imageId])
 }
 
 model Pack {
@@ -120,12 +123,16 @@ model Pack {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  imageId     Int?
+
   kit   Kit    @relation(fields: [kitId], references: [id], onDelete: Cascade)
+  image Image? @relation(fields: [imageId], references: [id])
   items Item[]
   issues Issue[]
   inventoryChecks InventoryCheck[] @relation("PackInventoryCheck")
 
   @@index([kitId])
+  @@index([imageId])
 }
 
 enum ItemType {
@@ -183,6 +190,7 @@ model Computer {
   kitId           Int?
   osId            Int?
   custodianId     Int?
+  imageId         Int?
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
 
@@ -190,12 +198,14 @@ model Computer {
   kit       Kit?              @relation(fields: [kitId], references: [id])
   os        OperatingSystem?  @relation(fields: [osId], references: [id])
   custodian User?             @relation("ComputerCustodian", fields: [custodianId], references: [id])
+  image     Image?            @relation(fields: [imageId], references: [id])
   hostName  HostName?
 
   @@index([siteId])
   @@index([kitId])
   @@index([osId])
   @@index([custodianId])
+  @@index([imageId])
 }
 
 model HostName {
@@ -340,4 +350,21 @@ model QuartermasterPattern {
   isRegex   Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Image {
+  id        Int      @id @default(autoincrement())
+  url       String?
+  objectKey String?
+  data      Bytes?
+  mimeType  String   @default("image/webp")
+  size      Int      @default(0)
+  width     Int      @default(0)
+  height    Int      @default(0)
+  checksum  String   @default("")
+  createdAt DateTime @default(now())
+
+  computers Computer[]
+  kits      Kit[]
+  packs     Pack[]
 }
