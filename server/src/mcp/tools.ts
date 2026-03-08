@@ -2,11 +2,17 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { mcpContext } from './context';
 import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 
-// Some MCP clients serialize numbers as strings when the JSON Schema uses
-// anyOf (e.g. nullable optional numbers). This schema accepts both and
-// coerces strings to numbers.
-const zIdParam = () => z.union([z.number(), z.string().transform(Number)]).nullable().optional();
+// MCP clients struggle with anyOf schemas (nullable/optional numbers).
+// This helper accepts number, null, or string — coercing string numbers
+// to numbers and the string "null" to actual null.
+const zIdParam = () => z.union([
+  z.number(),
+  z.string().transform((s) => s === 'null' ? null : Number(s)),
+  z.null(),
+]).optional();
 
 function getContext() {
   const ctx = mcpContext.getStore();
@@ -38,6 +44,14 @@ async function safeCall(fn: () => Promise<CallToolResult>): Promise<CallToolResu
 }
 
 export function registerTools(server: McpServer): void {
+  // ─── Version ────────────────────────────────────────────────────────
+
+  const pkg = JSON.parse(readFileSync(join(__dirname, '..', '..', '..', 'package.json'), 'utf-8'));
+
+  server.tool('get_version', 'Get the application version from package.json', {}, async () => {
+    return ok({ version: pkg.version, name: pkg.name });
+  });
+
   // ─── Sites ──────────────────────────────────────────────────────────
 
   server.tool('list_sites', 'List all active sites', {}, async () => {
@@ -172,6 +186,33 @@ export function registerTools(server: McpServer): void {
       }
       await services.prisma.kit.delete({ where: { id } });
       return ok({ deleted: true });
+    });
+  });
+
+  server.tool('set_kit_last_inventoried', 'Set or clear the last inventoried date for a kit. Pass a date string to set, or "clear" to remove all inventory check records.', {
+    kitId: z.number(),
+    date: z.string().describe('ISO date string (e.g. "2026-03-07") to set, or "clear" to remove all inventory checks'),
+    notes: z.string().optional().describe('Optional notes for the inventory check'),
+  }, async ({ kitId, date, notes }) => {
+    return safeCall(async () => {
+      requireQM();
+      const { services, user } = getContext();
+      await services.kits.get(kitId);
+      if (date === 'clear') {
+        const { count } = await services.prisma.inventoryCheck.deleteMany({ where: { kitId } });
+        return ok({ cleared: true, kitId, deletedChecks: count });
+      }
+      const parsed = new Date(date);
+      if (isNaN(parsed.getTime())) throw new Error(`Invalid date: "${date}"`);
+      const check = await services.prisma.inventoryCheck.create({
+        data: {
+          kitId,
+          userId: user.id,
+          notes: notes || 'Date set via MCP',
+          createdAt: parsed,
+        },
+      });
+      return ok({ inventoryCheckId: check.id, kitId, date });
     });
   });
 
@@ -350,7 +391,7 @@ export function registerTools(server: McpServer): void {
     });
   });
 
-  server.tool('update_computer', 'Update an existing computer. Set kitId/siteId/custodianId/hostNameId to null to clear the association.', {
+  server.tool('update_computer', 'Update an existing computer. For nullable ID fields, pass null or "null" to clear. For lastInventoried, pass "clear" to remove.', {
     id: z.number(),
     serialNumber: z.string().optional(),
     serviceTag: z.string().optional(),
@@ -359,6 +400,7 @@ export function registerTools(server: McpServer): void {
     defaultPassword: z.string().optional(),
     disposition: z.string().optional(),
     dateReceived: z.string().optional(),
+    lastInventoried: z.string().optional().describe('ISO date string (e.g. "2026-03-07") to set, or "clear" to remove'),
     notes: z.string().optional(),
     siteId: zIdParam(),
     kitId: zIdParam(),
@@ -370,7 +412,9 @@ export function registerTools(server: McpServer): void {
     return safeCall(async () => {
       requireQM();
       const { services, user } = getContext();
-      return ok(await services.computers.update(id, input, user.id));
+      const cleaned: any = { ...input };
+      if (cleaned.lastInventoried === 'clear') cleaned.lastInventoried = null;
+      return ok(await services.computers.update(id, cleaned, user.id));
     });
   });
 

@@ -132,6 +132,7 @@ export default function KitList() {
                 <SortableHeader label="Description" sortKey="name" currentSort={sort} onSort={toggleSort} filterValue={filters['name']} onFilter={setFilter} />
                 <SortableHeader label="Custodian" sortKey="_custodian" currentSort={sort} onSort={toggleSort} filterValue={filters['_custodian']} onFilter={setFilter} />
                 <SortableHeader label="Location" sortKey="_location" currentSort={sort} onSort={toggleSort} filterValue={filters['_location']} onFilter={setFilter} />
+                <SortableHeader label="Last Inventory" sortKey="lastInventoried" currentSort={sort} onSort={toggleSort} />
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500">Actions</th>
               </tr>
             </thead>
@@ -164,6 +165,11 @@ export default function KitList() {
                           {kit._location}
                         </span>
                       ) : '—'}
+                    </td>
+                    <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
+                      {kit.lastInventoried
+                        ? new Date(kit.lastInventoried).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+                        : '—'}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1.5">
