@@ -10,7 +10,7 @@ WORKDIR /app
 COPY server/package*.json ./
 RUN npm ci
 COPY server/ ./
-RUN npx tsc && npx prisma generate
+RUN npx prisma generate && npx tsc
 
 FROM node:20-alpine
 RUN apk add --no-cache postgresql16-client

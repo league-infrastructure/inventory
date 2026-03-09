@@ -30,7 +30,7 @@ export default function InactiveComputers() {
         return r.json();
       })
       .then((data: Computer[]) => {
-        setComputers(data.filter((c) => INACTIVE_DISPOSITIONS.includes(c.disposition)));
+        setComputers(data.filter((c) => (INACTIVE_DISPOSITIONS as readonly string[]).includes(c.disposition)));
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));

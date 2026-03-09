@@ -133,7 +133,7 @@ export default function AppLayout() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
-  const searchDebounce = useRef<ReturnType<typeof setTimeout>>();
+  const searchDebounce = useRef<ReturnType<typeof setTimeout>>(undefined);
   const searchActive = searchQuery.length >= 2;
 
   useEffect(() => {

@@ -65,16 +65,14 @@ export default function KitDetail() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [dirty, setDirty] = useState(false);
+  const [, setDirty] = useState(false);
   const [cloning, setCloning] = useState(false);
 
   const [form, setForm] = useState<FormState>({ number: '', containerType: 'BAG', name: '', description: '', siteId: '', categoryId: '' });
   const savedForm = useRef<FormState>(form);
 
   const [status, setStatus] = useState('ACTIVE');
-  const [qrCode, setQrCode] = useState<string | null>(null);
   const [packs, setPacks] = useState<Pack[]>([]);
   const [computers, setComputers] = useState<Computer[]>([]);
   const [sites, setSites] = useState<Site[]>([]);
@@ -130,7 +128,6 @@ export default function KitDetail() {
         setForm(initial);
         savedForm.current = initial;
         setStatus(kit.status);
-        setQrCode(kit.qrCode || null);
         setPacks(kit.packs);
         setComputers(kit.computers);
         setSites(s);
@@ -141,40 +138,6 @@ export default function KitDetail() {
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, [id]);
-
-  function updateField<K extends keyof FormState>(key: K, value: FormState[K]) {
-    setForm((prev) => {
-      const next = { ...prev, [key]: value };
-      setDirty(JSON.stringify(next) !== JSON.stringify(savedForm.current));
-      return next;
-    });
-  }
-
-  async function handleSave(e: React.FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    setSaveError(null);
-    try {
-      const res = await fetch(`/api/kits/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: form.name,
-          description: form.description || null,
-          siteId: form.siteId,
-        }),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Failed to save');
-      }
-      savedForm.current = { ...form };
-      setDirty(false);
-    } catch (e: any) {
-      setSaveError(e.message);
-    }
-    setSaving(false);
-  }
 
   async function updateKitField(field: string, value: string) {
     setSaveError(null);
@@ -265,6 +228,7 @@ export default function KitDetail() {
           name: kit.name,
           description: kit.description || '',
           siteId: kit.site?.id ?? '',
+          categoryId: kit.category?.id ?? '',
         };
         setForm(next);
         savedForm.current = next;
@@ -456,8 +420,6 @@ export default function KitDetail() {
 
   if (loading) return <p className="text-gray-500 text-sm">Loading...</p>;
   if (error) return <p className="text-red-600 text-sm">{error}</p>;
-
-  const inputClass = "mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white";
 
   return (
     <div className="max-w-4xl">

@@ -7,7 +7,6 @@ import NotesSection from '../../components/NotesSection';
 
 interface Site { id: number; name: string; }
 interface Kit { id: number; name: string; }
-interface Custodian { id: number; displayName: string; }
 interface HostName { id: number; name: string; computerId: number | null; }
 
 import { DISPOSITIONS, dispositionClasses } from '../../lib/dispositions';
