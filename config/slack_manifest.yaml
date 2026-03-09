@@ -1,0 +1,38 @@
+display_information:
+  name: Inventory Bot
+  description: AI-powered inventory control
+  background_color: "#2c2c2c"
+
+features:
+  bot_user:
+    display_name: Inventory Bot
+    always_online: true
+  slash_commands:
+    - command: /checkout
+      url: https://inventory.jointheleague.org/slack/commands/checkout
+      description: Check kits and computers in and out
+      usage_hint: "[item or QR code]"
+
+oauth_config:
+  scopes:
+    bot:
+      - chat:write
+      - im:history
+      - im:read
+      - im:write
+      - app_mentions:read
+      - files:read
+      - commands
+      - users:read
+      - users:read.email
+
+settings:
+  event_subscriptions:
+    request_url: https://inventory.jointheleague.org/slack/events
+    bot_events:
+      - message.im
+      - app_mention
+  interactivity:
+    is_enabled: false
+  org_deploy_enabled: false
+  socket_mode_enabled: false

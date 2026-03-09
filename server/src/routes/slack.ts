@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
 import { ServiceRegistry } from '../services/service.registry';
-import { AiChatService, ChatMessage } from '../services/ai-chat.service';
+import { AiChatService } from '../services/ai-chat.service';
 import { prisma } from '../services/prisma';
 
 const SIGNING_SECRET = process.env.SLACK_SIGNING_SECRET || '';
@@ -45,13 +45,21 @@ async function postMessage(channel: string, text: string): Promise<void> {
   });
 }
 
-/** Look up a Slack user's email via users.info. */
-async function getSlackUserEmail(slackUserId: string): Promise<string | null> {
+/** Look up a Slack user's profile via users.info. */
+async function getSlackUserInfo(slackUserId: string): Promise<{ email: string | null; displayName: string | null }> {
   const res = await fetch(`https://slack.com/api/users.info?user=${slackUserId}`, {
     headers: { 'Authorization': `Bearer ${BOT_TOKEN}` },
   });
   const data = await res.json() as any;
-  return data.ok ? (data.user?.profile?.email || null) : null;
+  if (!data.ok) {
+    console.error('Slack users.info failed:', data.error, '— does the bot have users:read.email scope?');
+    return { email: null, displayName: null };
+  }
+  const profile = data.user?.profile;
+  return {
+    email: profile?.email || null,
+    displayName: profile?.display_name || profile?.real_name || data.user?.name || null,
+  };
 }
 
 export function slackRouter(services: ServiceRegistry): Router {
@@ -87,16 +95,24 @@ export function slackRouter(services: ServiceRegistry): Router {
     if (!text || !channel) return;
 
     try {
-      // Map Slack user to inventory user by email
-      const email = await getSlackUserEmail(slackUserId);
-      if (!email) {
-        await postMessage(channel, "I couldn't find your email in Slack. Make sure your email is visible in your Slack profile.");
-        return;
+      // Map Slack user to inventory user by email (primary) or display name (fallback)
+      const slackInfo = await getSlackUserInfo(slackUserId);
+      let user = slackInfo.email
+        ? await prisma.user.findUnique({ where: { email: slackInfo.email } })
+        : null;
+
+      // Fallback: match by display name if email lookup failed
+      if (!user && slackInfo.displayName) {
+        user = await prisma.user.findFirst({
+          where: { displayName: { equals: slackInfo.displayName, mode: 'insensitive' } },
+        });
       }
 
-      const user = await prisma.user.findUnique({ where: { email } });
       if (!user) {
-        await postMessage(channel, `No inventory account found for ${email}. Please log in to the inventory system first.`);
+        const hint = slackInfo.email
+          ? `No inventory account found for ${slackInfo.email}.`
+          : "I couldn't read your email from Slack (the bot may need the users:read.email scope — ask your admin to reinstall the app).";
+        await postMessage(channel, `${hint} Please log in to the inventory system first.`);
         return;
       }
 
@@ -151,9 +167,15 @@ export function slackRouter(services: ServiceRegistry): Router {
     if (!cmdText) return;
 
     try {
-      const email = await getSlackUserEmail(slackUserId);
-      if (!email) return;
-      const user = await prisma.user.findUnique({ where: { email } });
+      const slackInfo = await getSlackUserInfo(slackUserId);
+      let user = slackInfo.email
+        ? await prisma.user.findUnique({ where: { email: slackInfo.email } })
+        : null;
+      if (!user && slackInfo.displayName) {
+        user = await prisma.user.findFirst({
+          where: { displayName: { equals: slackInfo.displayName, mode: 'insensitive' } },
+        });
+      }
       if (!user) return;
 
       // Open a DM channel with the user
