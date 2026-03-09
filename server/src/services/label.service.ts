@@ -261,9 +261,7 @@ export class LabelService {
       firstPage = false;
     }
 
-    const selectedPacks = packIds.length > 0
-      ? kit.packs.filter((p) => packIds.includes(p.id))
-      : kit.packs;
+    const selectedPacks = kit.packs.filter((p) => packIds.includes(p.id));
 
     for (let i = 0; i < selectedPacks.length; i++) {
       const pack = selectedPacks[i];
@@ -329,9 +327,7 @@ export class LabelService {
       labels.push(this.renderLabelHtml(qr, String(kit.number), kit.name));
     }
 
-    const selectedPacks = packIds.length > 0
-      ? kit.packs.filter((p) => packIds.includes(p.id))
-      : kit.packs;
+    const selectedPacks = kit.packs.filter((p) => packIds.includes(p.id));
 
     for (const pack of selectedPacks) {
       const allIdx = kit.packs.findIndex(p => p.id === pack.id);
