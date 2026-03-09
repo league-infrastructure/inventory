@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Pencil, Trash2, Save, X, UserPlus } from 'lucide-react';
+import { Plus, Pencil, Trash2, Save, X, UserPlus, Shield } from 'lucide-react';
 import { USER_ROLES, ROLE_BADGE_STYLES } from '../../lib/roles';
 
 interface User {
@@ -103,6 +103,21 @@ export default function UsersPanel() {
       setFormError('Network error');
     }
     setSaving(false);
+  }
+
+  async function toggleAdmin(user: User) {
+    const newRole = user.role === 'ADMIN' ? 'INSTRUCTOR' : 'ADMIN';
+    try {
+      const res = await fetch(`/api/admin/users/${user.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ displayName: user.displayName, email: user.email, role: newRole }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, ...data } : u)));
+      }
+    } catch { /* ignore */ }
   }
 
   async function handleDelete(id: number) {
@@ -210,6 +225,9 @@ export default function UsersPanel() {
                 <th className="text-left py-2 font-semibold text-gray-700">Name</th>
                 <th className="text-left py-2 font-semibold text-gray-700">Email</th>
                 <th className="text-left py-2 font-semibold text-gray-700 w-32">Role</th>
+                <th className="text-center py-2 font-semibold text-gray-700 w-16">
+                  <span className="inline-flex items-center gap-1"><Shield size={12} />Admin</span>
+                </th>
                 <th className="text-left py-2 font-semibold text-gray-700 w-20">Linked</th>
                 <th className="w-20"></th>
               </tr>
@@ -241,6 +259,14 @@ export default function UsersPanel() {
                         >
                           {USER_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
                         </select>
+                      </td>
+                      <td className="py-2 text-center">
+                        <input
+                          type="checkbox"
+                          checked={editForm.role === 'ADMIN'}
+                          onChange={(e) => setEditForm({ ...editForm, role: e.target.checked ? 'ADMIN' : 'INSTRUCTOR' })}
+                          className="w-4 h-4 cursor-pointer accent-purple-600"
+                        />
                       </td>
                       <td></td>
                       <td className="py-2 text-right">
@@ -274,6 +300,14 @@ export default function UsersPanel() {
                         <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${roleBadge(u.role)}`}>
                           {u.role}
                         </span>
+                      </td>
+                      <td className="py-2 text-center">
+                        <input
+                          type="checkbox"
+                          checked={u.role === 'ADMIN'}
+                          onChange={() => toggleAdmin(u)}
+                          className="w-4 h-4 cursor-pointer accent-purple-600"
+                        />
                       </td>
                       <td className="py-2">
                         <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${
