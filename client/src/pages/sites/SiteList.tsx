@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, MapPin, Pencil, X, Check } from 'lucide-react';
+import { Plus, MapPin, Pencil, X, Check, LocateFixed } from 'lucide-react';
 import { useTableSort } from '../../lib/useTableSort';
 import SortableHeader from '../../components/SortableHeader';
 
@@ -121,6 +121,21 @@ export default function SiteList() {
     setSaving(false);
   }
 
+  async function handleGeocode(id: number) {
+    try {
+      const res = await fetch(`/api/sites/${id}/geocode`, { method: 'POST' });
+      if (!res.ok) {
+        const data = await res.json();
+        alert(data.error || 'Geocoding failed');
+        return;
+      }
+      const updated = await res.json();
+      setSites((prev) => prev.map((s) => s.id === updated.id ? updated : s));
+    } catch {
+      alert('Network error');
+    }
+  }
+
   async function handleDeactivate(id: number) {
     const res = await fetch(`/api/sites/${id}/deactivate`, { method: 'PATCH' });
     if (res.ok) {
@@ -199,6 +214,7 @@ export default function SiteList() {
               <tr className="border-b border-gray-200">
                 <SortableHeader label="Name" sortKey="name" currentSort={sort} onSort={toggleSort} filterValue={filters['name']} onFilter={setFilter} />
                 <SortableHeader label="Address" sortKey="address" currentSort={sort} onSort={toggleSort} filterValue={filters['address']} onFilter={setFilter} />
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Lat/Lng</th>
                 <SortableHeader label="Home" sortKey="isHomeSite" currentSort={sort} onSort={toggleSort} className="w-20" />
                 <th className="px-4 py-3 w-24"></th>
               </tr>
@@ -222,6 +238,9 @@ export default function SiteList() {
                         className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
                         placeholder="Address"
                       />
+                    </td>
+                    <td className="px-4 py-2 text-xs text-gray-500">
+                      {s.latitude != null ? `${s.latitude.toFixed(4)}, ${s.longitude?.toFixed(4)}` : '—'}
                     </td>
                     <td className="px-4 py-2 text-center">
                       <input type="checkbox" checked={editHome} onChange={(e) => setEditHome(e.target.checked)} />
@@ -260,6 +279,20 @@ export default function SiteList() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-gray-600">{s.address || '—'}</td>
+                    <td className="px-4 py-3 text-xs text-gray-500">
+                      {s.latitude != null ? (
+                        `${s.latitude.toFixed(4)}, ${s.longitude?.toFixed(4)}`
+                      ) : s.address ? (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleGeocode(s.id); }}
+                          className="inline-flex items-center gap-1 text-xs text-primary bg-transparent border-none cursor-pointer hover:underline"
+                          title="Geocode address"
+                        >
+                          <LocateFixed size={12} />
+                          Geocode
+                        </button>
+                      ) : '—'}
+                    </td>
                     <td className="px-4 py-3">
                       {s.isHomeSite && (
                         <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">

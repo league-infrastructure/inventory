@@ -39,6 +39,13 @@ export function sitesRouter(services: ServiceRegistry): Router {
     } catch (err) { next(err); }
   });
 
+  router.post('/sites/:id/geocode', requireQuartermaster, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const user = req.user as User;
+      res.json(await services.sites.geocode(parseInt(req.params.id as string, 10), user.id));
+    } catch (err) { next(err); }
+  });
+
   router.post('/sites/nearest', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
     try {
       res.json(await services.sites.findNearest(req.body.latitude, req.body.longitude));

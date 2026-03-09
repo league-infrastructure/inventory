@@ -178,6 +178,27 @@ export class SiteService extends BaseService<SiteRecord, CreateSiteInput, Update
     return updated as unknown as SiteRecord;
   }
 
+  async geocode(id: number, userId: number): Promise<SiteRecord> {
+    const site = await this.prisma.site.findUnique({ where: { id } });
+    if (!site) throw new NotFoundError('Site not found');
+    if (!site.address) throw new ValidationError('Site has no address to geocode');
+
+    const coords = await geocodeAddress(site.address);
+    if (!coords) throw new ValidationError('Could not geocode address — try a more specific address');
+
+    const updated = await this.prisma.site.update({
+      where: { id },
+      data: { latitude: coords.latitude, longitude: coords.longitude },
+    });
+
+    const auditEntries = this.buildAuditEntries(userId, id, site, updated);
+    if (auditEntries.length > 0) {
+      await this.writeAudit(auditEntries);
+    }
+
+    return updated as unknown as SiteRecord;
+  }
+
   async findNearest(latitude: number, longitude: number): Promise<NearestSiteResult> {
     if (typeof latitude !== 'number' || isNaN(latitude)) {
       throw new ValidationError('Latitude must be a valid number');
