@@ -21,7 +21,7 @@ export default function ReportIssueAction({ objectType, objectId }: Props) {
       const res = await fetch('/api/notes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ objectType, objectId, content: text.trim() }),
+        body: JSON.stringify({ objectType, objectId, text: text.trim() }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({ error: 'Failed' }));
