@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { MessageSquare, Send, X } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
@@ -15,6 +16,29 @@ export default function AiChat() {
   const [streaming, setStreaming] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const navigate = useNavigate();
+
+  // Intercept internal links in markdown and use client-side navigation
+  const markdownComponents = useCallback(() => ({
+    a: ({ href, children, ...props }: any) => {
+      if (href && href.startsWith('/')) {
+        return (
+          <a
+            {...props}
+            href={href}
+            className="text-primary underline hover:text-primary-hover"
+            onClick={(e: React.MouseEvent) => {
+              e.preventDefault();
+              navigate(href);
+            }}
+          >
+            {children}
+          </a>
+        );
+      }
+      return <a {...props} href={href} target="_blank" rel="noopener noreferrer">{children}</a>;
+    },
+  }), [navigate]);
 
   useEffect(() => {
     fetch('/api/ai/status')
@@ -187,7 +211,7 @@ export default function AiChat() {
                 >
                   {msg.role === 'assistant'
                     ? (msg.content
-                      ? <ReactMarkdown>{msg.content}</ReactMarkdown>
+                      ? <ReactMarkdown components={markdownComponents()}>{msg.content}</ReactMarkdown>
                       : (streaming && i === messages.length - 1 ? '...' : ''))
                     : (msg.content || '')}
                 </div>
