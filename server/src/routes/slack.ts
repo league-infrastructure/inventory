@@ -6,6 +6,19 @@ import { prisma } from '../services/prisma';
 
 const SIGNING_SECRET = process.env.SLACK_SIGNING_SECRET || '';
 const BOT_TOKEN = process.env.SLACK_BOT_USER_OAUTH_TOKEN || '';
+let BOT_USER_ID: string | null = null;
+
+/** Fetch and cache the bot's own Slack user ID. */
+async function getBotUserId(): Promise<string | null> {
+  if (BOT_USER_ID) return BOT_USER_ID;
+  if (!BOT_TOKEN) return null;
+  const res = await fetch('https://slack.com/api/auth.test', {
+    headers: { 'Authorization': `Bearer ${BOT_TOKEN}` },
+  });
+  const data = await res.json() as any;
+  if (data.ok) BOT_USER_ID = data.user_id;
+  return BOT_USER_ID;
+}
 
 /** Verify Slack request signature using HMAC-SHA256. */
 function verifySlackSignature(req: Request): boolean {
@@ -53,14 +66,16 @@ function markdownToSlack(md: string): string {
 }
 
 /** Post a message to a Slack channel via the Web API. */
-async function postMessage(channel: string, text: string): Promise<void> {
+async function postMessage(channel: string, text: string, threadTs?: string): Promise<void> {
+  const payload: Record<string, string> = { channel, text: markdownToSlack(text) };
+  if (threadTs) payload.thread_ts = threadTs;
   await fetch('https://slack.com/api/chat.postMessage', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${BOT_TOKEN}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ channel, text: markdownToSlack(text) }),
+    body: JSON.stringify(payload),
   });
 }
 
@@ -104,14 +119,37 @@ export function slackRouter(services: ServiceRegistry): Router {
     const event = req.body?.event;
     if (!event) return;
 
-    // Only handle DM messages (not bot messages to avoid loops)
-    if (event.type !== 'message' || event.subtype || event.bot_id) return;
+    console.log('Slack event:', JSON.stringify({ type: event.type, subtype: event.subtype, bot_id: event.bot_id, channel_type: event.channel_type, channel: event.channel, user: event.user, text: event.text?.substring(0, 100) }));
+
+    // Skip bot messages to avoid loops
+    if (event.bot_id || event.subtype) {
+      console.log('Slack event filtered (bot/subtype):', event.type, event.subtype, event.bot_id);
+      return;
+    }
+
+    const isDirectMessage = event.type === 'message' && event.channel_type === 'im';
+    const isAppMention = event.type === 'app_mention';
+
+    // For messages in channels/groups/mpim, only respond if the bot is @mentioned
+    const botId = await getBotUserId();
+    const rawText = event.text as string || '';
+    const isBotMentioned = botId ? rawText.includes(`<@${botId}>`) : false;
+    const isChannelMessage = event.type === 'message' && ['channel', 'group', 'mpim'].includes(event.channel_type);
+
+    if (!isDirectMessage && !isAppMention && !(isChannelMessage && isBotMentioned)) {
+      console.log('Slack event filtered (no match):', event.type, 'channel_type:', event.channel_type, 'mentioned:', isBotMentioned);
+      return;
+    }
 
     const slackUserId = event.user as string;
     const channel = event.channel as string;
-    const text = event.text as string;
+    // Strip the @mention tag (e.g. "<@U12345> what's checked out?" → "what's checked out?")
+    let text = rawText.replace(/<@[A-Z0-9]+>\s*/g, '').trim();
 
     if (!text || !channel) return;
+
+    // For non-DM messages, reply in a thread to keep the channel tidy
+    const threadTs = !isDirectMessage ? (event.thread_ts || event.ts) : undefined;
 
     try {
       // Map Slack user to inventory user by email (primary) or display name (fallback)
@@ -131,7 +169,7 @@ export function slackRouter(services: ServiceRegistry): Router {
         const hint = slackInfo.email
           ? `No inventory account found for ${slackInfo.email}.`
           : "I couldn't read your email from Slack (the bot may need the users:read.email scope — ask your admin to reinstall the app).";
-        await postMessage(channel, `${hint} Please log in to the inventory system first.`);
+        await postMessage(channel, `${hint} Please log in to the inventory system first.`, threadTs);
         return;
       }
 
@@ -139,11 +177,11 @@ export function slackRouter(services: ServiceRegistry): Router {
       if (aiChat.isConfigured) {
         const screening = await aiChat.screenMessage(text, []);
         if (!screening.allowed) {
-          await postMessage(channel, screening.reason || 'This chat is for inventory management questions only.');
+          await postMessage(channel, screening.reason || 'This chat is for inventory management questions only.', threadTs);
           return;
         }
       } else {
-        await postMessage(channel, 'AI is not configured — the ANTHROPIC_API_KEY is not set.');
+        await postMessage(channel, 'AI is not configured — the ANTHROPIC_API_KEY is not set.', threadTs);
         return;
       }
 
@@ -159,10 +197,10 @@ export function slackRouter(services: ServiceRegistry): Router {
         undefined,
       );
 
-      await postMessage(channel, response || fullResponse || 'I processed your request but have no response to show.');
+      await postMessage(channel, response || fullResponse || 'I processed your request but have no response to show.', threadTs);
     } catch (err: any) {
       console.error('Slack event processing error:', err);
-      await postMessage(channel, `Sorry, something went wrong: ${err.message || 'unknown error'}`);
+      await postMessage(channel, `Sorry, something went wrong: ${err.message || 'unknown error'}`, threadTs);
     }
   });
 
