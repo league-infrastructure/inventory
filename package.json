@@ -10,7 +10,7 @@
     "dev:local:client": "cd client && npx wait-on http://localhost:3000/api/health && npx vite --host",
     "build": "cd server && npm run build && cd ../client && npm run build",
     "build:docker": "set -a && . ./.env && set +a && DOCKER_CONTEXT=$DEV_DOCKER_CONTEXT docker compose build server",
-    "deploy": "set -a && . ./.env && set +a && DOCKER_CONTEXT=$PROD_DOCKER_CONTEXT docker compose build server && DOCKER_CONTEXT=$PROD_DOCKER_CONTEXT docker stack deploy -c docker-compose.yml inventory",
+    "deploy": "./scripts/deploy.sh",
     "test": "echo 'Run individual test suites: test:db, test:server, test:client, test:e2e'",
     "test:db": "cd server && npx jest --config ../tests/db/jest.config.js",
     "test:server": "cd server && npx jest --config ../tests/server/jest.config.js",

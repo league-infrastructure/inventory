@@ -8,7 +8,7 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile.server
-    image: inventory-server:${TAG:-latest}
+    image: ghcr.io/league-infrastructure/inventory-server:${TAG:-latest}
     networks:
       - default
       - caddy
@@ -41,8 +41,6 @@ services:
         caddy: ${APP_DOMAIN:-inventory.jointheleague.org}
         caddy.reverse_proxy: "{{upstreams 3000}}"
       replicas: 1
-      placement:
-        constraints: [node.role == worker]
 secrets:
   database_url:
     external: true

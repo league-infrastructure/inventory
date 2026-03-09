@@ -13,6 +13,7 @@ COPY server/ ./
 RUN npx prisma generate && npx tsc
 
 FROM node:20-alpine
+LABEL org.opencontainers.image.source=https://github.com/league-infrastructure/inventory
 RUN apk add --no-cache postgresql16-client
 WORKDIR /app
 COPY --from=server-builder /app/dist ./dist
