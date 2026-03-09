@@ -238,6 +238,8 @@ model Transfer {
   fromSiteId     Int?
   toSiteId       Int?
   notes          String?
+  latitude       Float?
+  longitude      Float?
   createdAt      DateTime  @default(now())
 
   user User @relation(fields: [userId], references: [id])

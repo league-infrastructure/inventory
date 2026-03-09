@@ -18,6 +18,7 @@ export default function CheckInAction({ objectType, objectId, onDone }: Props) {
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
   const [geoStatus, setGeoStatus] = useState<'pending' | 'found' | 'denied' | 'none'>('pending');
+  const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
 
   useEffect(() => {
     fetch('/api/sites')
@@ -28,6 +29,7 @@ export default function CheckInAction({ objectType, objectId, onDone }: Props) {
         if (navigator.geolocation) {
           navigator.geolocation.getCurrentPosition(
             (pos) => {
+              setCoords({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
               const nearest = findNearestSite(pos.coords.latitude, pos.coords.longitude, data);
               if (nearest && nearest.distance <= NEARBY_THRESHOLD_M) {
                 setSuggestedSite(nearest.site);
@@ -57,7 +59,7 @@ export default function CheckInAction({ objectType, objectId, onDone }: Props) {
       const res = await fetch('/api/transfers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ objectType, objectId, siteId, custodianId: null }),
+        body: JSON.stringify({ objectType, objectId, siteId, custodianId: null, ...coords }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({ error: 'Failed' }));

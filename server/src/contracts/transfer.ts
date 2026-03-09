@@ -20,4 +20,6 @@ export interface CreateTransferInput {
   custodianId?: number | null;
   siteId?: number | null;
   notes?: string;
+  latitude?: number | null;
+  longitude?: number | null;
 }

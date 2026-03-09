@@ -73,7 +73,7 @@ export default function QrLanding() {
             <h2 className="text-xl font-semibold text-gray-900 mb-4">{info.name}</h2>
             <p className="text-gray-500 text-sm mb-6">Sign in to view full details.</p>
             <a
-              href="/api/auth/google"
+              href={`/api/auth/google?returnTo=${encodeURIComponent(detailPath)}`}
               className="inline-block px-6 py-2.5 bg-primary text-white rounded-lg text-sm font-medium no-underline hover:bg-primary-hover transition-colors"
             >
               Sign in with Google

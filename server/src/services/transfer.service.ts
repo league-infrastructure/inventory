@@ -93,6 +93,8 @@ export class TransferService {
         fromSiteId,
         toSiteId,
         notes: input.notes || null,
+        latitude: input.latitude ?? null,
+        longitude: input.longitude ?? null,
       },
       include: TRANSFER_INCLUDES,
     });
@@ -165,6 +167,8 @@ export class TransferService {
         fromSiteId,
         toSiteId,
         notes: input.notes || null,
+        latitude: input.latitude ?? null,
+        longitude: input.longitude ?? null,
       },
       include: TRANSFER_INCLUDES,
     });

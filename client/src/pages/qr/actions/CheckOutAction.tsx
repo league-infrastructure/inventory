@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { LogOut } from 'lucide-react';
 
 interface Props {
@@ -13,6 +13,17 @@ export default function CheckOutAction({ objectType, objectId, userId, userName,
   const [busy, setBusy] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+  const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => setCoords({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+        () => {},
+        { timeout: 5000 },
+      );
+    }
+  }, []);
 
   async function handleCheckOut() {
     setBusy(true);
@@ -21,7 +32,7 @@ export default function CheckOutAction({ objectType, objectId, userId, userName,
       const res = await fetch('/api/transfers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ objectType, objectId, custodianId: userId }),
+        body: JSON.stringify({ objectType, objectId, custodianId: userId, ...coords }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({ error: 'Failed' }));
