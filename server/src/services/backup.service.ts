@@ -2,6 +2,8 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import * as fs from 'fs';
 import * as path from 'path';
+import { PutObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
+import { s3Client, DO_SPACES_BUCKET } from './s3';
 
 const execAsync = promisify(exec);
 
@@ -9,6 +11,7 @@ export interface BackupInfo {
   filename: string;
   size: number;
   createdAt: string;
+  location: 'local' | 's3' | 'both';
 }
 
 export class BackupService {
@@ -40,28 +43,68 @@ export class BackupService {
     );
 
     const stats = fs.statSync(filePath);
+
+    // Upload to S3 (DigitalOcean Spaces) under backups/
+    await this.uploadToS3(filePath, filename);
+
     return {
       filename,
       size: stats.size,
       createdAt: stats.mtime.toISOString(),
+      location: 'both',
     };
+  }
+
+  private async uploadToS3(filePath: string, filename: string): Promise<void> {
+    const body = fs.readFileSync(filePath);
+    await s3Client.send(new PutObjectCommand({
+      Bucket: DO_SPACES_BUCKET,
+      Key: `backups/${filename}`,
+      Body: body,
+      ContentType: 'application/octet-stream',
+    }));
   }
 
   async listBackups(): Promise<BackupInfo[]> {
     this.ensureDir();
-    const files = fs.readdirSync(this.backupDir)
-      .filter((f) => f.endsWith('.dump'))
-      .sort()
-      .reverse();
 
-    return files.map((filename) => {
-      const stats = fs.statSync(path.join(this.backupDir, filename));
-      return {
-        filename,
+    // Local backups
+    const localMap = new Map<string, BackupInfo>();
+    for (const f of fs.readdirSync(this.backupDir).filter((f) => f.endsWith('.dump'))) {
+      const stats = fs.statSync(path.join(this.backupDir, f));
+      localMap.set(f, {
+        filename: f,
         size: stats.size,
         createdAt: stats.mtime.toISOString(),
-      };
-    });
+        location: 'local',
+      });
+    }
+
+    // S3 backups
+    try {
+      const resp = await s3Client.send(new ListObjectsV2Command({
+        Bucket: DO_SPACES_BUCKET,
+        Prefix: 'backups/',
+      }));
+      for (const obj of resp.Contents || []) {
+        const filename = obj.Key?.replace('backups/', '') || '';
+        if (!filename || !filename.endsWith('.dump')) continue;
+        if (localMap.has(filename)) {
+          localMap.get(filename)!.location = 'both';
+        } else {
+          localMap.set(filename, {
+            filename,
+            size: obj.Size || 0,
+            createdAt: obj.LastModified?.toISOString() || '',
+            location: 's3',
+          });
+        }
+      }
+    } catch {
+      // If S3 is unreachable, just show local backups
+    }
+
+    return Array.from(localMap.values()).sort((a, b) => b.filename.localeCompare(a.filename));
   }
 
   async restoreBackup(filename: string): Promise<void> {
