@@ -77,6 +77,10 @@ deploy:
 
 `APP_DOMAIN` is set in `.env` and sourced by the deploy script.
 
+**Important:** The production database service is named `inventory-db` (not
+`db`) to avoid DNS collisions on the shared `caddy` overlay network. Other
+stacks on the same swarm may also have a service named `db`.
+
 ## Rollback
 
 To roll back to a previous image, re-deploy with the previous tag:
@@ -107,4 +111,4 @@ Check logs: `DOCKER_CONTEXT=swarm1 docker service logs inventory_server`
 
 **Migration failures**
 Connect to the database and check state:
-`DOCKER_CONTEXT=swarm1 docker exec -it $(docker ps -q -f name=inventory_db) psql -U app`
+`DOCKER_CONTEXT=swarm1 docker exec -it $(docker ps -q -f name=inventory_inventory-db) psql -U app`

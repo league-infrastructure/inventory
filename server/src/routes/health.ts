@@ -1,10 +1,16 @@
 import { Router } from 'express';
+import { prisma } from '../services/prisma';
 import { getConfig } from '../services/config';
 
 export const healthRouter = Router();
 
-healthRouter.get('/health', (_req, res) => {
-  res.json({ status: 'ok' });
+healthRouter.get('/health', async (_req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({ status: 'ok', db: 'ok' });
+  } catch {
+    res.status(503).json({ status: 'degraded', db: 'error' });
+  }
 });
 
 healthRouter.get('/settings/inventory-interval', (_req, res) => {

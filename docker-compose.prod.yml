@@ -1,7 +1,7 @@
 # Production Docker Swarm stack
 # Usage: npm run deploy
 services:
-  db:
+  inventory-db:
     image: postgres:16-alpine
     environment:
       POSTGRES_DB: app
@@ -11,6 +11,12 @@ services:
       - db_password
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app && echo \"ALTER USER app PASSWORD '$$(cat /run/secrets/db_password)'\" | psql -U app -d app > /dev/null"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     deploy:
       placement:
         constraints: [node.role == manager]
@@ -51,7 +57,7 @@ services:
       placement:
         constraints: [node.role == manager]
     depends_on:
-      - db
+      - inventory-db
 
 secrets:
   db_password:

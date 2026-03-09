@@ -12,7 +12,7 @@ done
 
 # Construct DATABASE_URL from DB_PASSWORD if not already set
 if [ -z "$DATABASE_URL" ] && [ -n "$DB_PASSWORD" ]; then
-  export DATABASE_URL="postgresql://app:${DB_PASSWORD}@db:5432/app"
+  export DATABASE_URL="postgresql://app:${DB_PASSWORD}@inventory-db:5432/app"
 fi
 
 exec "$@"
