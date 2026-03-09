@@ -1,9 +1,11 @@
 ---
-id: "016"
-title: "Slack bot for AI-powered inventory management"
-status: todo
+id: '016'
+title: Slack bot for AI-powered inventory management
+status: done
 use-cases: []
-depends-on: ["013", "014"]
+depends-on:
+- '013'
+- '014'
 ---
 
 # Slack bot for AI-powered inventory management

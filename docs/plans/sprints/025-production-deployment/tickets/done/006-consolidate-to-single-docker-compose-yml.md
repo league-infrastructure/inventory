@@ -1,10 +1,10 @@
 ---
-id: "006"
-title: "Consolidate to single docker-compose.yml"
-status: todo
+id: '006'
+title: Consolidate to single docker-compose.yml
+status: done
 use-cases: []
 depends-on:
-  - "001"
+- '001'
 ---
 
 # Consolidate to single docker-compose.yml
