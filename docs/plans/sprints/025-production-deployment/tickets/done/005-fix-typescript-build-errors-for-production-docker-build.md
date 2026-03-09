@@ -1,7 +1,7 @@
 ---
 id: '005'
 title: Fix TypeScript build errors for production Docker build
-status: in-progress
+status: done
 use-cases: []
 depends-on: []
 ---
