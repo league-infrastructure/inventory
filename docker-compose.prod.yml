@@ -20,6 +20,9 @@ services:
       context: .
       dockerfile: docker/Dockerfile.server
     image: inventory-server:${TAG:-latest}
+    networks:
+      - default
+      - caddy
     secrets:
       - db_password
       - session_secret
@@ -45,6 +48,8 @@ services:
         caddy: ${APP_DOMAIN:-inventory.jointheleague.org}
         caddy.reverse_proxy: "{{upstreams 3000}}"
       replicas: 1
+      placement:
+        constraints: [node.role == manager]
     depends_on:
       - db
 
@@ -64,6 +69,10 @@ secrets:
   do_spaces_key:
     external: true
   do_spaces_secret:
+    external: true
+
+networks:
+  caddy:
     external: true
 
 volumes:
