@@ -20,17 +20,25 @@ interface UserOption {
 
 export default function TransferAction({
   objectType, objectId, userId,
-  currentCustodian, currentSite, onDone,
+  currentCustodian, onDone,
 }: Props) {
   const [sites, setSites] = useState<SiteWithCoords[]>([]);
   const [users, setUsers] = useState<UserOption[]>([]);
   const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
 
+  // Track the "return to admin" site (nearest or home) for defaulting
+  const [returnSiteId, setReturnSiteId] = useState<string>('');
+
   // Default custodian: if current user is custodian, default to null (return to admin).
   // Otherwise default to current user (check out to me).
-  const defaultCustodianId = currentCustodian?.id === userId ? '' : String(userId);
+  const isMyItem = currentCustodian?.id === userId;
+  const defaultCustodianId = isMyItem ? '' : String(userId);
   const [custodianId, setCustodianId] = useState<string>(defaultCustodianId);
-  const [siteId, setSiteId] = useState<string>(currentSite ? String(currentSite.id) : '');
+
+  // Site default depends on direction:
+  // - Checking out to a person → none (they're taking it)
+  // - Returning to admin → nearest site or home site
+  const [siteId, setSiteId] = useState<string>(isMyItem ? '' : '');
 
   const [busy, setBusy] = useState(false);
   const [success, setSuccess] = useState('');
@@ -45,27 +53,56 @@ export default function TransferAction({
       setSites(sitesData);
       setUsers(usersData);
 
-      // Try geolocation to suggest nearest site
+      // Find home site as fallback
+      const home = sitesData.find((s: any) => s.isHomeSite);
+      const homeSiteStr = home ? String(home.id) : '';
+
+      // Try geolocation to find nearest site
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           (pos) => {
             setCoords({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
             const nearest = findNearestSite(pos.coords.latitude, pos.coords.longitude, sitesData);
-            if (nearest && !currentSite) {
-              setSiteId(String(nearest.site.id));
+            const bestReturnSite = nearest ? String(nearest.site.id) : homeSiteStr;
+            setReturnSiteId(bestReturnSite);
+            // If returning to admin, default site to nearest/home
+            if (isMyItem) {
+              setSiteId(bestReturnSite);
             }
           },
-          () => {},
+          () => {
+            // Geolocation denied — use home site for returns
+            setReturnSiteId(homeSiteStr);
+            if (isMyItem) {
+              setSiteId(homeSiteStr);
+            }
+          },
           { timeout: 5000 },
         );
+      } else {
+        setReturnSiteId(homeSiteStr);
+        if (isMyItem) {
+          setSiteId(homeSiteStr);
+        }
       }
     });
   }, []);
 
   // Update defaults when currentCustodian changes (after a transfer)
   useEffect(() => {
-    setCustodianId(currentCustodian?.id === userId ? '' : String(userId));
-  }, [currentCustodian, userId]);
+    const newIsMyItem = currentCustodian?.id === userId;
+    const newCustodianId = newIsMyItem ? '' : String(userId);
+    setCustodianId(newCustodianId);
+    // Return to admin → suggest nearest/home site; check out → none
+    setSiteId(newCustodianId ? '' : returnSiteId);
+  }, [currentCustodian, userId, returnSiteId]);
+
+  // When custodian dropdown changes, update site default
+  function handleCustodianChange(newCustodianId: string) {
+    setCustodianId(newCustodianId);
+    // Checking out to a person → clear site; returning to admin → suggest site
+    setSiteId(newCustodianId ? '' : returnSiteId);
+  }
 
   async function handleTransfer() {
     setBusy(true);
@@ -128,7 +165,7 @@ export default function TransferAction({
           <span className="text-xs text-gray-500">New Custodian</span>
           <select
             value={custodianId}
-            onChange={(e) => setCustodianId(e.target.value)}
+            onChange={(e) => handleCustodianChange(e.target.value)}
             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white"
           >
             <option value="">None (Admin)</option>
