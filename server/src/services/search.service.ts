@@ -12,14 +12,22 @@ export class SearchService {
   constructor(private prisma: PrismaClient) {}
 
   async search(query: string, limit = 20): Promise<SearchResult[]> {
-    if (!query || query.trim().length < 2) return [];
+    const trimmed = query?.trim();
+    if (!trimmed || (trimmed.length < 2 && isNaN(parseInt(trimmed, 10)))) return [];
     const q = `%${query.trim()}%`;
     const results: SearchResult[] = [];
+
+    // If query is a number, also search by kit number
+    const queryNum = parseInt(query.trim(), 10);
+    const kitNumberFilter = !isNaN(queryNum)
+      ? [{ number: queryNum }]
+      : [];
 
     const [kits, packs, items, computers, sites] = await Promise.all([
       this.prisma.kit.findMany({
         where: {
           OR: [
+            ...kitNumberFilter,
             { name: { contains: query, mode: 'insensitive' } },
             { description: { contains: query, mode: 'insensitive' } },
           ],

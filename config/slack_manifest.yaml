@@ -8,10 +8,44 @@ features:
     display_name: Inventory Bot
     always_online: true
   slash_commands:
+    - command: /inventory
+      url: https://inventory.jointheleague.org/slack/commands/inventory
+      description: Look up a kit, computer, or pack
+      usage_hint: "[name or number]"
+    - command: /haswhat
+      url: https://inventory.jointheleague.org/slack/commands/haswhat
+      description: See what someone has checked out
+      usage_hint: "[person name]"
+    - command: /whereis
+      url: https://inventory.jointheleague.org/slack/commands/whereis
+      description: Find where a kit or computer is
+      usage_hint: "[kit name, number, or serial]"
     - command: /checkout
       url: https://inventory.jointheleague.org/slack/commands/checkout
-      description: Check kits and computers in and out
-      usage_hint: "[item or QR code]"
+      description: Check out a kit
+      usage_hint: "[kit name or QR code]"
+    - command: /checkin
+      url: https://inventory.jointheleague.org/slack/commands/checkin
+      description: Return a kit
+      usage_hint: "[kit name or number]"
+    - command: /transfer
+      url: https://inventory.jointheleague.org/slack/commands/transfer
+      description: Transfer equipment to a site or person
+      usage_hint: "[item] to [destination]"
+    - command: /report
+      url: https://inventory.jointheleague.org/slack/commands/report
+      description: Report a problem with equipment
+      usage_hint: "[item] [issue description]"
+    - command: /sites
+      url: https://inventory.jointheleague.org/slack/commands/sites
+      description: List all sites with kit counts
+    - command: /kits
+      url: https://inventory.jointheleague.org/slack/commands/kits
+      description: List kits, optionally by site
+      usage_hint: "[site name]"
+    - command: /inventory-help
+      url: https://inventory.jointheleague.org/slack/commands/inventory-help
+      description: Show available inventory commands
 
 oauth_config:
   scopes:

@@ -6,7 +6,9 @@ import { prisma } from '../services/prisma';
 
 const SIGNING_SECRET = process.env.SLACK_SIGNING_SECRET || '';
 const BOT_TOKEN = process.env.SLACK_BOT_USER_OAUTH_TOKEN || '';
+const APP_DOMAIN = process.env.APP_DOMAIN || 'inventory.jointheleague.org';
 let BOT_USER_ID: string | null = null;
+const recentEventIds = new Map<string, number>();
 
 /** Fetch and cache the bot's own Slack user ID. */
 async function getBotUserId(): Promise<string | null> {
@@ -96,84 +98,88 @@ async function getSlackUserInfo(slackUserId: string): Promise<{ email: string | 
   };
 }
 
+/** Resolve a Slack user ID to an inventory User, or null. */
+async function resolveInventoryUser(slackUserId: string) {
+  const slackInfo = await getSlackUserInfo(slackUserId);
+  let user = slackInfo.email
+    ? await prisma.user.findUnique({ where: { email: slackInfo.email } })
+    : null;
+  if (!user && slackInfo.displayName) {
+    user = await prisma.user.findFirst({
+      where: { displayName: { equals: slackInfo.displayName, mode: 'insensitive' } },
+    });
+  }
+  return user;
+}
+
+/** Standard guard for slash commands: verify signature and resolve user. */
+function slashGuard(req: Request, res: Response): boolean {
+  if (!verifySlackSignature(req)) {
+    res.status(401).json({ error: 'Invalid signature' });
+    return false;
+  }
+  return true;
+}
+
 export function slackRouter(services: ServiceRegistry): Router {
   const router = Router();
   const aiChat = new AiChatService();
 
-  // Slack Events API endpoint
+  // ─── Slack Events API ───────────────────────────────────────────
+
   router.post('/slack/events', async (req: Request, res: Response) => {
-    // URL verification challenge (Slack sends this when you set the URL)
     if (req.body?.type === 'url_verification') {
       return res.json({ challenge: req.body.challenge });
     }
-
-    // Verify signature for all other requests
     if (!verifySlackSignature(req)) {
       return res.status(401).json({ error: 'Invalid signature' });
     }
 
-    // Acknowledge immediately (Slack requires response within 3 seconds)
     res.status(200).json({ ok: true });
 
-    // Process the event asynchronously
+    // Deduplicate events (Slack retries can cause duplicates)
+    const eventId = req.body?.event_id || req.body?.event?.client_msg_id;
+    if (eventId) {
+      if (recentEventIds.has(eventId)) return;
+      recentEventIds.set(eventId, Date.now());
+      if (recentEventIds.size > 200) {
+        const cutoff = Date.now() - 120000;
+        for (const [id, ts] of recentEventIds) {
+          if (ts < cutoff) recentEventIds.delete(id);
+        }
+      }
+    }
+
     const event = req.body?.event;
     if (!event) return;
 
     console.log('Slack event:', JSON.stringify({ type: event.type, subtype: event.subtype, bot_id: event.bot_id, channel_type: event.channel_type, channel: event.channel, user: event.user, text: event.text?.substring(0, 100) }));
 
-    // Skip bot messages to avoid loops
-    if (event.bot_id || event.subtype) {
-      console.log('Slack event filtered (bot/subtype):', event.type, event.subtype, event.bot_id);
-      return;
-    }
+    if (event.bot_id || event.subtype) return;
 
     const isDirectMessage = event.type === 'message' && event.channel_type === 'im';
     const isAppMention = event.type === 'app_mention';
-
-    // For messages in channels/groups/mpim, only respond if the bot is @mentioned
     const botId = await getBotUserId();
     const rawText = event.text as string || '';
     const isBotMentioned = botId ? rawText.includes(`<@${botId}>`) : false;
     const isChannelMessage = event.type === 'message' && ['channel', 'group', 'mpim'].includes(event.channel_type);
 
-    if (!isDirectMessage && !isAppMention && !(isChannelMessage && isBotMentioned)) {
-      console.log('Slack event filtered (no match):', event.type, 'channel_type:', event.channel_type, 'mentioned:', isBotMentioned);
-      return;
-    }
+    if (!isDirectMessage && !isAppMention && !(isChannelMessage && isBotMentioned)) return;
 
     const slackUserId = event.user as string;
     const channel = event.channel as string;
-    // Strip the @mention tag (e.g. "<@U12345> what's checked out?" → "what's checked out?")
     let text = rawText.replace(/<@[A-Z0-9]+>\s*/g, '').trim();
-
     if (!text || !channel) return;
 
-    // For non-DM messages, reply in a thread to keep the channel tidy
     const threadTs = !isDirectMessage ? (event.thread_ts || event.ts) : undefined;
 
     try {
-      // Map Slack user to inventory user by email (primary) or display name (fallback)
-      const slackInfo = await getSlackUserInfo(slackUserId);
-      let user = slackInfo.email
-        ? await prisma.user.findUnique({ where: { email: slackInfo.email } })
-        : null;
-
-      // Fallback: match by display name if email lookup failed
-      if (!user && slackInfo.displayName) {
-        user = await prisma.user.findFirst({
-          where: { displayName: { equals: slackInfo.displayName, mode: 'insensitive' } },
-        });
-      }
-
+      const user = await resolveInventoryUser(slackUserId);
       if (!user) {
-        const hint = slackInfo.email
-          ? `No inventory account found for ${slackInfo.email}.`
-          : "I couldn't read your email from Slack (the bot may need the users:read.email scope — ask your admin to reinstall the app).";
-        await postMessage(channel, `${hint} Please log in to the inventory system first.`, threadTs);
+        await postMessage(channel, "I couldn't match your Slack account to an inventory user. Please log in to the inventory system first.", threadTs);
         return;
       }
 
-      // Screen with Haiku topic guard
       if (aiChat.isConfigured) {
         const screening = await aiChat.screenMessage(text, []);
         if (!screening.allowed) {
@@ -185,18 +191,13 @@ export function slackRouter(services: ServiceRegistry): Router {
         return;
       }
 
-      // Route through AiChatService (collect full response, no streaming in Slack)
       const aiServices = ServiceRegistry.create(undefined, 'MCP');
       let fullResponse = '';
       const response = await aiChat.chat(
-        text,
-        [],  // No conversation history for now (stateless DMs)
-        user,
-        aiServices,
+        text, [], user, aiServices,
         (delta) => { fullResponse += delta; },
         undefined,
       );
-
       await postMessage(channel, response || fullResponse || 'I processed your request but have no response to show.', threadTs);
     } catch (err: any) {
       console.error('Slack event processing error:', err);
@@ -204,65 +205,432 @@ export function slackRouter(services: ServiceRegistry): Router {
     }
   });
 
-  // /checkout slash command
-  router.post('/slack/commands/checkout', async (req: Request, res: Response) => {
-    if (!verifySlackSignature(req)) {
-      return res.status(401).json({ error: 'Invalid signature' });
+  // ─── /inventory <name or number> ────────────────────────────────
+
+  router.post('/slack/commands/inventory', async (req: Request, res: Response) => {
+    if (!slashGuard(req, res)) return;
+    const { text: query, user_id: slackUserId } = req.body || {};
+
+    if (!query) {
+      return res.json({ response_type: 'in_channel', text: 'Usage: `/inventory <name or number>`' });
     }
 
-    // Slash commands come as URL-encoded form data
-    const { text: cmdText, user_id: slackUserId } = req.body || {};
-
-    // Acknowledge with a helpful message
-    res.json({
-      response_type: 'ephemeral',
-      text: cmdText
-        ? `Looking up "${cmdText}"... I'll send you a DM with the result.`
-        : 'Usage: `/checkout <kit name or QR code>`\n\nOr just DM me directly to manage inventory!',
-    });
-
-    if (!cmdText) return;
+    res.json({ response_type: 'in_channel', text: `Looking up "${query}"...` });
 
     try {
-      const slackInfo = await getSlackUserInfo(slackUserId);
-      let user = slackInfo.email
-        ? await prisma.user.findUnique({ where: { email: slackInfo.email } })
-        : null;
-      if (!user && slackInfo.displayName) {
-        user = await prisma.user.findFirst({
-          where: { displayName: { equals: slackInfo.displayName, mode: 'insensitive' } },
-        });
-      }
+      const user = await resolveInventoryUser(slackUserId);
       if (!user) return;
 
-      // Open a DM channel with the user
-      const dmRes = await fetch('https://slack.com/api/conversations.open', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${BOT_TOKEN}`,
-          'Content-Type': 'application/json',
+      // Try kit number first
+      const kitNum = parseInt(query, 10);
+      if (!isNaN(kitNum)) {
+        const kit = await prisma.kit.findFirst({
+          where: { number: kitNum },
+          include: { site: true, custodian: true, category: true },
+        });
+        if (kit) {
+          const dmChannel = await openDm(slackUserId);
+          if (dmChannel) {
+            await postMessage(dmChannel, formatKit(kit));
+          }
+          return;
+        }
+      }
+
+      // Fall back to search
+      const results = await services.search.search(query, 10);
+      if (results.length === 0) {
+        const dmChannel = await openDm(slackUserId);
+        if (dmChannel) await postMessage(dmChannel, `No results found for "${query}".`);
+        return;
+      }
+
+      const lines = results.map(r => `• *${r.title}* — ${r.subtitle} (https://${APP_DOMAIN}${r.url})`);
+      const dmChannel = await openDm(slackUserId);
+      if (dmChannel) {
+        await postMessage(dmChannel, `*Search results for "${query}":*\n${lines.join('\n')}`);
+      }
+    } catch (err: any) {
+      console.error('Slack /inventory error:', err);
+    }
+  });
+
+  // ─── /haswhat <person> ──────────────────────────────────────────
+
+  router.post('/slack/commands/haswhat', async (req: Request, res: Response) => {
+    if (!slashGuard(req, res)) return;
+    const { text: personName, user_id: slackUserId } = req.body || {};
+
+    if (!personName) {
+      return res.json({ response_type: 'in_channel', text: 'Usage: `/haswhat <person name>`' });
+    }
+
+    res.json({ response_type: 'in_channel', text: `Looking up what ${personName} has...` });
+
+    try {
+      const person = await prisma.user.findFirst({
+        where: { displayName: { contains: personName, mode: 'insensitive' } },
+        include: {
+          custodiedKits: { include: { site: true } },
+          custodiedComputers: { where: { kitId: null }, include: { site: true } },
         },
-        body: JSON.stringify({ users: slackUserId }),
       });
-      const dmData = await dmRes.json() as any;
-      const dmChannel = dmData.channel?.id;
+
+      const dmChannel = await openDm(slackUserId);
+      if (!dmChannel) return;
+
+      if (!person) {
+        await postMessage(dmChannel, `No user found matching "${personName}".`);
+        return;
+      }
+
+      const lines: string[] = [`*${person.displayName}* has:`];
+
+      if (person.custodiedKits.length === 0 && person.custodiedComputers.length === 0) {
+        lines.push('Nothing checked out.');
+      } else {
+        for (const kit of person.custodiedKits) {
+          lines.push(`• Kit #${(kit as any).number}: ${kit.name} — at ${(kit as any).site?.name || 'unknown site'}`);
+        }
+        for (const comp of person.custodiedComputers) {
+          lines.push(`• Computer: ${comp.model || 'unknown'} (${comp.serialNumber}) — at ${(comp as any).site?.name || 'unknown site'}`);
+        }
+      }
+
+      await postMessage(dmChannel, lines.join('\n'));
+    } catch (err: any) {
+      console.error('Slack /haswhat error:', err);
+    }
+  });
+
+  // ─── /whereis <kit or computer> ─────────────────────────────────
+
+  router.post('/slack/commands/whereis', async (req: Request, res: Response) => {
+    if (!slashGuard(req, res)) return;
+    const { text: query, user_id: slackUserId } = req.body || {};
+
+    if (!query) {
+      return res.json({ response_type: 'in_channel', text: 'Usage: `/whereis <kit name, number, or serial>`' });
+    }
+
+    res.json({ response_type: 'in_channel', text: `Looking up "${query}"...` });
+
+    try {
+      const dmChannel = await openDm(slackUserId);
+      if (!dmChannel) return;
+
+      // Try kit by number
+      const kitNum = parseInt(query, 10);
+      if (!isNaN(kitNum)) {
+        const kit = await prisma.kit.findFirst({
+          where: { number: kitNum },
+          include: { site: true, custodian: true },
+        }) as any;
+        if (kit) {
+          await postMessage(dmChannel, formatLocation('Kit', `#${kit.number}: ${kit.name}`, kit.site, kit.custodian, kit.lastInventoried));
+          return;
+        }
+      }
+
+      // Try kit by name
+      const kit = await prisma.kit.findFirst({
+        where: { name: { contains: query, mode: 'insensitive' } },
+        include: { site: true, custodian: true },
+      }) as any;
+      if (kit) {
+        await postMessage(dmChannel, formatLocation('Kit', `#${kit.number}: ${kit.name}`, kit.site, kit.custodian, kit.lastInventoried));
+        return;
+      }
+
+      // Try computer by serial
+      const computer = await prisma.computer.findFirst({
+        where: {
+          OR: [
+            { serialNumber: { contains: query, mode: 'insensitive' } },
+            { serviceTag: { contains: query, mode: 'insensitive' } },
+            { model: { contains: query, mode: 'insensitive' } },
+          ],
+        },
+        include: { site: true, custodian: true, kit: true },
+      }) as any;
+      if (computer) {
+        const label = `${computer.model || 'Computer'} (${computer.serialNumber})`;
+        const extra = computer.kit ? `\nIn kit #${computer.kit.number}: ${computer.kit.name}` : '';
+        await postMessage(dmChannel, formatLocation('Computer', label, computer.site, computer.custodian, computer.lastInventoried) + extra);
+        return;
+      }
+
+      await postMessage(dmChannel, `Nothing found for "${query}".`);
+    } catch (err: any) {
+      console.error('Slack /whereis error:', err);
+    }
+  });
+
+  // ─── /checkin <kit> ─────────────────────────────────────────────
+
+  router.post('/slack/commands/checkin', async (req: Request, res: Response) => {
+    if (!slashGuard(req, res)) return;
+    const { text: cmdText, user_id: slackUserId } = req.body || {};
+
+    if (!cmdText) {
+      return res.json({ response_type: 'in_channel', text: 'Usage: `/checkin <kit name or number>`' });
+    }
+
+    res.json({ response_type: 'in_channel', text: `Checking in "${cmdText}"...` });
+
+    try {
+      const user = await resolveInventoryUser(slackUserId);
+      if (!user) return;
+
+      const dmChannel = await openDm(slackUserId);
+      if (!dmChannel) return;
+
+      const aiServices = ServiceRegistry.create(undefined, 'MCP');
+      const response = await aiChat.chat(
+        `I want to check in / return: ${cmdText}`,
+        [], user, aiServices, () => {}, undefined,
+      );
+      await postMessage(dmChannel, response || 'Done processing your check-in request.');
+    } catch (err: any) {
+      console.error('Slack /checkin error:', err);
+    }
+  });
+
+  // ─── /checkout <kit> ────────────────────────────────────────────
+
+  router.post('/slack/commands/checkout', async (req: Request, res: Response) => {
+    if (!slashGuard(req, res)) return;
+    const { text: cmdText, user_id: slackUserId } = req.body || {};
+
+    if (!cmdText) {
+      return res.json({ response_type: 'in_channel', text: 'Usage: `/checkout <kit name or QR code>`\n\nOr just DM me directly to manage inventory!' });
+    }
+
+    res.json({ response_type: 'in_channel', text: `Checking out "${cmdText}"...` });
+
+    try {
+      const user = await resolveInventoryUser(slackUserId);
+      if (!user) return;
+
+      const dmChannel = await openDm(slackUserId);
       if (!dmChannel) return;
 
       const aiServices = ServiceRegistry.create(undefined, 'MCP');
       const response = await aiChat.chat(
         `I want to check out: ${cmdText}`,
-        [],
-        user,
-        aiServices,
-        () => {},
-        undefined,
+        [], user, aiServices, () => {}, undefined,
       );
-
       await postMessage(dmChannel, response || 'Done processing your checkout request.');
     } catch (err: any) {
       console.error('Slack /checkout error:', err);
     }
   });
 
+  // ─── /transfer <item> to <site or person> ──────────────────────
+
+  router.post('/slack/commands/transfer', async (req: Request, res: Response) => {
+    if (!slashGuard(req, res)) return;
+    const { text: cmdText, user_id: slackUserId } = req.body || {};
+
+    if (!cmdText) {
+      return res.json({ response_type: 'in_channel', text: 'Usage: `/transfer <item> to <site or person>`' });
+    }
+
+    res.json({ response_type: 'in_channel', text: `Processing transfer: "${cmdText}"...` });
+
+    try {
+      const user = await resolveInventoryUser(slackUserId);
+      if (!user) return;
+
+      const dmChannel = await openDm(slackUserId);
+      if (!dmChannel) return;
+
+      const aiServices = ServiceRegistry.create(undefined, 'MCP');
+      const response = await aiChat.chat(
+        `Transfer: ${cmdText}`,
+        [], user, aiServices, () => {}, undefined,
+      );
+      await postMessage(dmChannel, response || 'Done processing your transfer request.');
+    } catch (err: any) {
+      console.error('Slack /transfer error:', err);
+    }
+  });
+
+  // ─── /report <item> <issue> ────────────────────────────────────
+
+  router.post('/slack/commands/report', async (req: Request, res: Response) => {
+    if (!slashGuard(req, res)) return;
+    const { text: cmdText, user_id: slackUserId } = req.body || {};
+
+    if (!cmdText) {
+      return res.json({ response_type: 'in_channel', text: 'Usage: `/report <item> <issue description>`' });
+    }
+
+    res.json({ response_type: 'in_channel', text: `Filing report: "${cmdText}"...` });
+
+    try {
+      const user = await resolveInventoryUser(slackUserId);
+      if (!user) return;
+
+      const dmChannel = await openDm(slackUserId);
+      if (!dmChannel) return;
+
+      const aiServices = ServiceRegistry.create(undefined, 'MCP');
+      const response = await aiChat.chat(
+        `Report an issue: ${cmdText}`,
+        [], user, aiServices, () => {}, undefined,
+      );
+      await postMessage(dmChannel, response || 'Done filing your report.');
+    } catch (err: any) {
+      console.error('Slack /report error:', err);
+    }
+  });
+
+  // ─── /sites ────────────────────────────────────────────────────
+
+  router.post('/slack/commands/sites', async (req: Request, res: Response) => {
+    if (!slashGuard(req, res)) return;
+    const { user_id: slackUserId } = req.body || {};
+
+    res.json({ response_type: 'in_channel', text: 'Fetching sites...' });
+
+    try {
+      const sites = await services.sites.list();
+      const dmChannel = await openDm(slackUserId);
+      if (!dmChannel) return;
+
+      // Count kits per site
+      const kitCounts = await prisma.kit.groupBy({
+        by: ['siteId'],
+        _count: { id: true },
+        where: { status: 'ACTIVE' },
+      });
+      const countMap = new Map(kitCounts.map(k => [k.siteId, k._count.id]));
+
+      const lines = sites.map(s => {
+        const count = countMap.get(s.id) || 0;
+        const home = s.isHomeSite ? ' (home)' : '';
+        return `• *${s.name}*${home} — ${count} active kit${count !== 1 ? 's' : ''} — ${s.address || 'no address'}`;
+      });
+
+      await postMessage(dmChannel, `*Active Sites:*\n${lines.join('\n')}`);
+    } catch (err: any) {
+      console.error('Slack /sites error:', err);
+    }
+  });
+
+  // ─── /kits [site] ─────────────────────────────────────────────
+
+  router.post('/slack/commands/kits', async (req: Request, res: Response) => {
+    if (!slashGuard(req, res)) return;
+    const { text: siteFilter, user_id: slackUserId } = req.body || {};
+
+    res.json({ response_type: 'in_channel', text: siteFilter ? `Fetching kits at "${siteFilter}"...` : 'Fetching all kits...' });
+
+    try {
+      const dmChannel = await openDm(slackUserId);
+      if (!dmChannel) return;
+
+      let kits = await services.kits.list('ACTIVE');
+
+      if (siteFilter) {
+        const site = await prisma.site.findFirst({
+          where: { name: { contains: siteFilter, mode: 'insensitive' }, isActive: true },
+        });
+        if (!site) {
+          await postMessage(dmChannel, `No site found matching "${siteFilter}".`);
+          return;
+        }
+        kits = kits.filter(k => k.siteId === site.id);
+      }
+
+      if (kits.length === 0) {
+        await postMessage(dmChannel, siteFilter ? `No active kits at "${siteFilter}".` : 'No active kits found.');
+        return;
+      }
+
+      const lines = kits.map(k => {
+        const site = k.site ? k.site.name : 'unassigned';
+        const custodian = k.custodian ? k.custodian.displayName : 'no custodian';
+        return `• *Kit #${k.number}: ${k.name}* — ${site} — ${custodian}`;
+      });
+
+      const header = siteFilter ? `*Active kits at "${siteFilter}":*` : '*All active kits:*';
+      await postMessage(dmChannel, `${header}\n${lines.join('\n')}`);
+    } catch (err: any) {
+      console.error('Slack /kits error:', err);
+    }
+  });
+
+  // ─── /inventory-help ───────────────────────────────────────────
+
+  router.post('/slack/commands/inventory-help', async (req: Request, res: Response) => {
+    if (!slashGuard(req, res)) return;
+
+    res.json({
+      response_type: 'in_channel',
+      text: [
+        '*Inventory Bot Commands:*',
+        '',
+        '• `/inventory <name or number>` — Look up a kit, computer, or pack',
+        '• `/haswhat <person>` — See what someone has checked out',
+        '• `/whereis <item>` — Find where a kit or computer is',
+        '• `/checkout <kit>` — Check out a kit',
+        '• `/checkin <kit>` — Return a kit',
+        '• `/transfer <item> to <destination>` — Transfer equipment',
+        '• `/report <item> <issue>` — Report a problem with equipment',
+        '• `/sites` — List all sites with kit counts',
+        '• `/kits [site]` — List kits, optionally filtered by site',
+        '',
+        'You can also DM me directly for conversational inventory management!',
+      ].join('\n'),
+    });
+  });
+
   return router;
+}
+
+// ─── Helpers ───────────────────────────────────────────────────────
+
+/** Open a DM channel with a Slack user and return the channel ID. */
+async function openDm(slackUserId: string): Promise<string | null> {
+  const res = await fetch('https://slack.com/api/conversations.open', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${BOT_TOKEN}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ users: slackUserId }),
+  });
+  const data = await res.json() as any;
+  return data.channel?.id || null;
+}
+
+/** Format a kit record for display. */
+function formatKit(kit: any): string {
+  const lines = [
+    `*Kit #${kit.number}: ${kit.name}*`,
+    `Status: ${kit.status}`,
+    `Site: ${kit.site?.name || 'unassigned'}`,
+    `Custodian: ${kit.custodian?.displayName || 'none'}`,
+    `Category: ${kit.category?.name || 'none'}`,
+  ];
+  if (kit.lastInventoried) {
+    lines.push(`Last inventoried: ${new Date(kit.lastInventoried).toLocaleDateString()}`);
+  }
+  lines.push(`https://${APP_DOMAIN}/kits/${kit.id}`);
+  return lines.join('\n');
+}
+
+/** Format location info for /whereis responses. */
+function formatLocation(type: string, label: string, site: any, custodian: any, lastInventoried: Date | null): string {
+  const lines = [
+    `*${type}: ${label}*`,
+    `Site: ${site?.name || 'unassigned'}`,
+    `Custodian: ${custodian?.displayName || 'none'}`,
+  ];
+  if (lastInventoried) {
+    lines.push(`Last inventoried: ${new Date(lastInventoried).toLocaleDateString()}`);
+  }
+  return lines.join('\n');
 }
