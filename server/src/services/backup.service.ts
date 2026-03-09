@@ -2,7 +2,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import * as fs from 'fs';
 import * as path from 'path';
-import { PutObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
+import { PutObjectCommand, ListObjectsV2Command, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { s3Client, DO_SPACES_BUCKET } from './s3';
 
 const execAsync = promisify(exec);
@@ -128,9 +128,20 @@ export class BackupService {
   async deleteBackup(filename: string): Promise<void> {
     const sanitized = path.basename(filename);
     const filePath = path.join(this.backupDir, sanitized);
-    if (!fs.existsSync(filePath)) {
-      throw new Error(`Backup file not found: ${sanitized}`);
+
+    // Delete locally if present
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
     }
-    fs.unlinkSync(filePath);
+
+    // Delete from S3
+    try {
+      await s3Client.send(new DeleteObjectCommand({
+        Bucket: DO_SPACES_BUCKET,
+        Key: `backups/${sanitized}`,
+      }));
+    } catch {
+      // S3 delete is best-effort
+    }
   }
 }
