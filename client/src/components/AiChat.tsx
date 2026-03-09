@@ -65,6 +65,21 @@ export default function AiChat() {
         return;
       }
 
+      // Check for topic guard rejection (JSON response, not SSE)
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        const data = await res.json();
+        if (data.rejected) {
+          setMessages(prev => {
+            const updated = [...prev];
+            updated[updated.length - 1] = { role: 'assistant', content: data.reason || 'Please ask about inventory management.' };
+            return updated;
+          });
+          setStreaming(false);
+          return;
+        }
+      }
+
       const reader = res.body?.getReader();
       const decoder = new TextDecoder();
       let buffer = '';

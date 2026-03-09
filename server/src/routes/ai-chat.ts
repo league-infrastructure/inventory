@@ -32,6 +32,12 @@ export function aiChatRouter(services: ServiceRegistry): Router {
       return res.status(400).json({ error: 'message is required' });
     }
 
+    // Screen message with Haiku topic guard
+    const screening = await aiChat.screenMessage(message, conversationHistory);
+    if (!screening.allowed) {
+      return res.json({ rejected: true, reason: screening.reason });
+    }
+
     // Set up SSE
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',
