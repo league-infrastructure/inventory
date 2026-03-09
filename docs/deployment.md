@@ -15,7 +15,7 @@ Internet → Caddy (*.jtlapp.net) → server:3000 → Express (API + static file
 ## Prerequisites
 
 - Docker context `swarm1` (or your prod context) configured and reachable
-- SOPS access to decrypt `secrets/prod.env`
+- SOPS access to decrypt `config/prod/secrets.env`
 - Swarm initialized on the target host (`docker swarm init`)
 
 ## First-Time Setup
@@ -25,11 +25,15 @@ Internet → Caddy (*.jtlapp.net) → server:3000 → Express (API + static file
 Secrets must exist in the swarm before the stack can deploy:
 
 ```bash
-npm run secrets:prod
+set -a && . .env && set +a
+cd config
+sops -d prod/secrets.env | while IFS='=' read -r key value; do
+  echo "$value" | DOCKER_CONTEXT=$PROD_DOCKER_CONTEXT docker secret create "$(echo "$key" | tr '[:upper:]' '[:lower:]')" -
+done
 ```
 
-This decrypts `secrets/prod.env` via SOPS and creates each key as a Docker
-Swarm secret on the production context. See [Secrets Management](secrets.md)
+This decrypts `config/prod/secrets.env` via SOPS and creates each key as a
+Docker Swarm secret on the production context. See [Secrets Management](secrets.md)
 for details.
 
 ### 2. Deploy
@@ -86,15 +90,13 @@ DOCKER_CONTEXT=$PROD_DOCKER_CONTEXT TAG=v1 docker stack deploy -c docker-compose
 
 | Script | What It Does |
 |--------|-------------|
-| `npm run secrets:prod` | Create swarm secrets from `secrets/prod.env` |
-| `npm run secrets:prod:rm` | Remove existing swarm secrets (needed before updating) |
 | `npm run build:docker` | Build prod image on the dev Docker context |
 | `npm run deploy` | Build on prod context + deploy stack |
 
 ## Troubleshooting
 
 **`secret not found: db_password`**
-Swarm secrets haven't been created. Run `npm run secrets:prod` first.
+Swarm secrets haven't been created. See [First-Time Setup](#1-create-swarm-secrets).
 
 **`image not found`**
 The build step failed or hasn't run. `deploy` builds automatically,

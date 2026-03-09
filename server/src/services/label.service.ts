@@ -26,17 +26,21 @@ export class LabelService {
   private baseUrl: string;
 
   constructor(private prisma: PrismaClient, baseUrl?: string) {
-    this.baseUrl = baseUrl ?? process.env.QR_DOMAIN ?? process.env.APP_BASE_URL ?? 'http://localhost:5173';
+    const raw = baseUrl ?? process.env.QR_DOMAIN ?? process.env.APP_BASE_URL ?? 'http://localhost:5173';
+    this.baseUrl = raw.replace(/\/+$/, '');
   }
 
-  private async generateQrBuffer(path: string): Promise<Buffer> {
-    const url = `${this.baseUrl}${path}`;
-    return QRCode.toBuffer(url, { width: 120, margin: 1, type: 'png' });
+  private buildUrl(path: string): string {
+    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+    return `${this.baseUrl}${normalizedPath}`;
+  }
+
+  async generateQrBuffer(path: string): Promise<Buffer> {
+    return QRCode.toBuffer(this.buildUrl(path), { width: 120, margin: 1, type: 'png' });
   }
 
   private async generateQrDataUri(path: string): Promise<string> {
-    const url = `${this.baseUrl}${path}`;
-    return QRCode.toDataURL(url, { width: 120, margin: 1 });
+    return QRCode.toDataURL(this.buildUrl(path), { width: 120, margin: 1 });
   }
 
   private createDoc(): typeof PDFDocument.prototype {
@@ -172,7 +176,7 @@ export class LabelService {
     });
     if (!kit) throw new NotFoundError('Kit not found');
 
-    const qrBuffer = await this.generateQrBuffer(`/k/${kitId}`);
+    const qrBuffer = await this.generateQrBuffer(`/qr/k/${kitId}`);
     const doc = this.createDoc();
     const buffers: Buffer[] = [];
     doc.on('data', (chunk: Buffer) => buffers.push(chunk));
@@ -197,7 +201,7 @@ export class LabelService {
     const seq = await this.getPackSequence(packId, pack.kit.id);
     const number = `${pack.kit.number}/${seq}`;
 
-    const qrBuffer = await this.generateQrBuffer(`/p/${packId}`);
+    const qrBuffer = await this.generateQrBuffer(`/qr/p/${packId}`);
     const doc = this.createDoc();
     const buffers: Buffer[] = [];
     doc.on('data', (chunk: Buffer) => buffers.push(chunk));
@@ -219,7 +223,7 @@ export class LabelService {
     });
     if (!computer) throw new NotFoundError('Computer not found');
 
-    const qrBuffer = await this.generateQrBuffer(`/c/${computerId}`);
+    const qrBuffer = await this.generateQrBuffer(`/qr/c/${computerId}`);
     const doc = this.createDoc();
     const buffers: Buffer[] = [];
     doc.on('data', (chunk: Buffer) => buffers.push(chunk));
@@ -252,7 +256,7 @@ export class LabelService {
     let firstPage = true;
 
     if (includeKit) {
-      const kitQr = await this.generateQrBuffer(`/k/${kitId}`);
+      const kitQr = await this.generateQrBuffer(`/qr/k/${kitId}`);
       this.addLabelContent(doc, kitQr, String(kit.number), kit.name);
       firstPage = false;
     }
@@ -270,7 +274,7 @@ export class LabelService {
 
       const allIdx = kit.packs.findIndex(p => p.id === pack.id);
       const seq = allIdx + 1;
-      const packQr = await this.generateQrBuffer(`/p/${pack.id}`);
+      const packQr = await this.generateQrBuffer(`/qr/p/${pack.id}`);
       this.addLabelContent(doc, packQr, `${kit.number}/${seq}`, pack.name);
     }
 
@@ -321,7 +325,7 @@ export class LabelService {
     const labels: string[] = [];
 
     if (includeKit) {
-      const qr = await this.generateQrDataUri(`/k/${kitId}`);
+      const qr = await this.generateQrDataUri(`/qr/k/${kitId}`);
       labels.push(this.renderLabelHtml(qr, String(kit.number), kit.name));
     }
 
@@ -332,7 +336,7 @@ export class LabelService {
     for (const pack of selectedPacks) {
       const allIdx = kit.packs.findIndex(p => p.id === pack.id);
       const seq = allIdx + 1;
-      const qr = await this.generateQrDataUri(`/p/${pack.id}`);
+      const qr = await this.generateQrDataUri(`/qr/p/${pack.id}`);
       labels.push(this.renderLabelHtml(qr, `${kit.number}/${seq}`, pack.name));
     }
 

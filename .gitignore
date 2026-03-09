@@ -37,3 +37,7 @@ pids/
 *.pid
 *.seed
 data/~$League of Amazing Programmers Inventory.xlsx
+
+# Claude Code worktrees
+.claude/worktrees/
+.env.old

@@ -18,7 +18,7 @@ called out inline where the defaults differ.
   brew install sops age   # macOS
   ```
 - An age keypair — see [Secrets Management](secrets.md) for setup
-- **pipx** — required to install the CLASI SE process tooling
+- **pipx** — required to install CLASI and dotconfig
   ```bash
   brew install pipx && pipx ensurepath   # macOS
   ```
@@ -39,11 +39,11 @@ It performs the following, in order:
 2. **Docker context detection** — finds your local Docker daemon (OrbStack,
    Docker Desktop, or default)
 3. **SOPS + age** — locates or generates an age keypair, adds your public
-   key to `.sops.yaml`
-4. **CLASI SE process** — installs the CLASI tooling via `pipx` and runs
+   key to `config/sops.yaml`
+4. **Python CLI tools** — installs dotconfig and CLASI via `pipx`, runs
    `clasi init` to configure the MCP server
-5. **`.env` generation** — creates `.env` from `.env.template`, fills in
-   detected values, and appends decrypted application secrets
+5. **`.env` generation** — assembles `.env` using `dotconfig load`, which
+   cascades public config, SOPS-decrypted secrets, and local overrides
 
 Re-running the script is safe — it detects existing state and skips steps
 that are already done. If `.env` already exists, it asks whether to
@@ -53,35 +53,29 @@ overwrite or keep it.
 
 ## 2. Review `.env`
 
-The install script generates `.env` from `.env.template`. It contains Docker
-context configuration, SOPS/age key settings, and decrypted application
-secrets — all in one file sourced by every npm script.
+The install script assembles `.env` using `dotconfig load dev <your-name>`.
+It cascades config from `config/dev/public.env`, decrypted secrets from
+`config/dev/secrets.env`, and your local overrides from
+`config/local/<your-name>/public.env`.
 
-To change your Docker context later, edit `.env` directly or delete it and
-re-run `./scripts/install.sh`.
+To regenerate `.env` after config changes:
+
+```bash
+dotconfig load dev <your-name>
+```
+
+To save changes you've made in `.env` back to the config files:
+
+```bash
+dotconfig save
+```
 
 > **Codespaces:** The only available Docker context is `default`.
 
 If the install script couldn't decrypt secrets (new key, not yet authorised),
-add them manually:
-
-```bash
-echo "SESSION_SECRET=dev-session-secret-change-me" >> .env
-echo "DATABASE_URL=postgresql://app:devpassword@localhost:${DB_PORT:-5433}/app" >> .env
-```
+add them manually to `.env` or to `config/local/<your-name>/public.env`.
 
 See [Secrets Management](secrets.md) for key setup and onboarding.
-
-> **Codespaces:** The devcontainer sets `DB_PORT=5432`, which causes Docker
-> Compose to map Postgres to host port **5432** instead of the default 5433.
-> The command above reads `$DB_PORT` automatically, so the right port is used.
-
-To confirm which port Postgres is bound to after starting:
-
-```bash
-docker ps
-# e.g. "0.0.0.0:5432->5432/tcp" or "0.0.0.0:5433->5432/tcp"
-```
 
 ---
 

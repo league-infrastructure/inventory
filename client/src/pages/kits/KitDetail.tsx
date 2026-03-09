@@ -465,7 +465,8 @@ export default function KitDetail() {
         &larr; Back to Kits
       </Link>
 
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mt-4 mb-6">
+      {/* Header: title + status + actions */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mt-4 mb-6">
         <div className="flex items-center gap-2">
           <h1 className="text-2xl font-bold text-gray-900">
             {form.containerType ? CONTAINER_TYPE_LABELS[form.containerType] : ''} {form.number} — <EditableCell value={form.name} onSave={(v) => updateKitField('name', v)} />
@@ -478,173 +479,154 @@ export default function KitDetail() {
             {status}
           </span>
         </div>
-        <div className="flex gap-2">
-          {status === 'ACTIVE' && (
-            <>
-              <button
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-primary text-white border-none cursor-pointer hover:bg-primary-hover"
-                onClick={() => setShowLabelModal(true)}
-              >
-                <Printer size={14} /> Print Labels
-              </button>
-              <button
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-gray-600 text-white border-none cursor-pointer hover:bg-gray-700"
-                onClick={handleClone}
-                disabled={cloning}
-              >
-                <Copy size={14} /> {cloning ? 'Cloning...' : 'Clone'}
-              </button>
-              <button
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-red-600 text-white border-none cursor-pointer hover:bg-red-700"
-                onClick={handleRetire}
-              >
-                Retire
-              </button>
-            </>
-          )}
-        </div>
+        {status === 'ACTIVE' && (
+          <div className="flex gap-2">
+            <button
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-primary text-white border-none cursor-pointer hover:bg-primary-hover"
+              onClick={() => setShowLabelModal(true)}
+            >
+              <Printer size={14} /> Print Labels
+            </button>
+            <button
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-gray-600 text-white border-none cursor-pointer hover:bg-gray-700"
+              onClick={handleClone}
+              disabled={cloning}
+            >
+              <Copy size={14} /> {cloning ? 'Cloning...' : 'Clone'}
+            </button>
+            <button
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-red-600 text-white border-none cursor-pointer hover:bg-red-700"
+              onClick={handleRetire}
+            >
+              Retire
+            </button>
+          </div>
+        )}
       </div>
-
-      {qrCode && (
-        <div className="mb-6 px-4 py-2 bg-gray-50 rounded-lg text-sm">
-          <strong>QR Code:</strong> <code className="text-xs">{qrCode}</code>
-        </div>
-      )}
 
       {saveError && <p className="text-red-600 text-sm mb-4">{saveError}</p>}
 
-      {/* Kit fields — click to edit */}
-      <div className="space-y-3 mb-8">
-        <div className="flex gap-6 flex-wrap">
-          <div>
-            <span className="text-sm font-medium text-gray-500">Number</span>
-            <div className="text-sm text-gray-700 mt-0.5">
-              {form.number}
+      {/* Two-column layout: details left, QR + custody right */}
+      <div className="flex gap-6 mb-8 items-stretch">
+        {/* Left column: kit fields as form grid */}
+        <div className="flex-1 min-w-0 flex flex-col">
+          <div className="grid grid-cols-2 gap-x-6 gap-y-4 flex-1">
+            <div>
+              <label className="block text-sm font-semibold text-gray-400 uppercase tracking-wider mb-1">Number</label>
+              <div className="text-lg text-gray-900">{form.number}</div>
             </div>
-          </div>
-          <div>
-            <span className="text-sm font-medium text-gray-500">Container</span>
-            <div className="text-sm text-gray-700 mt-0.5">
-              <EditableCell
-                value={form.containerType}
-                onSave={(v) => updateKitField('containerType', v)}
-                as="select"
-                options={Object.entries(CONTAINER_TYPE_LABELS).map(([value, label]) => ({ value, label }))}
-              />
+            <div>
+              <label className="block text-sm font-semibold text-gray-400 uppercase tracking-wider mb-1">Container</label>
+              <div className="text-lg text-gray-900">
+                <EditableCell
+                  value={form.containerType}
+                  onSave={(v) => updateKitField('containerType', v)}
+                  as="select"
+                  options={Object.entries(CONTAINER_TYPE_LABELS).map(([value, label]) => ({ value, label }))}
+                />
+              </div>
             </div>
-          </div>
-          <div>
-            <span className="text-sm font-medium text-gray-500">Site</span>
-            <div className="text-sm text-gray-700 mt-0.5">
-              <EditableCell
-                value={String(form.siteId)}
-                onSave={(v) => updateKitField('siteId', v)}
-                as="select"
-                options={sites.map((s) => ({ value: String(s.id), label: s.name }))}
-              />
+            <div>
+              <label className="block text-sm font-semibold text-gray-400 uppercase tracking-wider mb-1">Site</label>
+              <div className="text-lg text-gray-900">
+                <EditableCell
+                  value={String(form.siteId)}
+                  onSave={(v) => updateKitField('siteId', v)}
+                  as="select"
+                  options={sites.map((s) => ({ value: String(s.id), label: s.name }))}
+                />
+              </div>
             </div>
-          </div>
-          <div>
-            <span className="text-sm font-medium text-gray-500">Category</span>
-            <div className="text-sm text-gray-700 mt-0.5">
-              <EditableCell
-                value={String(form.categoryId)}
-                onSave={(v) => updateKitField('categoryId', v)}
-                as="select"
-                options={[{ value: '', label: 'None' }, ...categories.map((c) => ({ value: String(c.id), label: c.name }))]}
+            <div>
+              <label className="block text-sm font-semibold text-gray-400 uppercase tracking-wider mb-1">Category</label>
+              <div className="text-lg text-gray-900">
+                <EditableCell
+                  value={String(form.categoryId)}
+                  onSave={(v) => updateKitField('categoryId', v)}
+                  as="select"
+                  options={[{ value: '', label: 'None' }, ...categories.map((c) => ({ value: String(c.id), label: c.name }))]}
+                />
+              </div>
+            </div>
+            <div className="col-span-2 flex flex-col">
+              <label className="block text-sm font-semibold text-gray-400 uppercase tracking-wider mb-1">Description</label>
+              <textarea
+                className="w-full flex-1 min-h-[3rem] px-3 py-2 text-base text-gray-900 border border-gray-300 rounded-md resize-vertical focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                rows={2}
+                value={form.description}
+                placeholder="Add description..."
+                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                onBlur={(e) => updateKitField('description', e.target.value)}
               />
             </div>
           </div>
         </div>
-        <div>
-          <span className="text-sm font-medium text-gray-500">Description</span>
-          <div className="text-sm text-gray-700 mt-0.5">
-            <EditableCell value={form.description} onSave={(v) => updateKitField('description', v)} placeholder="add description" />
+
+        {/* Right column: QR + custody in one card */}
+        <div className="w-60 shrink-0">
+          <div className="bg-white border border-gray-200 rounded-lg p-5 space-y-5">
+            {/* QR code */}
+            <div className="flex flex-col items-center">
+              <img
+                src={`/api/labels/qr/k/${id}?v=${Date.now()}`}
+                alt="QR code"
+                className="w-20 h-20"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              />
+              <code className="text-[10px] text-gray-400 mt-1">/qr/k/{id}</code>
+            </div>
+
+            <hr className="border-gray-200" />
+
+            {/* Custody */}
+            <div>
+              <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Custody</h3>
+              <div className="space-y-3">
+                <p className="text-base inline-flex items-center gap-2">
+                  <User size={16} className="shrink-0 text-gray-400" />
+                  {custodianName ? (
+                    <span className="text-amber-600 font-medium">{custodianName}</span>
+                  ) : (
+                    <span className="text-green-600 font-medium">Storeroom</span>
+                  )}
+                </p>
+                <p className="text-base inline-flex items-center gap-2">
+                  <Building2 size={16} className="shrink-0 text-gray-400" />
+                  {form.siteId ? (
+                    <span className="text-gray-700">{sites.find((s) => s.id === form.siteId)?.name ?? '—'}</span>
+                  ) : (
+                    <span className="text-gray-400">No site</span>
+                  )}
+                </p>
+              </div>
+              {status === 'ACTIVE' && (
+                <button
+                  className="mt-4 w-full px-4 py-2 text-sm font-medium rounded-md bg-primary text-white border-none cursor-pointer hover:bg-primary-hover"
+                  onClick={() => setShowTransferModal(true)}
+                >
+                  Transfer
+                </button>
+              )}
+              {transferError && <p className="text-red-600 text-xs mt-1">{transferError}</p>}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Custodian / Transfer */}
-      <div className="mb-8">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Custody</h2>
-
-        <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-2">
-          <p className="text-sm text-gray-800 inline-flex items-center gap-1.5">
-            <User size={14} className="shrink-0 text-gray-400" />
-            <span className="font-medium">Who:</span>{' '}
-            {custodianName ? (
-              <span className="text-amber-600 font-medium">{custodianName}</span>
-            ) : (
-              <span className="text-green-600">Admin (storeroom)</span>
-            )}
-          </p>
-          <p className="text-sm text-gray-800 inline-flex items-center gap-1.5">
-            <Building2 size={14} className="shrink-0 text-gray-400" />
-            <span className="font-medium">Where:</span>{' '}
-            {form.siteId ? (
-              <span>{sites.find((s) => s.id === form.siteId)?.name ?? '—'}</span>
-            ) : (
-              <span className="text-gray-400">No site</span>
-            )}
-          </p>
-
-        </div>
-
-          {status === 'ACTIVE' && (
-            <button
-              className="mt-3 px-4 py-2 text-sm font-medium rounded-lg bg-primary text-white border-none cursor-pointer hover:bg-primary-hover"
-              onClick={() => setShowTransferModal(true)}
-            >
-              Transfer
-            </button>
-          )}
-
-        {transferError && <p className="text-red-600 text-sm mt-2">{transferError}</p>}
-
-        {/* Transfer modal */}
-        {showTransferModal && (
-          <TransferModal
-            sites={sites}
-            loading={transferLoading}
-            onConfirm={handleTransfer}
-            onClose={() => setShowTransferModal(false)}
-          />
-        )}
-
-        {/* Transfer history */}
-        {transferHistory.length > 0 && (
-          <div className="mt-4">
-            <h3 className="text-sm font-semibold text-gray-700 mb-2">Transfer History</h3>
-            <div className="bg-white border border-gray-200 rounded-lg overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-200">
-                    <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500">By</th>
-                    <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500">From</th>
-                    <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500">To</th>
-                    <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500">Date</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {transferHistory.map((t) => (
-                    <tr key={t.id} className="border-b border-gray-100">
-                      <td className="px-4 py-2">{t.user.displayName}</td>
-                      <td className="px-4 py-2 text-gray-600">{t.fromCustodian || 'Admin'}</td>
-                      <td className="px-4 py-2 text-gray-600">{t.toCustodian || 'Admin'}</td>
-                      <td className="px-4 py-2 text-gray-600">
-                        {new Date(t.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-      </div>
+      {/* Transfer modal */}
+      {showTransferModal && (
+        <TransferModal
+          sites={sites}
+          loading={transferLoading}
+          onConfirm={handleTransfer}
+          onClose={() => setShowTransferModal(false)}
+        />
+      )}
 
       {/* Inventory Check */}
-      <InventoryCheckSection kitId={Number(id)} packs={packs} computers={computers} />
+      <div id="inventory-check-section">
+        <InventoryCheckSection kitId={Number(id)} packs={packs} computers={computers} />
+      </div>
 
       {/* Packs */}
       <div>
@@ -941,6 +923,37 @@ export default function KitDetail() {
             .then((kit) => { if (kit) setImageId(kit.imageId ?? null); });
         }}
       />
+
+      {/* Transfer history */}
+      {transferHistory.length > 0 && (
+        <div className="mb-8">
+          <h3 className="text-sm font-semibold text-gray-700 mb-2">Transfer History</h3>
+          <div className="bg-white border border-gray-200 rounded-lg overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500">By</th>
+                  <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500">From</th>
+                  <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500">To</th>
+                  <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500">Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {transferHistory.map((t) => (
+                  <tr key={t.id} className="border-b border-gray-100">
+                    <td className="px-4 py-2">{t.user.displayName}</td>
+                    <td className="px-4 py-2 text-gray-600">{t.fromCustodian || 'Admin'}</td>
+                    <td className="px-4 py-2 text-gray-600">{t.toCustodian || 'Admin'}</td>
+                    <td className="px-4 py-2 text-gray-600">
+                      {new Date(t.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       <NotesSection objectType="Kit" objectId={Number(id)} />
 

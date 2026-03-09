@@ -1,5 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import SortableHeader from '../../components/SortableHeader';
+import { useTableSort } from '../../lib/useTableSort';
 
 interface TransferredData {
   kits: {
@@ -16,6 +18,15 @@ interface TransferredData {
     site: { id: number; name: string } | null;
     custodian: { id: number; displayName: string } | null;
   }[];
+}
+
+interface UnifiedRow {
+  id: number;
+  type: 'Kit' | 'Computer';
+  name: string;
+  _custodian: string;
+  _site: string;
+  link: string;
 }
 
 export default function CheckedOutList() {
@@ -35,79 +46,104 @@ export default function CheckedOutList() {
       .finally(() => setLoading(false));
   }, []);
 
-  const totalItems = data.kits.length + data.computers.length;
+  const rows: UnifiedRow[] = useMemo(() => {
+    const kitRows: UnifiedRow[] = data.kits.map((kit) => ({
+      id: kit.id,
+      type: 'Kit',
+      name: `Kit #${kit.number}: ${kit.name}`,
+      _custodian: kit.custodian?.displayName ?? '—',
+      _site: kit.site?.name ?? '—',
+      link: `/kits/${kit.id}`,
+    }));
+    const computerRows: UnifiedRow[] = data.computers.map((c) => ({
+      id: c.id,
+      type: 'Computer',
+      name: c.hostName?.name || c.model || `Computer #${c.id}`,
+      _custodian: c.custodian?.displayName ?? '—',
+      _site: c.site?.name ?? '—',
+      link: `/computers/${c.id}`,
+    }));
+    return [...kitRows, ...computerRows];
+  }, [data]);
+
+  const { processed, sort, toggleSort, filters, setFilter } = useTableSort(rows, { key: 'name', direction: 'asc' });
 
   return (
     <div className="max-w-4xl">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Transferred Out</h1>
+        <h1 className="text-2xl font-bold text-gray-900">
+          Transferred Out {!loading && <span className="text-gray-400 font-normal text-lg">({processed.length})</span>}
+        </h1>
       </div>
 
       {loading && <p className="text-gray-500 text-sm">Loading...</p>}
       {error && <p className="text-red-600 text-sm">{error}</p>}
 
-      {!loading && totalItems === 0 && (
+      {!loading && rows.length === 0 && (
         <p className="text-gray-500 text-sm">No items currently transferred out.</p>
       )}
 
-      {data.kits.length > 0 && (
-        <>
-          <h2 className="text-lg font-semibold mb-2">Kits ({data.kits.length})</h2>
-          <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto mb-6">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-200 text-left">
-                  <th className="px-4 py-3 font-medium text-gray-500">Kit</th>
-                  <th className="px-4 py-3 font-medium text-gray-500">Custodian</th>
-                  <th className="px-4 py-3 font-medium text-gray-500">Site</th>
+      {!loading && rows.length > 0 && (
+        <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-200">
+                <SortableHeader
+                  label="Type"
+                  sortKey="type"
+                  currentSort={sort}
+                  onSort={toggleSort}
+                  filterValue={filters.type}
+                  onFilter={setFilter}
+                />
+                <SortableHeader
+                  label="Name"
+                  sortKey="name"
+                  currentSort={sort}
+                  onSort={toggleSort}
+                  filterValue={filters.name}
+                  onFilter={setFilter}
+                />
+                <SortableHeader
+                  label="Custodian"
+                  sortKey="_custodian"
+                  currentSort={sort}
+                  onSort={toggleSort}
+                  filterValue={filters._custodian}
+                  onFilter={setFilter}
+                />
+                <SortableHeader
+                  label="Site"
+                  sortKey="_site"
+                  currentSort={sort}
+                  onSort={toggleSort}
+                  filterValue={filters._site}
+                  onFilter={setFilter}
+                />
+              </tr>
+            </thead>
+            <tbody>
+              {processed.map((row) => (
+                <tr
+                  key={`${row.type}-${row.id}`}
+                  className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
+                  onClick={() => navigate(row.link)}
+                >
+                  <td className="px-4 py-3">
+                    <span className={`inline-block px-2 py-0.5 text-xs font-medium rounded ${
+                      row.type === 'Kit' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'
+                    }`}>
+                      {row.type}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 font-medium text-gray-900">{row.name}</td>
+                  <td className="px-4 py-3 text-gray-600">{row._custodian}</td>
+                  <td className="px-4 py-3 text-gray-600">{row._site}</td>
                 </tr>
-              </thead>
-              <tbody>
-                {data.kits.map((kit) => (
-                  <tr
-                    key={kit.id}
-                    className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
-                    onClick={() => navigate(`/kits/${kit.id}`)}
-                  >
-                    <td className="px-4 py-3 font-medium text-gray-900">Kit #{kit.number}: {kit.name}</td>
-                    <td className="px-4 py-3 text-gray-600">{kit.custodian?.displayName ?? 'Admin'}</td>
-                    <td className="px-4 py-3 text-gray-600">{kit.site?.name ?? '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </>
-      )}
-
-      {data.computers.length > 0 && (
-        <>
-          <h2 className="text-lg font-semibold mb-2">Computers ({data.computers.length})</h2>
-          <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-200 text-left">
-                  <th className="px-4 py-3 font-medium text-gray-500">Computer</th>
-                  <th className="px-4 py-3 font-medium text-gray-500">Custodian</th>
-                  <th className="px-4 py-3 font-medium text-gray-500">Site</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.computers.map((c) => (
-                  <tr
-                    key={c.id}
-                    className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
-                    onClick={() => navigate(`/computers/${c.id}`)}
-                  >
-                    <td className="px-4 py-3 font-medium text-gray-900">{c.hostName?.name || c.model || `Computer #${c.id}`}</td>
-                    <td className="px-4 py-3 text-gray-600">{c.custodian?.displayName ?? 'Admin'}</td>
-                    <td className="px-4 py-3 text-gray-600">{c.site?.name ?? '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

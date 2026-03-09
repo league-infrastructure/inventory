@@ -3,6 +3,7 @@ import { Request, Response, NextFunction } from 'express';
 declare module 'express-session' {
   interface SessionData {
     isAdmin?: boolean;
+    returnTo?: string;
   }
 }
 

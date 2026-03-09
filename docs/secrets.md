@@ -2,29 +2,49 @@
 
 ## Overview
 
-Secrets flow through three stages:
+This project uses **dotconfig** to manage environment configuration and
+**SOPS + age** to encrypt secrets at rest.
 
 ```
-SOPS + age (at rest, in repo)
-  → decrypt
-    → Docker Swarm secrets (runtime, file-mounted)
-      → entrypoint.sh
-        → environment variables (application reads process.env)
+config/
+  ├── sops.yaml              ← SOPS encryption policy (age public keys)
+  ├── dev/
+  │   ├── public.env          ← non-secret dev config (committed)
+  │   └── secrets.env         ← SOPS-encrypted dev secrets (committed)
+  ├── prod/
+  │   ├── public.env          ← non-secret prod config (committed)
+  │   └── secrets.env         ← SOPS-encrypted prod secrets (committed)
+  └── local/<developer>/
+      ├── public.env          ← developer-specific overrides (committed)
+      └── secrets.env         ← developer-specific secrets (gitignored)
 ```
 
-Application code never reads files from `/run/secrets/` directly. The
-`docker/entrypoint.sh` script handles that.
+dotconfig assembles `.env` by cascading these layers:
+
+```
+dotconfig load dev eric
+  → config/dev/public.env        (base public config)
+  → config/dev/secrets.env       (SOPS-decrypted secrets)
+  → config/local/eric/public.env (local overrides)
+  → config/local/eric/secrets.env(local secrets, if any)
+  → .env                         (assembled output, gitignored)
+```
+
+At runtime in production, Docker Swarm secrets are file-mounted and
+`docker/entrypoint.sh` converts them to environment variables.
 
 ## File Inventory
 
 | File | Committed | Purpose |
 |------|-----------|---------|
-| `.sops.yaml` | Yes | Lists authorized age public keys |
-| `secrets/dev.env` | Yes | Encrypted development secrets |
-| `secrets/prod.env` | Yes | Encrypted production secrets |
-| `secrets/dev.env.example` | Yes | Plaintext template (shows required vars) |
-| `secrets/prod.env.example` | Yes | Plaintext template (shows required vars) |
-| `.env` | No (gitignored) | Decrypted local secrets |
+| `config/sops.yaml` | Yes | Lists authorized age public keys |
+| `config/dev/public.env` | Yes | Non-secret development config |
+| `config/dev/secrets.env` | Yes | SOPS-encrypted development secrets |
+| `config/prod/public.env` | Yes | Non-secret production config |
+| `config/prod/secrets.env` | Yes | SOPS-encrypted production secrets |
+| `config/local/<dev>/public.env` | Yes | Developer-specific overrides |
+| `config/local/<dev>/secrets.env` | No (gitignored) | Developer-specific secrets |
+| `.env` | No (gitignored) | Assembled environment (output of dotconfig) |
 | `*.agekey` | No (gitignored) | Private keys |
 
 ## Required Secrets
@@ -52,7 +72,7 @@ install it automatically on every new Codespace.
 
 If you don't have a keypair yet, generate one first (see
 [Onboarding a New Developer](#onboarding-a-new-developer)), then have a
-teammate add your public key to `.sops.yaml` and re-encrypt the secrets.
+teammate add your public key to `config/sops.yaml` and re-encrypt the secrets.
 
 On your local machine:
 
@@ -73,22 +93,20 @@ Copy the full output (the comment lines and the `AGE-SECRET-KEY-1...` line).
 
 When you next create (or rebuild) a Codespace, `post-create.sh` reads
 `$AGE_PRIVATE_KEY` and writes it to `~/.config/sops/age/keys.txt`
-automatically. Option A (`sops -d`) in [setup.md](setup.md) will work
-immediately.
+automatically. `dotconfig load dev` will work immediately.
 
 > **Note:** The secret is user-scoped. Each developer must add their own
-> `AGE_PRIVATE_KEY` and have their public key onboarded to `.sops.yaml`.
+> `AGE_PRIVATE_KEY` and have their public key onboarded to `config/sops.yaml`.
 
 ---
 
 ## Onboarding a New Developer
 
-**Prerequisites:** `sops` and `age` must be installed.
+**Prerequisites:** `sops`, `age`, and `dotconfig` must be installed.
 
-- **Codespaces:** both are installed automatically by `post-create.sh` — nothing to do.
-- **macOS (local):** `brew install sops age`
+- **macOS (local):** `brew install sops age` and `pipx install git+https://github.com/ericbusboom/dotconfig.git`
 - **Linux (local):** see [SOPS releases](https://github.com/getsops/sops/releases) and [age releases](https://github.com/FiloSottile/age/releases)
-- **Windows (local):** `winget install Mozilla.SOPS FiloSottile.age` or use WSL and follow the Linux instructions. You should almost certainly be using WSL. 
+- **Windows (local):** `winget install Mozilla.SOPS FiloSottile.age` or use WSL. You should almost certainly be using WSL.
 
 ### 1. New developer: generate an age keypair
 
@@ -98,46 +116,53 @@ Run this on your own machine:
 mkdir -p ~/.config/sops/age
 age-keygen -o ~/.config/sops/age/keys.txt
 cat ~/.config/sops/age/keys.txt
-
 ```
 
 This prints your public key (starts with `age1...`). Share it with the team.
 
 ### 2. Teammate with access: add the key and re-encrypt
 
-Run the interactive script — it handles both steps:
+Add the new public key to `config/sops.yaml`, then re-encrypt:
 
 ```bash
-npm run secrets:add-key
+cd config
+sops updatekeys dev/secrets.env
+sops updatekeys prod/secrets.env
 ```
 
-It will prompt for the new age public key, append it to `.sops.yaml`, and
-run `sops updatekeys` on every encrypted file in `secrets/`.
+Commit and push the updated `config/sops.yaml` and re-encrypted files.
 
-Commit and push the updated `.sops.yaml` and re-encrypted files.
-
-### 4. Decrypt for local development
+### 3. Assemble .env for local development
 
 ```bash
-sops -d secrets/dev.env > .env
+dotconfig load dev <your-name>
 ```
+
+This decrypts secrets via SOPS and assembles `.env` from all config layers.
 
 ## Editing Secrets
 
-SOPS decrypts to an editor buffer and re-encrypts on save:
+Edit secrets in place — SOPS decrypts to an editor buffer and re-encrypts
+on save:
 
 ```bash
-sops secrets/dev.env
-sops secrets/prod.env
+cd config
+sops dev/secrets.env
+sops prod/secrets.env
+```
+
+After editing, reassemble your local `.env`:
+
+```bash
+dotconfig load dev <your-name>
 ```
 
 ## Adding a New Secret
 
-1. Add the key to `secrets/dev.env.example` and `secrets/prod.env.example`
-2. Edit the encrypted files: `sops secrets/dev.env` and `sops secrets/prod.env`
-3. Re-decrypt locally: `sops -d secrets/dev.env > .env`
-4. If the secret is used in production, add it to the `secrets:` block in
-   `docker-compose.prod.yml`:
+1. Edit the encrypted secrets file: `cd config && sops dev/secrets.env`
+2. Reassemble locally: `dotconfig load dev <your-name>`
+3. If the secret is used in production, also edit `cd config && sops prod/secrets.env`
+4. Add it to the `secrets:` block in `docker-compose.prod.yml` if needed:
    ```yaml
    secrets:
      db_password:
@@ -146,8 +171,8 @@ sops secrets/prod.env
        external: true
    ```
 5. Reference it in the server's `secrets:` list in the same file
-6. Load it to the swarm: `npm run secrets:prod:rm && npm run secrets:prod`
-7. Re-deploy: `npm run deploy:prod`
+6. Load it to the swarm (see Loading Secrets below)
+7. Re-deploy
 
 The `docker/entrypoint.sh` script automatically converts any file under
 `/run/secrets/` to an uppercase environment variable. No code changes
@@ -156,18 +181,12 @@ needed for the entrypoint.
 ## Loading Secrets to Docker Swarm
 
 ```bash
-# Create secrets (first time)
-npm run secrets:prod
-
-# Update secrets (remove old, create new)
-npm run secrets:prod:rm
-npm run secrets:prod
+# Decrypt and load secrets to swarm
+cd config
+sops -d prod/secrets.env | while IFS='=' read -r key value; do
+  echo "$value" | docker secret create "$(echo "$key" | tr '[:upper:]' '[:lower:]')" -
+done
 ```
-
-These scripts use `scripts/load-secrets.sh` which:
-- Decrypts `secrets/prod.env` via SOPS
-- Creates each `KEY=value` as a lowercase Docker Swarm secret
-- Uses the production Docker context from `.env`
 
 ## Security Rules
 

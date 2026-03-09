@@ -11,6 +11,8 @@ export default defineConfig({
     __APP_DOMAIN__: JSON.stringify(process.env.APP_DOMAIN || 'myapp.jtlapp.net'),
   },
   server: {
+    host: true,
+    allowedHosts: true,
     proxy: {
       '/api': {
         target: apiTarget,

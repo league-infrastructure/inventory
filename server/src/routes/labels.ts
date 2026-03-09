@@ -35,6 +35,18 @@ export function labelsRouter(services: ServiceRegistry): Router {
     } catch (err) { next(err); }
   });
 
+  // QR code image (PNG) for display on detail pages
+  router.get('/labels/qr/:type/:id', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const t = req.params.type as string;
+      const objId = parseInt(req.params.id as string, 10);
+      const png = await services.labels.generateQrBuffer(`/qr/${t}/${objId}`);
+      res.setHeader('Content-Type', 'image/png');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.send(png);
+    } catch (err) { next(err); }
+  });
+
   router.post('/labels/kit/:id/batch', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
     try {
       const id = parseInt(req.params.id as string, 10);

@@ -136,9 +136,9 @@ app.use('/api', adminRouter);
 const mcpTokenAuth = tokenAuth(services.tokens, prisma);
 app.all('/api/mcp', mcpTokenAuth, createMcpHandler(prisma));
 
-// Test-only auth bypass: allows automated tests to create sessions
-// without going through Google OAuth. Never loaded in production.
-if (process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'e2e') {
+// Test/dev auth bypass: allows automated tests and local development to
+// create sessions without going through Google OAuth. Never loaded in production.
+if (process.env.NODE_ENV !== 'production') {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const { testAuthRouter } = require('./routes/testAuth');
   app.use('/api', testAuthRouter);

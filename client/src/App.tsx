@@ -7,6 +7,10 @@ import KitDetail from './pages/kits/KitDetail';
 import KitForm from './pages/kits/KitForm';
 import RetiredKits from './pages/kits/RetiredKits';
 import QrLanding from './pages/kits/QrLanding';
+import QrLayout from './pages/qr/QrLayout';
+import QrKitPage from './pages/qr/QrKitPage';
+import QrPackPage from './pages/qr/QrPackPage';
+import QrComputerPage from './pages/qr/QrComputerPage';
 import ComputerList from './pages/computers/ComputerList';
 import ComputerDetail from './pages/computers/ComputerDetail';
 import ComputerForm from './pages/computers/ComputerForm';
@@ -38,10 +42,17 @@ function App() {
     <BrowserRouter>
       <ToastProvider>
       <Routes>
-        {/* Standalone pages (no sidebar) */}
+        {/* Legacy QR short URLs (desktop redirect) */}
         <Route path="/k/:id" element={<QrLanding />} />
         <Route path="/p/:id" element={<QrLanding />} />
         <Route path="/c/:id" element={<QrLanding />} />
+
+        {/* Mobile QR pages */}
+        <Route element={<QrLayout />}>
+          <Route path="/qr/k/:id" element={<QrKitPage />} />
+          <Route path="/qr/p/:id" element={<QrPackPage />} />
+          <Route path="/qr/c/:id" element={<QrComputerPage />} />
+        </Route>
 
         {/* Main app with sidebar layout */}
         <Route element={<AppLayout />}>

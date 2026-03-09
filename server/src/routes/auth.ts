@@ -103,6 +103,11 @@ authRouter.get('/auth/google', (req: Request, res: Response, next) => {
       docs: 'https://console.cloud.google.com/apis/credentials',
     });
   }
+  // Store returnTo for post-login redirect (validate relative path to prevent open redirect)
+  const returnTo = req.query.returnTo as string | undefined;
+  if (returnTo && returnTo.startsWith('/') && !returnTo.startsWith('//')) {
+    req.session.returnTo = returnTo;
+  }
   passport.authenticate('google', {
     scope: ['profile', 'email'],
     hd: 'jointheleague.org',
@@ -117,8 +122,10 @@ authRouter.get('/auth/google/callback',
     }
     passport.authenticate('google', { failureRedirect: '/?error=auth_failed' })(req, res, next);
   },
-  (_req: Request, res: Response) => {
-    res.redirect('/');
+  (req: Request, res: Response) => {
+    const returnTo = req.session.returnTo || '/';
+    delete req.session.returnTo;
+    res.redirect(returnTo);
   },
 );
 

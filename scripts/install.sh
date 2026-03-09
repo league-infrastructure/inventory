@@ -256,7 +256,7 @@ if [ "$HAS_SOPS_AGE" = true ]; then
   fi
 
   # -------------------------------------------------------------------------
-  # 5. Ensure public key is in .sops.yaml
+  # 5. Ensure public key is in config/sops.yaml
   # -------------------------------------------------------------------------
   if [ -n "$AGE_KEY" ]; then
     header "SOPS Configuration"
@@ -265,23 +265,23 @@ if [ "$HAS_SOPS_AGE" = true ]; then
 
     if [ -z "$AGE_PUBLIC_KEY" ]; then
       warn "Could not derive public key from age secret key"
-      detail "You may need to manually add your public key to .sops.yaml"
-    elif grep -qF "$AGE_PUBLIC_KEY" .sops.yaml 2>/dev/null; then
-      success "Public key already in .sops.yaml"
+      detail "You may need to manually add your public key to config/sops.yaml"
+    elif grep -qF "$AGE_PUBLIC_KEY" config/sops.yaml 2>/dev/null; then
+      success "Public key already in config/sops.yaml"
     else
-      info "Adding your public key to .sops.yaml..."
-      last_key_line=$(grep -n 'age1' .sops.yaml | tail -1 | cut -d: -f1)
+      info "Adding your public key to config/sops.yaml..."
+      last_key_line=$(grep -n 'age1' config/sops.yaml | tail -1 | cut -d: -f1)
       if [ -n "$last_key_line" ]; then
         awk -v line="$last_key_line" -v key="$AGE_PUBLIC_KEY" \
           'NR==line { sub(/,?$/, ",") } { print } NR==line { print "      " key }' \
-          .sops.yaml > .sops.yaml.tmp && mv .sops.yaml.tmp .sops.yaml
+          config/sops.yaml > config/sops.yaml.tmp && mv config/sops.yaml.tmp config/sops.yaml
         success "Added: ${DIM}$AGE_PUBLIC_KEY${RESET}"
         echo ""
-        warn "A maintainer must commit this .sops.yaml change and re-encrypt:"
-        detail "  sops updatekeys secrets/dev.env"
-        detail "  sops updatekeys secrets/prod.env"
+        warn "A maintainer must commit this config/sops.yaml change and re-encrypt:"
+        detail "  cd config && sops updatekeys dev/secrets.env"
+        detail "  cd config && sops updatekeys prod/secrets.env"
       else
-        warn "Could not find age key list in .sops.yaml"
+        warn "Could not find age key list in config/sops.yaml"
         detail "Manually add this public key to the 'age:' field:"
         detail "  $AGE_PUBLIC_KEY"
       fi
@@ -290,36 +290,57 @@ if [ "$HAS_SOPS_AGE" = true ]; then
 fi
 
 # ---------------------------------------------------------------------------
-# 6. CLASI Software Engineering Process
+# 6. Python CLI Tools (pipx)
 # ---------------------------------------------------------------------------
-header "CLASI SE Process"
+header "Python CLI Tools"
 
+HAS_PIPX=true
+if ! command -v pipx &>/dev/null; then
+  HAS_PIPX=false
+  warn "${BOLD}pipx${RESET} is not installed"
+  detail "CLASI and dotconfig require pipx. Install it first:"
+  echo ""
+  bullet "macOS:   ${CYAN}brew install pipx && pipx ensurepath${RESET}"
+  bullet "Linux:   ${CYAN}python3 -m pip install --user pipx && pipx ensurepath${RESET}"
+  bullet "Windows: ${CYAN}pip install pipx && pipx ensurepath${RESET}"
+  echo ""
+  detail "Then re-run this script."
+fi
+
+# --- dotconfig ---
+DOTCONFIG_REPO="git+https://github.com/ericbusboom/dotconfig.git"
+
+if command -v dotconfig &>/dev/null; then
+  success "dotconfig already installed"
+elif [ "$HAS_PIPX" = true ]; then
+  info "Installing dotconfig via pipx..."
+  if pipx install "$DOTCONFIG_REPO" 2>/dev/null; then
+    success "dotconfig installed"
+  else
+    if pipx upgrade dotconfig 2>/dev/null; then
+      success "dotconfig upgraded"
+    else
+      err "Failed to install dotconfig"
+      detail "Try manually: pipx install $DOTCONFIG_REPO"
+    fi
+  fi
+fi
+
+# --- CLASI ---
 CLASI_REPO="git+https://github.com/ericbusboom/claude-agent-skills.git"
 
 if command -v clasi &>/dev/null; then
   success "clasi already installed"
-else
-  if ! command -v pipx &>/dev/null; then
-    warn "${BOLD}pipx${RESET} is not installed"
-    detail "CLASI requires pipx. Install it first:"
-    echo ""
-    bullet "macOS:   ${CYAN}brew install pipx && pipx ensurepath${RESET}"
-    bullet "Linux:   ${CYAN}python3 -m pip install --user pipx && pipx ensurepath${RESET}"
-    bullet "Windows: ${CYAN}pip install pipx && pipx ensurepath${RESET}"
-    echo ""
-    detail "Then re-run this script to install CLASI."
+elif [ "$HAS_PIPX" = true ]; then
+  info "Installing CLASI via pipx..."
+  if pipx install "$CLASI_REPO" 2>/dev/null; then
+    success "CLASI installed"
   else
-    info "Installing CLASI via pipx..."
-    if pipx install "$CLASI_REPO" 2>/dev/null; then
-      success "CLASI installed"
+    if pipx upgrade claude-agent-skills 2>/dev/null; then
+      success "CLASI upgraded"
     else
-      # pipx install fails if already installed but not on PATH; try upgrade
-      if pipx upgrade claude-agent-skills 2>/dev/null; then
-        success "CLASI upgraded"
-      else
-        err "Failed to install CLASI"
-        detail "Try manually: pipx install $CLASI_REPO"
-      fi
+      err "Failed to install CLASI"
+      detail "Try manually: pipx install $CLASI_REPO"
     fi
   fi
 fi
@@ -339,74 +360,72 @@ if command -v clasi &>/dev/null; then
 fi
 
 # ---------------------------------------------------------------------------
-# 7. Generate .env
+# 7. Generate .env via dotconfig
 # ---------------------------------------------------------------------------
 header "Environment File"
 
-if [ -f .env ]; then
-  warn ".env already exists"
-  echo ""
-  echo "  ${CYAN}1${RESET}) Overwrite with fresh .env"
-  echo "  ${CYAN}2${RESET}) Keep existing .env"
-  echo ""
-
-  while true; do
-    read -rp "  ${BOLD}Choose [1/2]:${RESET} " env_choice
-    case "$env_choice" in
-      1)
-        info "Overwriting .env..."
-        rm -f .env
-        break
-        ;;
-      2)
-        success "Keeping existing .env"
-        echo ""
-        echo "${GREEN}${BOLD}Setup complete.${RESET}"
-        exit 0
-        ;;
-      *)
-        err "Please enter 1 or 2."
-        ;;
-    esac
-  done
-fi
-
-info "Generating .env from template..."
-
-# Start from template, substitute detected Docker contexts
-sed \
-  -e "s/^DEV_DOCKER_CONTEXT=.*/DEV_DOCKER_CONTEXT=$DEV_CONTEXT/" \
-  -e "s/^PROD_DOCKER_CONTEXT=.*/PROD_DOCKER_CONTEXT=$PROD_CONTEXT/" \
-  .env.template > .env
-
-# Add SOPS_AGE_KEY_FILE if we found a key file that isn't already in the env
-if [ -n "$SOPS_LINE" ]; then
-  sed -i.bak "s|^#:SOPS_AGE_KEY_FILE=.*|$SOPS_LINE|" .env
-  rm -f .env.bak
-fi
-
-# Append decrypted application secrets
-if [ "$HAS_SOPS_AGE" = true ] && [ -n "$AGE_KEY" ]; then
-  info "Decrypting secrets/dev.env..."
-
-  # Pass the key inline so sops doesn't rely on auto-detection of key files
-  if SOPS_AGE_KEY="$AGE_KEY" sops -d secrets/dev.env >> .env 2>/dev/null; then
-    success "Appended decrypted secrets to .env"
-  else
-    echo ""
-    err "Failed to decrypt secrets/dev.env"
-    detail "Your age key may not be authorised for this project yet."
-    detail "Ask a maintainer to add your public key to .sops.yaml and run:"
-    detail "  sops updatekeys secrets/dev.env"
-    echo ""
-    detail "In the meantime, add secrets manually (see secrets/dev.env.example)."
-  fi
+if ! command -v dotconfig &>/dev/null; then
+  err "dotconfig is not installed — cannot generate .env"
+  detail "Install it with: pipx install git+https://github.com/ericbusboom/dotconfig.git"
+  detail "Then re-run this script."
 else
-  warn "Skipped secrets decryption (no SOPS/age or no key)"
-  detail "Add secrets manually to .env — see secrets/dev.env.example"
-fi
+  # Determine the local developer name (directory name under config/local/)
+  LOCAL_DEV=""
+  if [ -d config/local ]; then
+    for d in config/local/*/; do
+      if [ -d "$d" ]; then
+        LOCAL_DEV=$(basename "$d")
+        break
+      fi
+    done
+  fi
 
-success "Created .env"
+  if [ -f .env ]; then
+    warn ".env already exists"
+    echo ""
+    echo "  ${CYAN}1${RESET}) Regenerate with dotconfig"
+    echo "  ${CYAN}2${RESET}) Keep existing .env"
+    echo ""
+
+    while true; do
+      read -rp "  ${BOLD}Choose [1/2]:${RESET} " env_choice
+      case "$env_choice" in
+        1)
+          info "Regenerating .env..."
+          break
+          ;;
+        2)
+          success "Keeping existing .env"
+          echo ""
+          echo "${GREEN}${BOLD}Setup complete.${RESET}"
+          exit 0
+          ;;
+        *)
+          err "Please enter 1 or 2."
+          ;;
+      esac
+    done
+  fi
+
+  info "Assembling .env with dotconfig..."
+  if [ -n "$LOCAL_DEV" ]; then
+    detail "Environment: dev, local: $LOCAL_DEV"
+    if dotconfig load dev "$LOCAL_DEV" 2>/dev/null; then
+      success "Created .env (dev + $LOCAL_DEV overrides)"
+    else
+      warn "dotconfig load had warnings (secrets may not be encrypted yet)"
+      success "Created .env (some secrets may be missing)"
+    fi
+  else
+    detail "Environment: dev (no local overrides)"
+    if dotconfig load dev 2>/dev/null; then
+      success "Created .env"
+    else
+      warn "dotconfig load had warnings"
+      success "Created .env (some secrets may be missing)"
+    fi
+  fi
+fi
 
 # ---------------------------------------------------------------------------
 # Done

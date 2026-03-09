@@ -4,7 +4,8 @@
       "mcp__clasi__*",
       "Bash(*)",
       "WebFetch(*)",
-      "mcp__inventory__*"
+      "mcp__inventory__*",
+      "mcp__browsermcp__*"
     ]
   }
 }

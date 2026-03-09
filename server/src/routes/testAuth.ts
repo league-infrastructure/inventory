@@ -67,7 +67,24 @@ testAuthRouter.post('/test/login', async (req: Request, res: Response) => {
 testAuthRouter.get('/auth/test-login', async (req: Request, res: Response) => {
   const validRoles: readonly string[] = USER_ROLES;
   const role: UserRole = validRoles.includes(req.query.role as UserRole) ? (req.query.role as UserRole) : 'INSTRUCTOR';
+  const returnTo = (req.query.returnTo as string) || '/';
+  const redirectTo = returnTo.startsWith('/') && !returnTo.startsWith('//') ? returnTo : '/';
   const googleId = `test-google-${role.toLowerCase()}`;
+
+  // If role=first-instructor, find the first real instructor in the database
+  if (req.query.role === 'first-instructor') {
+    const firstInstructor = await prisma.user.findFirst({
+      where: { role: 'INSTRUCTOR' },
+      orderBy: { id: 'asc' },
+    });
+    if (!firstInstructor) {
+      return res.status(404).json({ error: 'No instructor found in database' });
+    }
+    return req.login(firstInstructor, (err) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.redirect(redirectTo);
+    });
+  }
 
   const email = `test-${role.toLowerCase()}@jointheleague.org`;
   let user = await prisma.user.findUnique({ where: { googleId } });
@@ -92,7 +109,7 @@ testAuthRouter.get('/auth/test-login', async (req: Request, res: Response) => {
 
   req.login(user, (err) => {
     if (err) return res.status(500).json({ error: err.message });
-    res.redirect('/');
+    res.redirect(redirectTo);
   });
 });
 
