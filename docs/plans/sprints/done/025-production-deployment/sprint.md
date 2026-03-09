@@ -1,12 +1,12 @@
 ---
-id: "025"
-title: "Production Deployment"
-status: active
+id: '025'
+title: Production Deployment
+status: done
 branch: sprint/025-production-deployment
 use-cases:
-  - SUC-025-001
-  - SUC-025-002
-  - SUC-025-003
+- SUC-025-001
+- SUC-025-002
+- SUC-025-003
 ---
 
 # Sprint 025: Production Deployment
