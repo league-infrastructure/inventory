@@ -59,5 +59,17 @@ export function labelsRouter(services: ServiceRegistry): Router {
     } catch (err) { next(err); }
   });
 
+  router.post('/labels/kit/:id/batch-pdf', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const id = parseInt(req.params.id as string, 10);
+      const packIds: number[] = Array.isArray(req.body.packIds) ? req.body.packIds : [];
+      const includeKit: boolean = req.body.includeKit !== false;
+      const pdf = await services.labels.generateBatchLabels(id, packIds, includeKit);
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="kit-${id}-labels.pdf"`);
+      res.send(pdf);
+    } catch (err) { next(err); }
+  });
+
   return router;
 }
