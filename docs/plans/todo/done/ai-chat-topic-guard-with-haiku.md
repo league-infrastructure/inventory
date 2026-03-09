@@ -1,5 +1,8 @@
 ---
-status: pending
+status: done
+sprint: '025'
+tickets:
+- '014'
 ---
 
 # AI chat topic guard with Haiku pre-filter

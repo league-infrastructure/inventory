@@ -1,7 +1,7 @@
 ---
-id: "009"
-title: "Fix QR code login redirect to return to scanned page"
-status: todo
+id: 009
+title: Fix QR code login redirect to return to scanned page
+status: done
 use-cases: []
 depends-on: []
 ---

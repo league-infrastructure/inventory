@@ -1,5 +1,8 @@
 ---
-status: pending
+status: done
+sprint: '025'
+tickets:
+- '012'
 ---
 
 # Set up Nominatim geocoding for sites

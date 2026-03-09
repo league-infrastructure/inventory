@@ -1,5 +1,8 @@
 ---
-status: todo
+status: done
+sprint: '025'
+tickets:
+- '016'
 ---
 # Slack bot for AI-powered inventory management
 

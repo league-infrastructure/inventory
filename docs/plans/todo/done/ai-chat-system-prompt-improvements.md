@@ -1,5 +1,8 @@
 ---
-status: pending
+status: done
+sprint: '025'
+tickets:
+- '013'
 ---
 
 # Improve AI chat system prompt with external file and user context

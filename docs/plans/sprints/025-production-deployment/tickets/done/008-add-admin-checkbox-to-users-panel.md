@@ -1,7 +1,7 @@
 ---
-id: "008"
-title: "Add admin checkbox to users panel"
-status: todo
+id: 008
+title: Add admin checkbox to users panel
+status: done
 use-cases: []
 depends-on: []
 ---

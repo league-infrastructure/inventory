@@ -1,7 +1,7 @@
 ---
-id: "012"
-title: "Add Nominatim geocode button to sites panel"
-status: todo
+id: '012'
+title: Add Nominatim geocode button to sites panel
+status: done
 use-cases: []
 depends-on: []
 ---

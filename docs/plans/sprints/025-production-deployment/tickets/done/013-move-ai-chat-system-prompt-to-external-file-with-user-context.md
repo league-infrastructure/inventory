@@ -1,7 +1,7 @@
 ---
-id: "013"
-title: "Move AI chat system prompt to external file with user context"
-status: todo
+id: '013'
+title: Move AI chat system prompt to external file with user context
+status: done
 use-cases: []
 depends-on: []
 ---

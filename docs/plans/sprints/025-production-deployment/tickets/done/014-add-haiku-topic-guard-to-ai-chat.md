@@ -1,7 +1,7 @@
 ---
-id: "014"
-title: "Add Haiku topic guard to AI chat"
-status: todo
+id: '014'
+title: Add Haiku topic guard to AI chat
+status: done
 use-cases: []
 depends-on: []
 ---

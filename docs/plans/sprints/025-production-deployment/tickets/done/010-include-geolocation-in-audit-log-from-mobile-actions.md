@@ -1,7 +1,7 @@
 ---
-id: "010"
-title: "Include geolocation in audit log from mobile actions"
-status: todo
+id: '010'
+title: Include geolocation in audit log from mobile actions
+status: done
 use-cases: []
 depends-on: []
 ---

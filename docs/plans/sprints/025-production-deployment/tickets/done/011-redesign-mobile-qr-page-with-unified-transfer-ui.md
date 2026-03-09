@@ -1,7 +1,7 @@
 ---
-id: "011"
-title: "Redesign mobile QR page with unified transfer UI"
-status: todo
+id: '011'
+title: Redesign mobile QR page with unified transfer UI
+status: done
 use-cases: []
 depends-on: []
 ---

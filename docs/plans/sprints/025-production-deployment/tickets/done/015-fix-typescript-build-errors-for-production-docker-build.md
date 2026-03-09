@@ -1,7 +1,7 @@
 ---
-id: "015"
-title: "Fix TypeScript build errors for production Docker build"
-status: todo
+id: '015'
+title: Fix TypeScript build errors for production Docker build
+status: done
 use-cases: []
 depends-on: []
 ---

@@ -1,5 +1,8 @@
 ---
-status: pending
+status: done
+sprint: '025'
+tickets:
+- '015'
 ---
 
 # Fix TypeScript build errors for production Docker build

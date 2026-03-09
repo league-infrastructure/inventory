@@ -1,5 +1,8 @@
 ---
-status: pending
+status: done
+sprint: '025'
+tickets:
+- '017'
 ---
 
 # Image Auto-Matching by Serial Number and Search UI
