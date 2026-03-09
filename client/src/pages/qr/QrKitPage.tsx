@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQrAuth } from './useQrAuth';
 import QrSignIn from './QrSignIn';
-import CheckOutAction from './actions/CheckOutAction';
-import CheckInAction from './actions/CheckInAction';
+import TransferAction from './actions/TransferAction';
 import ReportIssueAction from './actions/ReportIssueAction';
 import AddPhotoAction from './actions/AddPhotoAction';
 
@@ -50,8 +49,6 @@ export default function QrKitPage() {
     return <div className="min-h-screen flex items-center justify-center"><p className="text-gray-400">Loading kit...</p></div>;
   }
 
-  const isCheckedOut = !!kit.custodian;
-
   return (
     <div className="max-w-md mx-auto px-4 py-6">
       {/* Item identity */}
@@ -68,15 +65,11 @@ export default function QrKitPage() {
         <p className="text-lg text-gray-700">{kit.name}</p>
       </div>
 
-      {/* Status */}
+      {/* Current status */}
       <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6 space-y-2">
         <div className="flex justify-between text-sm">
-          <span className="text-gray-500">Status</span>
-          <span className="font-medium">{kit.disposition}</span>
-        </div>
-        <div className="flex justify-between text-sm">
           <span className="text-gray-500">Custodian</span>
-          <span className="font-medium">{kit.custodian?.displayName || '—'}</span>
+          <span className="font-medium">{kit.custodian?.displayName || 'Admin'}</span>
         </div>
         <div className="flex justify-between text-sm">
           <span className="text-gray-500">Site</span>
@@ -84,13 +77,17 @@ export default function QrKitPage() {
         </div>
       </div>
 
-      {/* Primary actions */}
-      <div className="space-y-3 mb-6">
-        {isCheckedOut ? (
-          <CheckInAction objectType="Kit" objectId={kit.id} onDone={loadKit} />
-        ) : (
-          <CheckOutAction objectType="Kit" objectId={kit.id} userId={user.id} userName={user.displayName} onDone={loadKit} />
-        )}
+      {/* Transfer action */}
+      <div className="mb-6">
+        <TransferAction
+          objectType="Kit"
+          objectId={kit.id}
+          userId={user.id}
+          userName={user.displayName}
+          currentCustodian={kit.custodian}
+          currentSite={kit.site}
+          onDone={loadKit}
+        />
       </div>
 
       {/* Secondary actions */}

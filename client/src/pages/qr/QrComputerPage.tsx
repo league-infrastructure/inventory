@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQrAuth } from './useQrAuth';
 import QrSignIn from './QrSignIn';
-import CheckOutAction from './actions/CheckOutAction';
-import CheckInAction from './actions/CheckInAction';
+import TransferAction from './actions/TransferAction';
 import ReportIssueAction from './actions/ReportIssueAction';
 import AddPhotoAction from './actions/AddPhotoAction';
 
@@ -51,7 +50,6 @@ export default function QrComputerPage() {
     return <div className="min-h-screen flex items-center justify-center"><p className="text-gray-400">Loading computer...</p></div>;
   }
 
-  const isCheckedOut = !!computer.custodian;
   const displayName = computer.hostName?.name || computer.model || `Computer #${computer.id}`;
 
   return (
@@ -69,14 +67,11 @@ export default function QrComputerPage() {
         {computer.serialNumber && <p className="text-xs text-gray-400 mt-1">S/N: {computer.serialNumber}</p>}
       </div>
 
+      {/* Current status */}
       <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6 space-y-2">
         <div className="flex justify-between text-sm">
-          <span className="text-gray-500">Status</span>
-          <span className="font-medium">{computer.disposition}</span>
-        </div>
-        <div className="flex justify-between text-sm">
           <span className="text-gray-500">Custodian</span>
-          <span className="font-medium">{computer.custodian?.displayName || '—'}</span>
+          <span className="font-medium">{computer.custodian?.displayName || 'Admin'}</span>
         </div>
         <div className="flex justify-between text-sm">
           <span className="text-gray-500">Site</span>
@@ -84,12 +79,17 @@ export default function QrComputerPage() {
         </div>
       </div>
 
-      <div className="space-y-3 mb-6">
-        {isCheckedOut ? (
-          <CheckInAction objectType="Computer" objectId={computer.id} onDone={loadComputer} />
-        ) : (
-          <CheckOutAction objectType="Computer" objectId={computer.id} userId={user.id} userName={user.displayName} onDone={loadComputer} />
-        )}
+      {/* Transfer action */}
+      <div className="mb-6">
+        <TransferAction
+          objectType="Computer"
+          objectId={computer.id}
+          userId={user.id}
+          userName={user.displayName}
+          currentCustodian={computer.custodian}
+          currentSite={computer.site}
+          onDone={loadComputer}
+        />
       </div>
 
       <div className="space-y-3 mb-6">
