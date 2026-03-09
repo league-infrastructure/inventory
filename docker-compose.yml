@@ -1,10 +1,9 @@
-# Docker development environment
-# Usage: docker compose up --build
+# Unified Docker Compose — serves both local dev and production.
 #
-# For local Docker (same machine), uncomment the volume mounts below
-# to enable hot-reload. For remote Docker contexts (SSH), leave them
-# commented out — the code is baked into the image at build time.
+# Local dev:  docker compose up db        (just the database)
+# Production: docker stack deploy -c docker-compose.yml inventory
 services:
+  # --- Database (used by both dev and production) ---
   db:
     image: postgres:16-alpine
     environment:
@@ -21,37 +20,96 @@ services:
       timeout: 3s
       retries: 5
 
+  # --- Production database (Swarm only, uses secrets) ---
+  inventory-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: app
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    secrets:
+      - db_password
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app && echo \"ALTER USER app PASSWORD '$$(cat /run/secrets/db_password)'\" | psql -U app -d app > /dev/null"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      placement:
+        constraints: [node.role == manager]
+
+  # --- Production server (Swarm only) ---
   server:
     build:
       context: .
-      dockerfile: docker/Dockerfile.server.dev
+      dockerfile: docker/Dockerfile.server
+    image: inventory-server:${TAG:-latest}
+    networks:
+      - default
+      - caddy
+    secrets:
+      - db_password
+      - session_secret
+      - admin_password
+      - mcp_default_token
+      - google_client_id
+      - google_client_secret
+      - do_spaces_key
+      - do_spaces_secret
+      - anthropic_api_key
+      - slack_signing_secret
+      - slack_bot_user_oauth_token
+    entrypoint: ["/app/entrypoint.sh"]
+    command: ["node", "dist/index.js"]
     environment:
-      DATABASE_URL: postgres://app:devpassword@db:5432/app
-      NODE_ENV: development
+      NODE_ENV: production
       PORT: "3000"
-    ports:
-      - "3000:3000"
-    # Uncomment for local Docker with hot-reload:
-    # volumes:
-    #   - ./server/src:/app/src
-    #   - ./server/prisma:/app/prisma
+      APP_DOMAIN: ${APP_DOMAIN:-inventory.jointheleague.org}
+      QR_DOMAIN: ${QR_DOMAIN:-https://inventory.jointheleague.org}
+      GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-https://inventory.jointheleague.org/api/auth/google/callback}
+      DO_SPACES_ENDPOINT: ${DO_SPACES_ENDPOINT:-https://sfo3.digitaloceanspaces.com}
+      DO_SPACES_BUCKET: ${DO_SPACES_BUCKET:-jtl-inventory}
+      DO_SPACES_REGION: ${DO_SPACES_REGION:-sfo3}
+    deploy:
+      labels:
+        caddy: ${APP_DOMAIN:-inventory.jointheleague.org}
+        caddy.reverse_proxy: "{{upstreams 3000}}"
+      replicas: 1
+      placement:
+        constraints: [node.role == manager]
     depends_on:
-      db:
-        condition: service_healthy
+      - inventory-db
 
-  client:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.client.dev
-    environment:
-      VITE_API_URL: http://server:3000
-    ports:
-      - "5173:5173"
-    # Uncomment for local Docker with hot-reload:
-    # volumes:
-    #   - ./client/src:/app/src
-    depends_on:
-      - server
+secrets:
+  db_password:
+    external: true
+  session_secret:
+    external: true
+  admin_password:
+    external: true
+  mcp_default_token:
+    external: true
+  google_client_id:
+    external: true
+  google_client_secret:
+    external: true
+  do_spaces_key:
+    external: true
+  do_spaces_secret:
+    external: true
+  anthropic_api_key:
+    external: true
+  slack_signing_secret:
+    external: true
+  slack_bot_user_oauth_token:
+    external: true
+
+networks:
+  caddy:
+    external: true
 
 volumes:
   pgdata:
