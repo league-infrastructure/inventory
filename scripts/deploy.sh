@@ -68,10 +68,16 @@ docker push "$IMAGE:latest"
 
 # --- Deploy ---
 
+echo "==> Logging into GHCR on swarm manager"
+DOCKER_CONTEXT="$PROD_DOCKER_CONTEXT" sh -c \
+  'echo "$GITHUB_TOKEN" | docker login ghcr.io --username league-infrastructure --password-stdin'
+
 echo "==> Deploying stack to $PROD_DOCKER_CONTEXT"
-TAG="$VERSION" DOCKER_CONTEXT="$PROD_DOCKER_CONTEXT" docker stack deploy -c docker-compose.yml inventory
+TAG="$VERSION" DOCKER_CONTEXT="$PROD_DOCKER_CONTEXT" docker stack deploy \
+  --with-registry-auth -c docker-compose.yml inventory
 
 echo "==> Forcing service update"
-DOCKER_CONTEXT="$PROD_DOCKER_CONTEXT" docker service update --image "$IMAGE:$VERSION" --force inventory_server
+DOCKER_CONTEXT="$PROD_DOCKER_CONTEXT" docker service update \
+  --with-registry-auth --image "$IMAGE:$VERSION" --force inventory_server
 
 echo "==> Done — deployed $IMAGE:$VERSION"
