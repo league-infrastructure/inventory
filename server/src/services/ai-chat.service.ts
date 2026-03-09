@@ -1,7 +1,14 @@
+import fs from 'fs';
+import path from 'path';
 import Anthropic from '@anthropic-ai/sdk';
 import { ServiceRegistry } from './service.registry';
 import { User } from '@prisma/client';
 import { hasQMAccess } from '../contracts';
+
+const SYSTEM_PROMPT_TEMPLATE = fs.readFileSync(
+  path.join(__dirname, '..', 'prompts', 'ai-chat-system.txt'),
+  'utf-8',
+);
 
 /** Tool definition in Anthropic format */
 interface ToolDef {
@@ -75,19 +82,38 @@ function getToolDefinitions(): ToolDef[] {
   ];
 }
 
-const SYSTEM_PROMPT = `You are an AI assistant for the League of Amazing Programmers inventory management system. You help users manage equipment kits, packs, items, computers, sites, and transfers.
+/**
+ * Build the system prompt with dynamic user context.
+ */
+async function buildSystemPrompt(user: User, services: ServiceRegistry): Promise<string> {
+  let prompt = SYSTEM_PROMPT_TEMPLATE
+    .replace('{{userName}}', user.displayName)
+    .replace('{{userRole}}', user.role)
+    .replace('{{userId}}', String(user.id));
 
-You have access to tools that let you read and modify inventory data. Use them to fulfill user requests.
+  // Remove location section placeholder (we don't have coords from the web chat)
+  prompt = prompt.replace(/\{\{#userLocation\}\}[\s\S]*?\{\{\/userLocation\}\}/g, '');
 
-Key concepts:
-- **Sites** are physical locations where equipment is stored.
-- **Kits** are containers (bags, totes) that hold packs and are assigned to a site.
-- **Packs** are groups of related items within a kit (e.g., "Laptops", "Cables").
-- **Items** are individual pieces within a pack, either COUNTED (with expected quantity) or CONSUMABLE (variable quantity).
-- **Computers** are tracked hardware assets with serial numbers, host names, and disposition status.
-- **Transfers** change the custodian and/or site of kits and computers. A null custodian means admin custody.
+  // Fetch recent activity for context
+  try {
+    const activity = await services.reports.getUserActivity(user.id, 5);
+    if (activity.length > 0) {
+      const lines = activity.map((a: any) =>
+        `- ${a.objectType} #${a.objectId}: ${a.field} changed from "${a.oldValue || '—'}" to "${a.newValue || '—'}" (${new Date(a.createdAt).toLocaleDateString()})`,
+      ).join('\n');
+      prompt = prompt
+        .replace('{{#recentActivity}}', '')
+        .replace('{{/recentActivity}}', '')
+        .replace('{{recentActivity}}', lines);
+    } else {
+      prompt = prompt.replace(/\{\{#recentActivity\}\}[\s\S]*?\{\{\/recentActivity\}\}/g, '');
+    }
+  } catch {
+    prompt = prompt.replace(/\{\{#recentActivity\}\}[\s\S]*?\{\{\/recentActivity\}\}/g, '');
+  }
 
-Be concise and helpful. When you make changes, summarize what you did.`;
+  return prompt;
+}
 
 /**
  * Execute a tool call against the service layer.
@@ -184,6 +210,37 @@ export class AiChatService {
   }
 
   /**
+   * Screen a message with Haiku to check if it's inventory-related.
+   * Returns true if the message should be allowed through.
+   */
+  async screenMessage(message: string, recentMessages: ChatMessage[]): Promise<{ allowed: boolean; reason?: string }> {
+    if (!this.client) return { allowed: true };
+
+    const context = recentMessages.slice(-4).map(m => `${m.role}: ${m.content}`).join('\n');
+    const screenPrompt = context
+      ? `Recent conversation:\n${context}\n\nNew message: ${message}`
+      : `Message: ${message}`;
+
+    try {
+      const response = await this.client.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 100,
+        system: `You are a topic guard for an inventory management system. Determine if the user's message is reasonably related to inventory management (equipment kits, computers, sites, transfers, items, packs, hostnames, reports, or general questions about the system). Allow greetings, clarifications, and follow-ups to previous inventory topics. Reply with ONLY "yes" or "no".`,
+        messages: [{ role: 'user', content: screenPrompt }],
+      });
+
+      const answer = response.content[0]?.type === 'text' ? response.content[0].text.trim().toLowerCase() : 'yes';
+      if (answer.startsWith('no')) {
+        return { allowed: false, reason: 'This chat is for inventory management. Please ask about kits, computers, sites, transfers, or other inventory topics.' };
+      }
+      return { allowed: true };
+    } catch {
+      // If screening fails, allow the message through
+      return { allowed: true };
+    }
+  }
+
+  /**
    * Process a chat message with streaming.
    */
   async chat(
@@ -199,6 +256,7 @@ export class AiChatService {
     }
 
     const tools = this.getToolsForRole(user.role);
+    const systemPrompt = await buildSystemPrompt(user, services);
 
     // Build messages array from history + current message
     const messages: Anthropic.MessageParam[] = [
@@ -216,7 +274,7 @@ export class AiChatService {
       const stream = this.client.messages.stream({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 4096,
-        system: SYSTEM_PROMPT,
+        system: systemPrompt,
         tools,
         messages,
       });
