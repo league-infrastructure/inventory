@@ -360,7 +360,7 @@ export default function AppLayout() {
               ) : (
                 !loading && (
                   <a
-                    href="/api/auth/google"
+                    href={`/api/auth/google?returnTo=${encodeURIComponent(location.pathname)}`}
                     className="text-sm px-4 py-2 bg-primary text-white rounded-lg no-underline hover:bg-primary-hover"
                   >
                     Sign in
