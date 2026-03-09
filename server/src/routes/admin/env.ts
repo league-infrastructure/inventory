@@ -1,6 +1,24 @@
 import { Router } from 'express';
+import * as fs from 'fs';
+import * as path from 'path';
 import { prisma } from '../../services/prisma';
 import { getConfig } from '../../services/config';
+
+function getAppVersion(): string {
+  // In production: dist/routes/admin/ → ../../.. → server root (package.json)
+  // In development: src/routes/admin/ → ../../.. → server root (package.json)
+  const candidates = [
+    path.join(__dirname, '..', '..', '..', 'package.json'),
+    path.join(process.cwd(), 'package.json'),
+  ];
+  for (const p of candidates) {
+    try {
+      const pkg = JSON.parse(fs.readFileSync(p, 'utf-8'));
+      if (pkg.version) return pkg.version;
+    } catch { /* try next */ }
+  }
+  return 'unknown';
+}
 
 export const adminEnvRouter = Router();
 
@@ -14,6 +32,7 @@ adminEnvRouter.get('/env', async (_req, res) => {
   }
 
   res.json({
+    version: getAppVersion(),
     node: process.version,
     uptime: Math.floor(process.uptime()),
     memory: {

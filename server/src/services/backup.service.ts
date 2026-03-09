@@ -5,24 +5,6 @@ import * as path from 'path';
 
 const execAsync = promisify(exec);
 
-/** Find the running postgres container name */
-async function findPgContainer(): Promise<string> {
-  const { stdout } = await execAsync(
-    'docker ps --filter "ancestor=postgres:16-alpine" --format "{{.Names}}"'
-  );
-  const name = stdout.trim().split('\n')[0];
-  if (!name) throw new Error('No postgres container running');
-  return name;
-}
-
-/** Build a container-internal DB URL (localhost:5432) from the host-facing DATABASE_URL */
-function containerDbUrl(): string {
-  const dbUrl = process.env.DATABASE_URL;
-  if (!dbUrl) throw new Error('DATABASE_URL not configured');
-  const parsed = new URL(dbUrl);
-  return `postgresql://${parsed.username}:${parsed.password}@localhost:5432${parsed.pathname}`;
-}
-
 export interface BackupInfo {
   filename: string;
   size: number;
@@ -44,16 +26,16 @@ export class BackupService {
 
   async createBackup(): Promise<BackupInfo> {
     this.ensureDir();
-    const container = await findPgContainer();
-    const url = containerDbUrl();
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) throw new Error('DATABASE_URL not configured');
 
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const filename = `backup-${timestamp}.dump`;
     const filePath = path.join(this.backupDir, filename);
 
-    // Run pg_dump inside the postgres container, pipe stdout to local file
+    // Run pg_dump directly — postgresql-client is installed in the container
     await execAsync(
-      `docker exec ${container} pg_dump --format=custom --no-owner --no-acl "${url}" > "${filePath}"`,
+      `pg_dump --format=custom --no-owner --no-acl "${dbUrl}" > "${filePath}"`,
       { maxBuffer: 50 * 1024 * 1024 },
     );
 
@@ -83,8 +65,8 @@ export class BackupService {
   }
 
   async restoreBackup(filename: string): Promise<void> {
-    const container = await findPgContainer();
-    const url = containerDbUrl();
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) throw new Error('DATABASE_URL not configured');
 
     // Sanitize filename to prevent path traversal
     const sanitized = path.basename(filename);
@@ -93,9 +75,9 @@ export class BackupService {
       throw new Error(`Backup file not found: ${sanitized}`);
     }
 
-    // Pipe the local dump file into pg_restore inside the container
+    // Run pg_restore directly — postgresql-client is installed in the container
     await execAsync(
-      `cat "${filePath}" | docker exec -i ${container} pg_restore --clean --if-exists --no-owner --no-acl --dbname="${url}"`,
+      `pg_restore --clean --if-exists --no-owner --no-acl --dbname="${dbUrl}" "${filePath}"`,
       { maxBuffer: 50 * 1024 * 1024 },
     );
   }

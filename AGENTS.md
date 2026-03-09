@@ -36,6 +36,33 @@ Data contracts (`server/src/contracts/`) define the canonical JSON shapes.
 Service functions accept contract input types and return contract record
 types. This decouples the API surface from the database schema.
 
+### Version Management
+
+Every commit MUST bump the version in the root `package.json` and create
+a matching git tag. The version scheme is **`0.YYYYMMDD.N`** where:
+
+- `0` — major version (stays 0 during pre-1.0 development)
+- `YYYYMMDD` — today's date
+- `N` — sequential build number for the day (starts at 1, increments
+  with each commit)
+
+**On every commit:**
+
+1. Read the current version from the root `package.json`.
+2. If the date portion matches today, increment `N`.
+   Otherwise, set the version to `0.<today>.1`.
+3. Update **both** `package.json` (root) and `server/package.json` with
+   the new version.
+4. Stage both files alongside the other changes.
+5. After committing, tag the commit: `git tag v<version>`.
+
+Example: if the current version is `0.20260309.2` and you commit again
+on 2026-03-09, the new version is `0.20260309.3`. If it's now 2026-03-10,
+the new version is `0.20260310.1`.
+
+The version is exposed at runtime via `GET /api/admin/env` and displayed
+on the admin Environment page.
+
 <!-- CLASI:START -->
 ## CLASI Software Engineering Process
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 
 interface EnvData {
+  version: string;
   node: string;
   uptime: number;
   memory: { rss: number; heapUsed: number; heapTotal: number };
@@ -54,6 +55,7 @@ export default function EnvironmentInfo() {
       <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4">
         <h3 className="text-sm font-semibold text-gray-700 mb-3">Runtime</h3>
         <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+          <dt className="font-medium text-gray-500">Version</dt><dd>{data.version}</dd>
           <dt className="font-medium text-gray-500">Node.js</dt><dd>{data.node}</dd>
           <dt className="font-medium text-gray-500">Uptime</dt><dd>{formatUptime(data.uptime)}</dd>
           <dt className="font-medium text-gray-500">Deployment</dt><dd>{data.deployment}</dd>
