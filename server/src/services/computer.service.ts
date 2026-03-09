@@ -132,6 +132,20 @@ export class ComputerService extends BaseService<ComputerRecord, CreateComputerI
       }
     }
 
+    // Auto-match image by serial number: if an image fileName contains the serial, link it
+    if (input.serialNumber) {
+      const matchingImage = await this.prisma.image.findFirst({
+        where: { fileName: { contains: input.serialNumber, mode: 'insensitive' } },
+        select: { id: true },
+      });
+      if (matchingImage) {
+        await this.prisma.computer.update({
+          where: { id: computer.id },
+          data: { imageId: matchingImage.id },
+        });
+      }
+    }
+
     await this.auditCreate(userId, computer.id, updated);
 
     const result = await this.prisma.computer.findUnique({

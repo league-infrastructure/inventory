@@ -18,6 +18,46 @@ const upload = multer({
 export function imageRouter(services: ServiceRegistry): Router {
   const router = Router();
 
+  // List images with optional search by fileName
+  router.get('/images', requireAuth, async (req, res, next) => {
+    try {
+      const search = typeof req.query.search === 'string' ? req.query.search : undefined;
+      const images = await services.images.list(search);
+      res.json(images);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Attach an existing image to an object
+  router.post('/images/:id/attach', requireAuth, requireQuartermaster, async (req, res, next) => {
+    try {
+      const imageId = parseInt(req.params.id as string, 10);
+      if (isNaN(imageId)) return res.status(400).json({ error: 'Invalid image ID' });
+
+      const { objectType, objectId } = req.body;
+      if (!objectType || !objectId) {
+        return res.status(400).json({ error: 'objectType and objectId are required' });
+      }
+
+      const validTypes = ['Computer', 'Kit', 'Pack'];
+      if (!validTypes.includes(objectType)) {
+        return res.status(400).json({ error: `objectType must be one of: ${validTypes.join(', ')}` });
+      }
+
+      const id = parseInt(objectId, 10);
+      if (isNaN(id)) return res.status(400).json({ error: 'objectId must be a number' });
+
+      const meta = await services.images.getMeta(imageId);
+      if (!meta) return res.status(404).json({ error: 'Image not found' });
+
+      await services.images.attach(imageId, objectType as 'Computer' | 'Kit' | 'Pack', id);
+      res.json({ success: true, imageId });
+    } catch (err) {
+      next(err);
+    }
+  });
+
   // Upload an image and attach it to a computer, kit, or pack
   router.post(
     '/images/upload',
