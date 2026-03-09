@@ -33,6 +33,25 @@ function verifySlackSignature(req: Request): boolean {
   );
 }
 
+/** Convert Markdown to Slack mrkdwn format. */
+function markdownToSlack(md: string): string {
+  return md
+    // Links: [text](url) → <url|text>
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<$2|$1>')
+    // Bold: **text** → *text*
+    .replace(/\*\*(.+?)\*\*/g, '*$1*')
+    // Italic: _text_ stays the same; *text* (single) → _text_
+    // (only convert single * that aren't inside bold pairs)
+    .replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '_$1_')
+    // Headings: # text → *text*
+    .replace(/^#{1,6}\s+(.+)$/gm, '*$1*')
+    // Bullet lists: - item → • item
+    .replace(/^[-*]\s+/gm, '• ')
+    // Numbered lists stay as-is (Slack handles them)
+    // Horizontal rules
+    .replace(/^---+$/gm, '───────────────');
+}
+
 /** Post a message to a Slack channel via the Web API. */
 async function postMessage(channel: string, text: string): Promise<void> {
   await fetch('https://slack.com/api/chat.postMessage', {
@@ -41,7 +60,7 @@ async function postMessage(channel: string, text: string): Promise<void> {
       'Authorization': `Bearer ${BOT_TOKEN}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ channel, text }),
+    body: JSON.stringify({ channel, text: markdownToSlack(text) }),
   });
 }
 
