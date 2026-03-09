@@ -38,6 +38,9 @@ services:
       - google_client_secret
       - do_spaces_key
       - do_spaces_secret
+      - anthropic_api_key
+      - slack_signing_secret
+      - slack_bot_user_oauth_token
     entrypoint: ["/app/entrypoint.sh"]
     command: ["node", "dist/index.js"]
     environment:
@@ -75,6 +78,12 @@ secrets:
   do_spaces_key:
     external: true
   do_spaces_secret:
+    external: true
+  anthropic_api_key:
+    external: true
+  slack_signing_secret:
+    external: true
+  slack_bot_user_oauth_token:
     external: true
 
 networks:
