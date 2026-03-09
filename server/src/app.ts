@@ -33,6 +33,7 @@ import { logBuffer } from './services/logBuffer';
 import { prisma } from './services/prisma';
 import { ServiceRegistry } from './services/service.registry';
 import { tokenAuth } from './middleware/tokenAuth';
+import { slackRouter } from './routes/slack';
 import { createMcpHandler } from './mcp/server';
 
 const app = express();
@@ -40,7 +41,17 @@ const app = express();
 // Trust first proxy (Caddy in production, Vite in dev)
 app.set('trust proxy', 1);
 
-app.use(express.json());
+// Parse JSON bodies; save raw body for Slack signature verification.
+app.use(express.json({
+  verify: (req: any, _res, buf) => {
+    if (req.url?.startsWith('/slack')) {
+      req.rawBody = buf;
+    }
+  },
+}));
+
+// Parse URL-encoded bodies (Slack slash commands)
+app.use(express.urlencoded({ extended: false }));
 
 // Pino logger: writes to stdout and in-memory ring buffer for the admin log viewer.
 const logLevel = process.env.NODE_ENV === 'test' ? 'silent' : (process.env.LOG_LEVEL || 'info');
@@ -131,6 +142,9 @@ app.use('/api', imageRouter(services));
 app.use('/api', categoriesRouter(services));
 app.use('/api', notesRouter(services));
 app.use('/api', adminRouter);
+
+// Slack bot — mounted at root (not /api) to match Slack event subscription URLs
+app.use(slackRouter(services));
 
 // MCP server — token-authenticated endpoint for external AI clients
 const mcpTokenAuth = tokenAuth(services.tokens, prisma);
