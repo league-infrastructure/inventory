@@ -1,9 +1,9 @@
 ---
-id: "001"
-title: "Fix docker-compose.prod.yml and production config"
-status: todo
+id: '001'
+title: Fix docker-compose.prod.yml and production config
+status: in-progress
 use-cases:
-  - SUC-025-001
+- SUC-025-001
 depends-on: []
 ---
 

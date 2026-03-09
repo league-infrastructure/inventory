@@ -8,7 +8,7 @@ in production mode). An external Caddy reverse proxy reads Docker Swarm
 labels for automatic HTTPS and domain routing.
 
 ```
-Internet → Caddy (*.jtlapp.net) → server:3000 → Express (API + static files)
+Internet → Caddy (inventory.jointheleague.org) → server:3000 → Express (API + static files)
                                  → db:5432    → PostgreSQL
 ```
 
@@ -51,7 +51,7 @@ This does two things:
 After the first deploy, run Prisma migrations:
 
 ```bash
-DOCKER_CONTEXT=swarm1 docker exec $(DOCKER_CONTEXT=swarm1 docker ps -q -f name=myapp_server) npx prisma migrate deploy
+DOCKER_CONTEXT=swarm1 docker exec $(DOCKER_CONTEXT=swarm1 docker ps -q -f name=inventory_server) npx prisma migrate deploy
 ```
 
 ## Subsequent Deployments
@@ -71,7 +71,7 @@ The external Caddy reverse proxy reads labels from the `deploy` block in
 ```yaml
 deploy:
   labels:
-    caddy: ${APP_DOMAIN:-myapp.jtlapp.net}
+    caddy: ${APP_DOMAIN:-inventory.jointheleague.org}
     caddy.reverse_proxy: "{{upstreams 3000}}"
 ```
 
@@ -83,7 +83,7 @@ To roll back to a previous image, re-deploy with the previous tag:
 
 ```bash
 set -a && . .env && set +a
-DOCKER_CONTEXT=$PROD_DOCKER_CONTEXT TAG=v1 docker stack deploy -c docker-compose.prod.yml myapp
+DOCKER_CONTEXT=$PROD_DOCKER_CONTEXT TAG=v1 docker stack deploy -c docker-compose.prod.yml inventory
 ```
 
 ## npm Script Reference
@@ -103,8 +103,8 @@ The build step failed or hasn't run. `deploy` builds automatically,
 but check the build output for errors.
 
 **Container won't start**
-Check logs: `DOCKER_CONTEXT=swarm1 docker service logs myapp_server`
+Check logs: `DOCKER_CONTEXT=swarm1 docker service logs inventory_server`
 
 **Migration failures**
 Connect to the database and check state:
-`DOCKER_CONTEXT=swarm1 docker exec -it $(docker ps -q -f name=myapp_db) psql -U app`
+`DOCKER_CONTEXT=swarm1 docker exec -it $(docker ps -q -f name=inventory_db) psql -U app`

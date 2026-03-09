@@ -1,12 +1,14 @@
 # Production Docker Swarm stack
-# Usage: TAG=v1 docker stack deploy -c docker-compose.prod.yml myapp
+# Usage: npm run deploy
 services:
   db:
     image: postgres:16-alpine
     environment:
       POSTGRES_DB: app
       POSTGRES_USER: app
-      POSTGRES_PASSWORD: apppassword
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    secrets:
+      - db_password
     volumes:
       - pgdata:/var/lib/postgresql/data
     deploy:
@@ -17,25 +19,51 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile.server
-    image: ${REGISTRY:-registry.local}/myapp-server:${TAG:-latest}
+    image: inventory-server:${TAG:-latest}
     secrets:
+      - db_password
       - session_secret
+      - admin_password
+      - mcp_default_token
+      - google_client_id
+      - google_client_secret
+      - do_spaces_key
+      - do_spaces_secret
     entrypoint: ["/app/entrypoint.sh"]
     command: ["node", "dist/index.js"]
     environment:
-      DATABASE_URL: postgres://app:apppassword@db:5432/app
       NODE_ENV: production
       PORT: "3000"
+      APP_DOMAIN: ${APP_DOMAIN:-inventory.jointheleague.org}
+      QR_DOMAIN: ${QR_DOMAIN:-https://inventory.jointheleague.org}
+      GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-https://inventory.jointheleague.org/api/auth/google/callback}
+      DO_SPACES_ENDPOINT: ${DO_SPACES_ENDPOINT:-https://jtl-inventory.sfo3.digitaloceanspaces.com}
+      DO_SPACES_BUCKET: ${DO_SPACES_BUCKET:-jtl-inventory}
+      DO_SPACES_REGION: ${DO_SPACES_REGION:-sfo3}
     deploy:
       labels:
-        caddy: ${APP_DOMAIN:-myapp.jtlapp.net}
+        caddy: ${APP_DOMAIN:-inventory.jointheleague.org}
         caddy.reverse_proxy: "{{upstreams 3000}}"
-      replicas: 2
+      replicas: 1
     depends_on:
       - db
 
 secrets:
+  db_password:
+    external: true
   session_secret:
+    external: true
+  admin_password:
+    external: true
+  mcp_default_token:
+    external: true
+  google_client_id:
+    external: true
+  google_client_secret:
+    external: true
+  do_spaces_key:
+    external: true
+  do_spaces_secret:
     external: true
 
 volumes:
