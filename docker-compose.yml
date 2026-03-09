@@ -1,25 +1,8 @@
-# Unified Docker Compose — serves both local dev and production.
+# Production Docker Compose — Swarm stack only.
 #
-# Local dev:  docker compose up db        (just the database)
-# Production: docker stack deploy -c docker-compose.yml inventory
+# Deploy: docker stack deploy -c docker-compose.yml inventory
+# Dev DB: docker compose -f docker-compose.dev.yml up db
 services:
-  # --- Database (used by both dev and production) ---
-  db:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_DB: app
-      POSTGRES_USER: app
-      POSTGRES_PASSWORD: devpassword
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    ports:
-      - "${DB_PORT:-5433}:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U app"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-
   # --- Production server (Swarm only) ---
   server:
     build:
@@ -45,6 +28,7 @@ services:
     command: ["node", "dist/index.js"]
     environment:
       NODE_ENV: production
+      NODE_TLS_REJECT_UNAUTHORIZED: "0"
       PORT: "3000"
       APP_DOMAIN: ${APP_DOMAIN:-inventory.jointheleague.org}
       QR_DOMAIN: ${QR_DOMAIN:-https://inventory.jointheleague.org}
@@ -58,7 +42,7 @@ services:
         caddy.reverse_proxy: "{{upstreams 3000}}"
       replicas: 1
       placement:
-        constraints: [node.role == manager]
+        constraints: [node.role == worker]
 secrets:
   database_url:
     external: true
@@ -86,6 +70,3 @@ secrets:
 networks:
   caddy:
     external: true
-
-volumes:
-  pgdata:
