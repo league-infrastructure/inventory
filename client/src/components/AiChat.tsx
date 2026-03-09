@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { MessageSquare, Send, X } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -178,13 +179,17 @@ export default function AiChat() {
                 className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-[80%] px-3 py-2 rounded-lg text-sm whitespace-pre-wrap ${
+                  className={`max-w-[80%] px-3 py-2 rounded-lg text-sm ${
                     msg.role === 'user'
-                      ? 'bg-primary text-white'
-                      : 'bg-gray-100 text-gray-800'
+                      ? 'bg-primary text-white whitespace-pre-wrap'
+                      : 'bg-gray-100 text-gray-800 prose prose-sm prose-gray max-w-none [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0 [&_h1]:text-base [&_h2]:text-sm [&_h3]:text-sm [&_pre]:bg-gray-200 [&_pre]:p-2 [&_pre]:rounded [&_code]:text-xs'
                   }`}
                 >
-                  {msg.content || (streaming && i === messages.length - 1 ? '...' : '')}
+                  {msg.role === 'assistant'
+                    ? (msg.content
+                      ? <ReactMarkdown>{msg.content}</ReactMarkdown>
+                      : (streaming && i === messages.length - 1 ? '...' : ''))
+                    : (msg.content || '')}
                 </div>
               </div>
             ))}
