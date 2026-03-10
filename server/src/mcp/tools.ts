@@ -47,7 +47,7 @@ async function safeCall(fn: () => Promise<CallToolResult>): Promise<CallToolResu
 export function registerTools(server: McpServer): void {
   // ─── Version ────────────────────────────────────────────────────────
 
-  const pkg = JSON.parse(readFileSync(join(__dirname, '..', '..', '..', 'package.json'), 'utf-8'));
+  const pkg = JSON.parse(readFileSync(join(__dirname, '..', '..', 'package.json'), 'utf-8'));
 
   server.tool('get_version', 'Get the application version from package.json', {}, async () => {
     return ok({ version: pkg.version, name: pkg.name });
