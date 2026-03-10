@@ -41,20 +41,7 @@ export default function McpSetup() {
   const [generating, setGenerating] = useState(false);
   const [copied, setCopied] = useState<string | false>(false);
   const [error, setError] = useState<string | null>(null);
-  const [clientId, setClientId] = useState<string>('');
-
   const serverUrl = window.location.origin;
-
-  // Compute OAuth client ID from email hash
-  useEffect(() => {
-    if (!user?.email) return;
-    const encoder = new TextEncoder();
-    crypto.subtle.digest('SHA-256', encoder.encode(user.email.toLowerCase()))
-      .then((buf) => {
-        const hex = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
-        setClientId(hex.slice(0, 32));
-      });
-  }, [user?.email]);
 
   useEffect(() => {
     fetch('/api/tokens')
@@ -260,7 +247,8 @@ export default function McpSetup() {
             Claude Web App (claude.ai)
           </h3>
           <p className="text-sm text-gray-500 mb-2">
-            The web app uses OAuth to connect. Go to <strong>Settings → Connectors → Add Custom Connector</strong> and enter:
+            The web app connects automatically via OAuth. Go to <strong>Settings → Connectors → Add Custom Connector</strong> and enter the URL below.
+            Claude will handle the rest — it will redirect you to sign in with Google, then connect automatically.
           </p>
           <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-sm space-y-2">
             <div className="flex gap-2">
@@ -281,50 +269,10 @@ export default function McpSetup() {
                 {copied === 'oauth-url' && <span className="text-xs text-green-500">Copied!</span>}
               </div>
             </div>
-            <div className="flex gap-2">
-              <span className="font-medium text-gray-700 w-36 shrink-0">OAuth Client ID:</span>
-              <div className="flex items-center gap-1">
-                {clientId ? (
-                  <>
-                    <code className="text-xs bg-white border border-gray-200 rounded px-2 py-0.5 font-mono">{clientId}</code>
-                    <button
-                      onClick={() => copyToClipboard(clientId, 'oauth-client-id')}
-                      className="text-gray-400 hover:text-gray-600 cursor-pointer"
-                      title="Copy Client ID"
-                    >
-                      <Copy size={12} />
-                    </button>
-                    {copied === 'oauth-client-id' && <span className="text-xs text-green-500">Copied!</span>}
-                  </>
-                ) : (
-                  <span className="text-gray-400 italic">loading...</span>
-                )}
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <span className="font-medium text-gray-700 w-36 shrink-0">OAuth Client Secret:</span>
-              <div className="flex items-center gap-1">
-                {hasFullToken ? (
-                  <>
-                    <code className="text-xs bg-white border border-gray-200 rounded px-2 py-0.5 font-mono break-all">{token}</code>
-                    <button
-                      onClick={() => copyToClipboard(token, 'oauth-secret')}
-                      className="text-gray-400 hover:text-gray-600 cursor-pointer"
-                      title="Copy Client Secret"
-                    >
-                      <Copy size={12} />
-                    </button>
-                    {copied === 'oauth-secret' && <span className="text-xs text-green-500">Copied!</span>}
-                  </>
-                ) : (
-                  <span className="text-gray-400 italic">{tokenInfo ? `${tokenInfo.prefix}... (generate a new token to see the full key)` : 'generate an API key in Step 1'}</span>
-                )}
-              </div>
-            </div>
           </div>
           <p className="text-xs text-gray-400 mt-2">
-            Claude exchanges the client secret for a Bearer token via the OAuth token endpoint,
-            then uses it to authenticate MCP requests. The Client ID is derived from your email address.
+            No client ID or secret needed — Claude uses the OAuth authorization code flow with PKCE
+            to authenticate. You'll be prompted to sign in with your jointheleague.org Google account.
           </p>
         </div>
 

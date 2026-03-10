@@ -123,6 +123,20 @@ authRouter.get('/auth/google/callback',
     passport.authenticate('google', { failureRedirect: '/?error=auth_failed' })(req, res, next);
   },
   (req: Request, res: Response) => {
+    // If there's a pending OAuth authorization request, redirect back to /oauth/authorize
+    const pendingOAuth = req.session.pendingOAuth;
+    if (pendingOAuth) {
+      delete req.session.pendingOAuth;
+      const params = new URLSearchParams();
+      if (pendingOAuth.client_id) params.set('client_id', pendingOAuth.client_id);
+      params.set('redirect_uri', pendingOAuth.redirect_uri);
+      params.set('response_type', 'code');
+      if (pendingOAuth.state) params.set('state', pendingOAuth.state);
+      if (pendingOAuth.code_challenge) params.set('code_challenge', pendingOAuth.code_challenge);
+      if (pendingOAuth.code_challenge_method) params.set('code_challenge_method', pendingOAuth.code_challenge_method);
+      return res.redirect(`/oauth/authorize?${params.toString()}`);
+    }
+
     const returnTo = req.session.returnTo || '/';
     delete req.session.returnTo;
     res.redirect(returnTo);
