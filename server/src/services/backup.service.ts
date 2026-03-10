@@ -7,6 +7,15 @@ import { s3Client, DO_SPACES_BUCKET } from './s3';
 
 const execAsync = promisify(exec);
 
+async function hasPgDump(): Promise<boolean> {
+  try {
+    await execAsync('which pg_dump');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export interface BackupInfo {
   filename: string;
   size: number;
@@ -38,11 +47,20 @@ export class BackupService {
     }
     const filePath = path.join(this.backupDir, filename);
 
-    // Run pg_dump directly — postgresql-client is installed in the container
-    await execAsync(
-      `pg_dump --format=custom --no-owner --no-acl "${dbUrl}" > "${filePath}"`,
-      { maxBuffer: 50 * 1024 * 1024 },
-    );
+    if (await hasPgDump()) {
+      // Direct pg_dump — available in the production container
+      await execAsync(
+        `pg_dump --format=custom --no-owner --no-acl "${dbUrl}" > "${filePath}"`,
+        { maxBuffer: 50 * 1024 * 1024 },
+      );
+    } else {
+      // Local dev fallback: run pg_dump inside the Docker db container
+      const composeFile = process.env.COMPOSE_FILE || 'docker-compose.dev.yml';
+      await execAsync(
+        `docker compose -f "${composeFile}" exec -T db pg_dump --format=custom --no-owner --no-acl -U app app > "${filePath}"`,
+        { maxBuffer: 50 * 1024 * 1024 },
+      );
+    }
 
     const stats = fs.statSync(filePath);
 
@@ -120,11 +138,20 @@ export class BackupService {
       throw new Error(`Backup file not found: ${sanitized}`);
     }
 
-    // Run pg_restore directly — postgresql-client is installed in the container
-    await execAsync(
-      `pg_restore --clean --if-exists --no-owner --no-acl --dbname="${dbUrl}" "${filePath}"`,
-      { maxBuffer: 50 * 1024 * 1024 },
-    );
+    if (await hasPgDump()) {
+      // Direct pg_restore — available in the production container
+      await execAsync(
+        `pg_restore --clean --if-exists --no-owner --no-acl --dbname="${dbUrl}" "${filePath}"`,
+        { maxBuffer: 50 * 1024 * 1024 },
+      );
+    } else {
+      // Local dev fallback: pipe dump into the Docker db container
+      const composeFile = process.env.COMPOSE_FILE || 'docker-compose.dev.yml';
+      await execAsync(
+        `cat "${filePath}" | docker compose -f "${composeFile}" exec -T db pg_restore --clean --if-exists --no-owner --no-acl --dbname=app`,
+        { maxBuffer: 50 * 1024 * 1024 },
+      );
+    }
   }
 
   async deleteBackup(filename: string): Promise<void> {
