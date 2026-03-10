@@ -1,7 +1,7 @@
 ---
-id: "028"
-title: "Bug Fixes and Documentation"
-status: planning
+id: 028
+title: Bug Fixes and Documentation
+status: done
 branch: sprint/028-bug-fixes-and-documentation
 use-cases: []
 ---
