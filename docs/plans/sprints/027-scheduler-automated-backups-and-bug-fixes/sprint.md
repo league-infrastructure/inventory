@@ -92,4 +92,18 @@ architectural changes requiring architecture-002.
 
 ## Tickets
 
-(To be created after sprint approval.)
+| # | Title | Depends On | Use Cases |
+|---|-------|-----------|-----------|
+| 001 | ScheduledJob Model and Migration | — | SUC-001, SUC-003 |
+| 002 | SchedulerService and Tick Route | 001 | SUC-001 |
+| 003 | Tick Middleware (Request Piggyback) | 002 | SUC-002 |
+| 004 | BackupService Filename Param + BackupRotationService | 002 | SUC-003 |
+| 005 | Slack AI Chat Immediate Receipt | — | SUC-004 |
+| 006 | MCP Kit Category Fix and Audit Fields | — | SUC-005 |
+| 007 | Admin Scheduled Jobs Panel | 002 | SUC-001 |
+
+**Dependency chains:**
+- 001 → 002 → 003 (scheduler infrastructure)
+- 001 → 002 → 004 (backup rotation)
+- 001 → 002 → 007 (admin panel)
+- 005 and 006 are independent (can run in any order)

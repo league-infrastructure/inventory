@@ -300,9 +300,10 @@ erDiagram
     Computer ||--o{ Note : "annotates"
 
     AuditLog }o--o| User : "changed by"
-
-    ScheduledJob ||--|| ScheduledJob : "self-contained"
 ```
+
+**Standalone tables** (no foreign keys to other entities):
+- **ScheduledJob** — Periodic task definitions (see below).
 
 ### Key Entities
 

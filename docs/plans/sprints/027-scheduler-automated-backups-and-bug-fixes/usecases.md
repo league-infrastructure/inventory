@@ -95,4 +95,5 @@ status: draft
   - [ ] `update_kit` with valid categoryId persists the change
   - [ ] `update_kit` with `null` categoryId clears the category
   - [ ] Category changes appear in the audit log
+  - [ ] Custodian changes appear in the audit log (also missing)
   - [ ] MCP tool description clearly documents categoryId expectations

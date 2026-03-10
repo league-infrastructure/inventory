@@ -1,6 +1,6 @@
 {
   "name": "docker-nodeapp-server",
-  "version": "0.20260310.1",
+  "version": "0.20260310.2",
   "private": true,
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",

@@ -113,8 +113,9 @@ New middleware at `server/src/middleware/schedulerTick.ts`.
 - Stores `nextTickTime` as a module-level `let` variable (shared across
   all requests in the same process).
 - On each request: if `Date.now() >= nextTickTime`, reset timer to
-  `now + TICK_INTERVAL_MS` and fire `fetch('http://localhost:3000/api/scheduler/tick')`
-  without awaiting (fire-and-forget).
+  `now + TICK_INTERVAL_MS` and fire an async internal request to the
+  scheduler tick route without awaiting (fire-and-forget).
+- Port is read dynamically from `process.env.PORT || 3000` — not hardcoded.
 - `TICK_INTERVAL_MS` defaults to 5 minutes, configurable via environment
   variable `SCHEDULER_TICK_INTERVAL_MS`.
 - Mounted early in the middleware chain in `app.ts`.
@@ -125,14 +126,25 @@ New middleware at `server/src/middleware/schedulerTick.ts`.
 
 Extends backup functionality at `server/src/services/backupRotation.service.ts`.
 
+**Interface change:** `BackupService.createBackup()` currently hardcodes
+the filename as `backup-<timestamp>.dump`. Add an optional `filename?:
+string` parameter so the rotation service can specify custom names like
+`daily-1-2026-03-10.dump`. When omitted, the existing timestamp-based
+naming is preserved (backward compatible).
+
 **Methods:**
 - `runDaily()`: Create backup with naming `daily-<dow>-<YYYY-MM-DD>.dump`.
-  Delete any existing S3 object matching `backups/daily-<dow>-*`. List
-  all `daily-*` backups and delete oldest if more than 6 exist.
+  Delete any existing S3 object matching `backups/daily-<dow>-*` (dow-based
+  overwrite ensures at most 7 daily files, one per day of week).
 - `runWeekly()`: Create backup with naming `weekly-<YYYY-MM-DD>.dump`.
   List all `weekly-*` backups and delete oldest if more than 4 exist.
-- Uses existing `BackupService` for the actual `pg_dump` and S3 upload.
+- Uses existing `BackupService.createBackup(filename)` for the actual
+  `pg_dump` and S3 upload.
 - Manual backups (prefix `backup-`) are never touched by rotation.
+
+**Retention strategy:** Daily retention is dow-based — each day overwrites
+the file for that day of week, resulting in at most 7 daily files (6–7
+depending on timing). Weekly retention is count-based — trim to 4.
 
 **Day-of-week numbering:** 0=Sunday, 1=Monday, ..., 6=Saturday (JavaScript
 `Date.getDay()` convention).
@@ -204,7 +216,21 @@ New admin page at `client/src/pages/admin/ScheduledJobsPanel.tsx`.
 
 ### Modified: KitService audit fields
 
-Add `'categoryId'` to the `auditFields` array.
+Add `'categoryId'` and `'custodianId'` to the `auditFields` array (both
+are currently missing).
+
+### Modified: BackupService.createBackup()
+
+Add optional `filename?: string` parameter. When provided, use it instead
+of the auto-generated timestamp-based name.
+
+### Dependency wiring: Scheduler services
+
+`SchedulerService` and `BackupRotationService` are standalone services not
+registered in `ServiceRegistry` — they don't need audit context or user
+identity. `SchedulerService` is instantiated by the scheduler route.
+`BackupRotationService` is instantiated by `SchedulerService` as a handler
+dependency. `BackupService` is instantiated by `BackupRotationService`.
 
 ## Open Questions
 
