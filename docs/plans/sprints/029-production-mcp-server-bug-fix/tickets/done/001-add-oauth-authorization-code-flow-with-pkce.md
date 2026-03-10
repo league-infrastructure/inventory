@@ -1,7 +1,7 @@
 ---
 id: "001"
 title: "Add OAuth authorization code flow with PKCE"
-status: todo
+status: done
 use-cases: []
 depends-on: []
 ---
@@ -43,14 +43,14 @@ Claude.ai's MCP connector uses the OAuth 2.0 authorization code flow
 
 ## Acceptance Criteria
 
-- [ ] GET /oauth/authorize redirects logged-in users back with code
-- [ ] GET /oauth/authorize redirects unauthenticated users to login (ticket 002)
-- [ ] POST /oauth/token accepts authorization_code grant with code_verifier
-- [ ] PKCE S256 verification works
-- [ ] Authorization codes expire after 10 minutes
-- [ ] Authorization codes are single-use
-- [ ] Metadata endpoint advertises authorization code flow
-- [ ] Existing client_credentials flow still works
+- [x] GET /oauth/authorize redirects logged-in users back with code
+- [x] GET /oauth/authorize redirects unauthenticated users to login (ticket 002)
+- [x] POST /oauth/token accepts authorization_code grant with code_verifier
+- [x] PKCE S256 verification works
+- [x] Authorization codes expire after 10 minutes
+- [x] Authorization codes are single-use
+- [x] Metadata endpoint advertises authorization code flow
+- [x] Existing client_credentials flow still works
 
 ## Testing
 

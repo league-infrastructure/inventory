@@ -1,7 +1,7 @@
 ---
 id: "002"
 title: "Stash OAuth params through Google login redirect"
-status: todo
+status: done
 use-cases: []
 depends-on: ["001"]
 ---
@@ -31,10 +31,10 @@ When a user hits `/oauth/authorize` without being logged in, we need to:
 
 ## Acceptance Criteria
 
-- [ ] Unauthenticated user hitting /oauth/authorize gets redirected to Google login
-- [ ] OAuth params survive the Google OAuth round-trip in session
-- [ ] After Google login, user is redirected back to /oauth/authorize
-- [ ] Normal Google login (without pending OAuth) still works as before
+- [x] Unauthenticated user hitting /oauth/authorize gets redirected to Google login
+- [x] OAuth params survive the Google OAuth round-trip in session
+- [x] After Google login, user is redirected back to /oauth/authorize
+- [x] Normal Google login (without pending OAuth) still works as before
 
 ## Testing
 

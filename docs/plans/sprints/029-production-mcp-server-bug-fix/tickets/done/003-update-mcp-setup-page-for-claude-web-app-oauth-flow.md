@@ -1,7 +1,7 @@
 ---
 id: "003"
 title: "Update MCP Setup page for Claude web app OAuth flow"
-status: todo
+status: done
 use-cases: []
 depends-on: ["001"]
 ---
@@ -25,9 +25,9 @@ non-OAuth (Bearer token) connections.
 
 ## Acceptance Criteria
 
-- [ ] Claude Web App instructions simplified to URL-only
-- [ ] Client ID/Secret display preserved for CLI/Desktop usage
-- [ ] Instructions match actual OAuth flow behavior
+- [x] Claude Web App instructions simplified to URL-only
+- [x] Client ID/Secret display preserved for CLI/Desktop usage
+- [x] Instructions match actual OAuth flow behavior
 
 ## Testing
 
