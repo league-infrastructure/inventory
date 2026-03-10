@@ -1,7 +1,7 @@
 ---
-id: "030"
-title: "Issue Tracking Bug Fixes"
-status: planning
+id: '030'
+title: Issue Tracking Bug Fixes
+status: done
 branch: sprint/030-issue-tracking-bug-fixes
 use-cases: []
 ---
