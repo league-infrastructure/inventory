@@ -80,4 +80,33 @@ echo "==> Forcing service update"
 DOCKER_CONTEXT="$PROD_DOCKER_CONTEXT" docker service update \
   --with-registry-auth --image "$IMAGE:$VERSION" --force inventory_server
 
+# --- Run migrations ---
+# One-shot swarm service that can access the database_url secret.
+# --restart-condition=none ensures it runs once and stops.
+echo "==> Running database migrations"
+DOCKER_CONTEXT="$PROD_DOCKER_CONTEXT" docker service create \
+  --name inventory_migrate \
+  --restart-condition=none \
+  --network inventory_default \
+  --secret database_url \
+  --entrypoint sh \
+  "$IMAGE:$VERSION" \
+  -c 'export DATABASE_URL=$(cat /run/secrets/database_url) && npx prisma migrate deploy --schema prisma/schema.prisma'
+
+# Wait for the migration task to complete
+echo "==> Waiting for migrations to finish"
+while true; do
+  STATE=$(DOCKER_CONTEXT="$PROD_DOCKER_CONTEXT" docker service ps inventory_migrate \
+    --format '{{.CurrentState}}' --filter 'desired-state=shutdown' | head -1)
+  case "$STATE" in
+    Complete*) echo "==> Migrations completed successfully"; break ;;
+    Failed*)   echo "ERROR: Migration failed" >&2
+               DOCKER_CONTEXT="$PROD_DOCKER_CONTEXT" docker service logs inventory_migrate >&2
+               DOCKER_CONTEXT="$PROD_DOCKER_CONTEXT" docker service rm inventory_migrate >/dev/null 2>&1
+               exit 1 ;;
+    *)         sleep 2 ;;
+  esac
+done
+DOCKER_CONTEXT="$PROD_DOCKER_CONTEXT" docker service rm inventory_migrate >/dev/null 2>&1
+
 echo "==> Done — deployed $IMAGE:$VERSION"
