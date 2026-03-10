@@ -1,7 +1,7 @@
 ---
 id: "003"
 title: "Expand Issue model to support kits and computers"
-status: todo
+status: done
 use-cases: []
 depends-on: []
 ---
@@ -35,13 +35,13 @@ computers directly.
 
 ## Acceptance Criteria
 
-- [ ] Issue can be created on a pack/item (existing behavior preserved)
-- [ ] Issue can be created on a kit (kitId only)
-- [ ] Issue can be created on a computer (computerId only)
-- [ ] IssueType includes DAMAGE, MAINTENANCE, OTHER
-- [ ] At least one target entity required (validation error if none)
-- [ ] List endpoint filters by kitId, computerId
-- [ ] Migration created
+- [x] Issue can be created on a pack/item (existing behavior preserved)
+- [x] Issue can be created on a kit (kitId only)
+- [x] Issue can be created on a computer (computerId only)
+- [x] IssueType includes DAMAGE, MAINTENANCE, OTHER
+- [x] At least one target entity required (validation error if none)
+- [x] List endpoint filters by kitId, computerId
+- [x] Migration created
 
 ## Testing
 

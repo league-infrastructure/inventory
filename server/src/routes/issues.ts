@@ -11,6 +11,8 @@ export function issuesRouter(services: ServiceRegistry): Router {
       const filters: any = {};
       if (req.query.status) filters.status = req.query.status;
       if (req.query.packId) filters.packId = parseInt(req.query.packId as string, 10);
+      if (req.query.kitId) filters.kitId = parseInt(req.query.kitId as string, 10);
+      if (req.query.computerId) filters.computerId = parseInt(req.query.computerId as string, 10);
       if (req.query.type) filters.type = req.query.type;
       res.json(await services.issues.list(filters));
     } catch (err) { next(err); }

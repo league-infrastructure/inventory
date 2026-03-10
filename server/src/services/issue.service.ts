@@ -6,6 +6,8 @@ import { IssueRecord, CreateIssueInput, ResolveIssueInput } from '../contracts';
 const ISSUE_INCLUDES = {
   pack: { select: { id: true, name: true } },
   item: { select: { id: true, name: true } },
+  kit: { select: { id: true, name: true } },
+  computer: { select: { id: true, model: true, serialNumber: true } },
   reporter: { select: { id: true, displayName: true } },
   resolver: { select: { id: true, displayName: true } },
 };
@@ -19,7 +21,7 @@ function toRecord(issue: any): IssueRecord {
   };
 }
 
-const VALID_TYPES = ['MISSING_ITEM', 'REPLENISHMENT'];
+const VALID_TYPES = ['MISSING_ITEM', 'REPLENISHMENT', 'DAMAGE', 'MAINTENANCE', 'OTHER'];
 
 export class IssueService {
   private prisma: PrismaClient;
@@ -30,10 +32,18 @@ export class IssueService {
     this.audit = audit;
   }
 
-  async list(filters?: { status?: string; packId?: number; type?: string }): Promise<IssueRecord[]> {
+  async list(filters?: {
+    status?: string;
+    packId?: number;
+    kitId?: number;
+    computerId?: number;
+    type?: string;
+  }): Promise<IssueRecord[]> {
     const where: any = {};
     if (filters?.status) where.status = filters.status;
     if (filters?.packId) where.packId = filters.packId;
+    if (filters?.kitId) where.kitId = filters.kitId;
+    if (filters?.computerId) where.computerId = filters.computerId;
     if (filters?.type) where.type = filters.type;
 
     const issues = await this.prisma.issue.findMany({
@@ -55,23 +65,45 @@ export class IssueService {
 
   async create(input: CreateIssueInput, userId: number): Promise<IssueRecord> {
     if (!VALID_TYPES.includes(input.type)) {
-      throw new ValidationError(`Invalid issue type: ${input.type}. Must be MISSING_ITEM or REPLENISHMENT`);
+      throw new ValidationError(`Invalid issue type: ${input.type}. Must be one of: ${VALID_TYPES.join(', ')}`);
     }
 
-    const pack = await this.prisma.pack.findUnique({ where: { id: input.packId } });
-    if (!pack) throw new NotFoundError('Pack not found');
+    const hasTarget = input.packId || input.kitId || input.computerId;
+    if (!hasTarget) {
+      throw new ValidationError('At least one target entity (packId, kitId, or computerId) is required');
+    }
 
-    const item = await this.prisma.item.findUnique({ where: { id: input.itemId } });
-    if (!item) throw new NotFoundError('Item not found');
-    if (item.packId !== input.packId) {
-      throw new ValidationError('Item does not belong to the specified pack');
+    // Validate referenced entities exist
+    if (input.packId) {
+      const pack = await this.prisma.pack.findUnique({ where: { id: input.packId } });
+      if (!pack) throw new NotFoundError('Pack not found');
+    }
+
+    if (input.itemId) {
+      const item = await this.prisma.item.findUnique({ where: { id: input.itemId } });
+      if (!item) throw new NotFoundError('Item not found');
+      if (input.packId && item.packId !== input.packId) {
+        throw new ValidationError('Item does not belong to the specified pack');
+      }
+    }
+
+    if (input.kitId) {
+      const kit = await this.prisma.kit.findUnique({ where: { id: input.kitId } });
+      if (!kit) throw new NotFoundError('Kit not found');
+    }
+
+    if (input.computerId) {
+      const computer = await this.prisma.computer.findUnique({ where: { id: input.computerId } });
+      if (!computer) throw new NotFoundError('Computer not found');
     }
 
     const issue = await this.prisma.issue.create({
       data: {
         type: input.type as any,
-        packId: input.packId,
-        itemId: input.itemId,
+        packId: input.packId || null,
+        itemId: input.itemId || null,
+        kitId: input.kitId || null,
+        computerId: input.computerId || null,
         reporterId: userId,
         notes: input.notes || null,
       },

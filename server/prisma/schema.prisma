@@ -112,6 +112,7 @@ model Kit {
   category  Category?  @relation(fields: [categoryId], references: [id])
   packs     Pack[]
   computers Computer[]
+  issues    Issue[]
   inventoryChecks InventoryCheck[] @relation("KitInventoryCheck")
 
   @@index([siteId])
@@ -208,6 +209,7 @@ model Computer {
   image     Image?            @relation(fields: [imageId], references: [id])
   category  Category?         @relation(fields: [categoryId], references: [id])
   hostName  HostName?
+  issues    Issue[]
 
   @@index([siteId])
   @@index([kitId])
@@ -253,6 +255,9 @@ model Transfer {
 enum IssueType {
   MISSING_ITEM
   REPLENISHMENT
+  DAMAGE
+  MAINTENANCE
+  OTHER
 }
 
 enum IssueStatus {
@@ -264,8 +269,10 @@ model Issue {
   id         Int         @id @default(autoincrement())
   type       IssueType
   status     IssueStatus @default(OPEN)
-  packId     Int
-  itemId     Int
+  packId     Int?
+  itemId     Int?
+  kitId      Int?
+  computerId Int?
   reporterId Int
   resolverId Int?
   notes      String?
@@ -273,12 +280,16 @@ model Issue {
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
 
-  pack     Pack  @relation(fields: [packId], references: [id])
-  item     Item  @relation(fields: [itemId], references: [id])
-  reporter User  @relation("IssueReporter", fields: [reporterId], references: [id])
-  resolver User? @relation("IssueResolver", fields: [resolverId], references: [id])
+  pack     Pack?     @relation(fields: [packId], references: [id])
+  item     Item?     @relation(fields: [itemId], references: [id])
+  kit      Kit?      @relation(fields: [kitId], references: [id])
+  computer Computer? @relation(fields: [computerId], references: [id])
+  reporter User      @relation("IssueReporter", fields: [reporterId], references: [id])
+  resolver User?     @relation("IssueResolver", fields: [resolverId], references: [id])
 
   @@index([packId])
+  @@index([kitId])
+  @@index([computerId])
   @@index([status])
 }
 
