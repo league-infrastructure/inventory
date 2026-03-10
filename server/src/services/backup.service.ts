@@ -86,7 +86,8 @@ export class BackupService {
       );
     } else {
       // Local dev fallback: run pg_dump inside the Docker db container
-      const composeFile = process.env.COMPOSE_FILE || 'docker-compose.dev.yml';
+      const projectRoot = path.resolve(__dirname, '..', '..', '..');
+      const composeFile = process.env.COMPOSE_FILE || path.join(projectRoot, 'docker-compose.dev.yml');
       await execAsync(
         `docker compose -f "${composeFile}" exec -T db pg_dump --format=custom --no-owner --no-acl -U app app > "${filePath}"`,
         { maxBuffer: 50 * 1024 * 1024 },
@@ -201,7 +202,8 @@ export class BackupService {
       );
     } else {
       // Local dev fallback: pipe dump into the Docker db container
-      const composeFile = process.env.COMPOSE_FILE || 'docker-compose.dev.yml';
+      const projectRoot = path.resolve(__dirname, '..', '..', '..');
+      const composeFile = process.env.COMPOSE_FILE || path.join(projectRoot, 'docker-compose.dev.yml');
       await execAsync(
         `cat "${filePath}" | docker compose -f "${composeFile}" exec -T db pg_restore --clean --if-exists --no-owner --no-acl --dbname=app`,
         { maxBuffer: 50 * 1024 * 1024 },
