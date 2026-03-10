@@ -41,32 +41,19 @@ export default function LabelPrintModal({ kitId, kitName, packs, onClose }: Prop
   }
 
   async function handlePrint() {
-    // Open window synchronously to avoid popup blocker (must be in click handler)
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      alert('Popup blocked — please allow popups for this site.');
-      return;
-    }
-    printWindow.document.write('<html><body><p>Generating labels...</p></body></html>');
-
     setGenerating(true);
     try {
       const packIds = Array.from(selectedPacks);
-      const res = await fetch(`/api/labels/kit/${kitId}/batch`, {
+      const res = await fetch(`/api/labels/kit/${kitId}/batch-pdf`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ packIds, includeKit }),
       });
-      if (!res.ok) {
-        printWindow.close();
-        throw new Error('Failed to generate labels');
-      }
+      if (!res.ok) throw new Error('Failed to generate labels');
 
-      const html = await res.text();
-      printWindow.document.open();
-      printWindow.document.write(html);
-      printWindow.document.close();
-      printWindow.focus();
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
     } catch (e) {
       console.error('Label generation failed:', e);
     }

@@ -50,7 +50,7 @@ export default function CheckedOutList() {
     const kitRows: UnifiedRow[] = data.kits.map((kit) => ({
       id: kit.id,
       type: 'Kit',
-      name: `Kit #${kit.number}: ${kit.name}`,
+      name: `#${kit.number}: ${kit.name}`,
       _custodian: kit.custodian?.displayName ?? '—',
       _site: kit.site?.name ?? '—',
       link: `/kits/${kit.id}`,

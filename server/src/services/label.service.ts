@@ -45,7 +45,8 @@ export class LabelService {
 
   private createDoc(): typeof PDFDocument.prototype {
     return new PDFDocument({
-      size: [LABEL_WIDTH_PT, LABEL_HEIGHT_PT],
+      size: [LABEL_HEIGHT_PT, LABEL_WIDTH_PT],
+      layout: 'landscape',
       margins: { top: MARGIN, bottom: MARGIN, left: MARGIN, right: MARGIN },
     });
   }
@@ -144,17 +145,36 @@ export class LabelService {
     const qrY = contentTop + (number.length <= 2 ? 40 : 34);
     doc.image(qrBuffer, qrX, qrY, { width: qrSize, height: qrSize });
 
-    // === CONTENT ROW — RIGHT COLUMN (name) ===
+    // === CONTENT ROW — RIGHT COLUMN (name, auto-sized to fit) ===
     const contentHeight = LABEL_HEIGHT_PT - contentTop - MARGIN;
-    const nameFontSize = name.length > 40 ? 22 : name.length > 20 ? 28 : 36;
+    const availWidth = rightColWidth - 8;
+    const maxFontSize = 36;
+    const minFontSize = 10;
 
-    // Estimate text height to vertically center
+    // Shrink font until text fits: each word must fit on one line,
+    // and total wrapped height must fit in the available space
+    let nameFontSize = maxFontSize;
+    const words = name.split(/\s+/);
+    doc.font('Helvetica-Bold');
+    while (nameFontSize > minFontSize) {
+      doc.fontSize(nameFontSize);
+      // Check that no single word is wider than the column
+      const longestWord = words.reduce((max, w) => {
+        const ww = doc.widthOfString(w);
+        return ww > max ? ww : max;
+      }, 0);
+      const h = doc.heightOfString(name, { width: availWidth });
+      if (longestWord <= availWidth && h <= contentHeight) break;
+      nameFontSize -= 1;
+    }
+
+    // Vertically center
     doc.fontSize(nameFontSize).font('Helvetica-Bold');
-    const nameHeight = doc.heightOfString(name, { width: rightColWidth - 8 });
+    const nameHeight = doc.heightOfString(name, { width: availWidth });
     const nameY = contentTop + (contentHeight - nameHeight) / 2;
 
     doc.text(name, contentLeft + 4, nameY, {
-      width: rightColWidth - 8,
+      width: availWidth,
       align: 'center',
     });
   }
@@ -261,14 +281,12 @@ export class LabelService {
       firstPage = false;
     }
 
-    const selectedPacks = packIds.length > 0
-      ? kit.packs.filter((p) => packIds.includes(p.id))
-      : kit.packs;
+    const selectedPacks = kit.packs.filter((p) => packIds.includes(p.id));
 
     for (let i = 0; i < selectedPacks.length; i++) {
       const pack = selectedPacks[i];
       if (!firstPage) {
-        doc.addPage({ size: [LABEL_WIDTH_PT, LABEL_HEIGHT_PT], margins: { top: MARGIN, bottom: MARGIN, left: MARGIN, right: MARGIN } });
+        doc.addPage({ size: [LABEL_HEIGHT_PT, LABEL_WIDTH_PT], layout: 'landscape', margins: { top: MARGIN, bottom: MARGIN, left: MARGIN, right: MARGIN } });
       }
       firstPage = false;
 
@@ -329,9 +347,7 @@ export class LabelService {
       labels.push(this.renderLabelHtml(qr, String(kit.number), kit.name));
     }
 
-    const selectedPacks = packIds.length > 0
-      ? kit.packs.filter((p) => packIds.includes(p.id))
-      : kit.packs;
+    const selectedPacks = kit.packs.filter((p) => packIds.includes(p.id));
 
     for (const pack of selectedPacks) {
       const allIdx = kit.packs.findIndex(p => p.id === pack.id);

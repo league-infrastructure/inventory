@@ -36,6 +36,7 @@ import CategoriesPanel from './pages/admin/CategoriesPanel';
 import AuditLogViewer from './pages/reports/AuditLogViewer';
 import InventoryAgeReport from './pages/reports/InventoryAgeReport';
 import CheckedOutByPerson from './pages/reports/CheckedOutByPerson';
+import McpSetup from './pages/McpSetup';
 
 function App() {
   return (
@@ -74,6 +75,7 @@ function App() {
           <Route path="/reports/inventory-age" element={<InventoryAgeReport />} />
           <Route path="/reports/transferred-by-person" element={<CheckedOutByPerson />} />
           <Route path="/account" element={<Account />} />
+          <Route path="/mcp" element={<McpSetup />} />
           <Route path="/admin" element={<AdminLogin />} />
           <Route element={<AdminLayout />}>
             <Route path="/admin/env" element={<EnvironmentInfo />} />

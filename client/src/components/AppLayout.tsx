@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, createContext, useContext } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
-  Home, Monitor, Tags, PackageCheck, MapPin, Shield, Menu, X, LogOut, ChevronDown, UserCircle, AlertTriangle, Search, BarChart3, Package, Box,
+  Home, Monitor, Tags, PackageCheck, MapPin, Shield, Menu, X, LogOut, ChevronDown, UserCircle, AlertTriangle, Search, BarChart3, Package, Box, Plug, Info,
 } from 'lucide-react';
 import AiChat from './AiChat';
+import AboutModal from './AboutModal';
 import { ROLE_SHORT_LABELS, hasQMAccess } from '../lib/roles';
 
 interface AuthUser {
@@ -126,6 +127,7 @@ export default function AppLayout() {
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -209,13 +211,14 @@ export default function AppLayout() {
           className={`
             fixed inset-y-0 left-0 z-50 w-64 bg-sidebar text-sidebar-text
             transform transition-transform duration-200 ease-in-out
-            lg:relative lg:translate-x-0
+            lg:relative lg:translate-x-0 flex flex-col
             ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
           `}
         >
           <div className="flex items-center justify-between h-16 px-4 border-b border-slate-700">
-            <Link to="/" className="text-white font-bold text-lg no-underline">
-              LAP Inventory
+            <Link to="/" className="text-white font-bold text-lg no-underline flex items-center gap-2">
+              <img src="https://images.jointheleague.org/logos/flag.png" alt="" className="h-6 w-6" />
+              Inventory
             </Link>
             <button
               className="lg:hidden text-slate-400 hover:text-white bg-transparent border-none p-1"
@@ -225,7 +228,7 @@ export default function AppLayout() {
             </button>
           </div>
 
-          <nav className="mt-4 px-2 space-y-1">
+          <nav className="mt-4 px-2 space-y-1 flex-1">
             {filteredNav.map((item) => {
               const Icon = item.icon;
               const active = isActive(item.to);
@@ -266,6 +269,37 @@ export default function AppLayout() {
               );
             })}
           </nav>
+
+          {/* Bottom links */}
+          <div className="px-2 pb-4 space-y-1 border-t border-slate-700 pt-3 mt-2">
+            <Link
+              to="/mcp"
+              className={`
+                flex items-center gap-3 px-3 py-2 rounded-lg text-sm no-underline
+                transition-colors duration-150
+                ${isActive('/mcp')
+                  ? 'bg-sidebar-hover text-sidebar-active font-medium'
+                  : 'text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-active'
+                }
+              `}
+            >
+              <Plug size={18} />
+              MCP Setup
+            </Link>
+            <button
+              onClick={() => setAboutOpen(true)}
+              className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm
+                text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-active
+                transition-colors duration-150 w-full bg-transparent border-none cursor-pointer text-left"
+            >
+              <img
+                src="https://images.jointheleague.org/logos/clearRobotRing4.png"
+                alt=""
+                className="w-[18px] h-[18px] opacity-70"
+              />
+              About
+            </button>
+          </div>
         </aside>
         )}
 
@@ -360,7 +394,7 @@ export default function AppLayout() {
               ) : (
                 !loading && (
                   <a
-                    href="/api/auth/google"
+                    href={`/api/auth/google?returnTo=${encodeURIComponent(location.pathname)}`}
                     className="text-sm px-4 py-2 bg-primary text-white rounded-lg no-underline hover:bg-primary-hover"
                   >
                     Sign in
@@ -386,6 +420,7 @@ export default function AppLayout() {
         </div>
       </div>
       {showSidebar && <AiChat />}
+      {aboutOpen && <AboutModal onClose={() => setAboutOpen(false)} />}
     </AuthContext.Provider>
   );
 }
