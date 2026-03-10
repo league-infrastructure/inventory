@@ -1,7 +1,7 @@
 ---
 id: "004"
 title: "Add MCP tools for issues"
-status: todo
+status: done
 use-cases: []
 depends-on: ["003"]
 ---
@@ -23,10 +23,10 @@ Follow existing MCP tool patterns. Use IssueService via mcpContext.
 
 ## Acceptance Criteria
 
-- [ ] create_issue MCP tool works for packs, kits, and computers
-- [ ] list_issues MCP tool supports filtering
-- [ ] resolve_issue MCP tool marks issues resolved
-- [ ] Tools registered in MCP server
+- [x] create_issue MCP tool works for packs, kits, and computers
+- [x] list_issues MCP tool supports filtering
+- [x] resolve_issue MCP tool marks issues resolved
+- [x] Tools registered in MCP server
 
 ## Testing
 

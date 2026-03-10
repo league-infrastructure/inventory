@@ -641,4 +641,43 @@ export function registerTools(server: McpServer): void {
       return ok({ deleted: true });
     });
   });
+
+  // ─── Issues ─────────────────────────────────────────────────────────
+
+  server.tool('list_issues', 'List issues, optionally filtered by status, type, packId, kitId, or computerId', {
+    status: z.string().optional().describe('OPEN or RESOLVED'),
+    type: z.string().optional().describe('MISSING_ITEM, REPLENISHMENT, DAMAGE, MAINTENANCE, or OTHER'),
+    packId: z.number().optional(),
+    kitId: z.number().optional(),
+    computerId: z.number().optional(),
+  }, async (args) => {
+    return safeCall(async () => {
+      const { services } = getContext();
+      return ok(await services.issues.list(args));
+    });
+  });
+
+  server.tool('create_issue', 'Create an issue on a pack, kit, or computer. At least one target entity is required.', {
+    type: z.string().describe('MISSING_ITEM, REPLENISHMENT, DAMAGE, MAINTENANCE, or OTHER'),
+    packId: z.number().optional(),
+    itemId: z.number().optional(),
+    kitId: z.number().optional(),
+    computerId: z.number().optional(),
+    notes: z.string().optional(),
+  }, async (args) => {
+    return safeCall(async () => {
+      const { services, user } = getContext();
+      return ok(await services.issues.create(args, user.id));
+    });
+  });
+
+  server.tool('resolve_issue', 'Resolve an open issue', {
+    id: z.number(),
+    notes: z.string().optional(),
+  }, async ({ id, ...input }) => {
+    return safeCall(async () => {
+      const { services, user } = getContext();
+      return ok(await services.issues.resolve(id, input, user.id));
+    });
+  });
 }
