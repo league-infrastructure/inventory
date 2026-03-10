@@ -11,7 +11,12 @@ import { hasQMAccess } from '../contracts';
 // to numbers and the string "null" to actual null.
 const zIdParam = () => z.union([
   z.number(),
-  z.string().transform((s) => s === 'null' ? null : Number(s)),
+  z.string().transform((s) => {
+    if (s === 'null' || s === '') return null;
+    const n = Number(s);
+    if (isNaN(n)) throw new Error(`Invalid ID: "${s}" is not a number. Use a numeric database ID.`);
+    return n;
+  }),
   z.null(),
 ]).optional();
 
@@ -151,7 +156,7 @@ export function registerTools(server: McpServer): void {
     });
   });
 
-  server.tool('update_kit', 'Update an existing kit. Set siteId/custodianId to null to clear the association.', {
+  server.tool('update_kit', 'Update an existing kit. Set siteId/custodianId/categoryId to null to clear. All ID fields expect numeric database IDs — use list tools (list_sites, list_kits, etc.) to look up valid IDs first.', {
     id: z.number(),
     number: z.number().optional(),
     containerType: z.string().optional(),
@@ -159,7 +164,7 @@ export function registerTools(server: McpServer): void {
     description: z.string().optional(),
     siteId: zIdParam(),
     custodianId: zIdParam(),
-    categoryId: zIdParam(),
+    categoryId: zIdParam().describe('Numeric category ID. Use list_kits to see existing categories, or null to clear.'),
     status: z.string().optional(),
   }, async ({ id, ...input }) => {
     return safeCall(async () => {

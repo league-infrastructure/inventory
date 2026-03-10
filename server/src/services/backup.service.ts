@@ -27,13 +27,15 @@ export class BackupService {
     }
   }
 
-  async createBackup(): Promise<BackupInfo> {
+  async createBackup(filename?: string): Promise<BackupInfo> {
     this.ensureDir();
     const dbUrl = process.env.DATABASE_URL;
     if (!dbUrl) throw new Error('DATABASE_URL not configured');
 
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const filename = `backup-${timestamp}.dump`;
+    if (!filename) {
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      filename = `backup-${timestamp}.dump`;
+    }
     const filePath = path.join(this.backupDir, filename);
 
     // Run pg_dump directly — postgresql-client is installed in the container

@@ -191,6 +191,9 @@ export function slackRouter(services: ServiceRegistry): Router {
         return;
       }
 
+      // Send immediate receipt so the user knows we're working on it
+      await postMessage(channel, "Got your message — working on it now.", threadTs);
+
       const aiServices = ServiceRegistry.create(undefined, 'MCP');
       let fullResponse = '';
       const response = await aiChat.chat(

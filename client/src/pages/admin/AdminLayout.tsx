@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { to: '/admin/categories', label: 'Categories' },
   { to: '/admin/import-export', label: 'Import / Export' },
   { to: '/admin/users', label: 'Users' },
+  { to: '/admin/scheduled-jobs', label: 'Scheduled Jobs' },
 ];
 
 export default function AdminLayout() {

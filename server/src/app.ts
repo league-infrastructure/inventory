@@ -34,6 +34,12 @@ import { prisma } from './services/prisma';
 import { ServiceRegistry } from './services/service.registry';
 import { tokenAuth } from './middleware/tokenAuth';
 import { slackRouter } from './routes/slack';
+import { oauthRouter } from './routes/oauth';
+import { schedulerRouter } from './routes/scheduler';
+import { SchedulerService } from './services/scheduler.service';
+import { BackupService } from './services/backup.service';
+import { BackupRotationService } from './services/backupRotation.service';
+import { schedulerTickMiddleware } from './middleware/schedulerTick';
 import { createMcpHandler } from './mcp/server';
 
 const app = express();
@@ -70,6 +76,11 @@ const logger = pino(
 );
 
 app.use(pinoHttp({ logger }));
+
+// Scheduler tick piggyback — fires scheduler on incoming requests at a configurable interval.
+if (process.env.DISABLE_SCHEDULER_TICK !== 'true') {
+  app.use(schedulerTickMiddleware);
+}
 
 // Session middleware — PostgreSQL store for persistence across restarts.
 // Falls back to MemoryStore in test environment.
@@ -118,6 +129,15 @@ app.use(passport.session());
 // Create the service registry (composition root)
 const services = ServiceRegistry.create();
 
+// Scheduler service — instantiated here so routes and middleware can share it
+const schedulerService = new SchedulerService(prisma);
+
+// Backup rotation — wired into scheduled jobs
+const backupService = new BackupService();
+const backupRotation = new BackupRotationService(backupService);
+schedulerService.registerHandler('daily-backup', () => backupRotation.runDaily());
+schedulerService.registerHandler('weekly-backup', () => backupRotation.runWeekly());
+
 // Routes
 app.use('/api', healthRouter);
 app.use('/api', authRouter);
@@ -141,10 +161,14 @@ app.use('/api', aiChatRouter(services));
 app.use('/api', imageRouter(services));
 app.use('/api', categoriesRouter(services));
 app.use('/api', notesRouter(services));
+app.use('/api', schedulerRouter(schedulerService));
 app.use('/api', adminRouter);
 
 // Slack bot — mounted at root (not /api) to match Slack event subscription URLs
 app.use(slackRouter(services));
+
+// OAuth 2.0 endpoints for MCP connector authentication
+app.use(oauthRouter(services.tokens));
 
 // MCP server — token-authenticated endpoint for external AI clients
 const mcpTokenAuth = tokenAuth(services.tokens, prisma);
@@ -171,4 +195,5 @@ if (process.env.NODE_ENV === 'production') {
   });
 }
 
+export { schedulerService };
 export default app;
