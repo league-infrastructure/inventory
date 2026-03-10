@@ -1,9 +1,14 @@
 ---
-id: "027"
-title: "Scheduler, Automated Backups, and Bug Fixes"
-status: planning
+id: '027'
+title: Scheduler, Automated Backups, and Bug Fixes
+status: done
 branch: sprint/027-scheduler-automated-backups-and-bug-fixes
-use-cases: [SUC-001, SUC-002, SUC-003, SUC-004, SUC-005]
+use-cases:
+- SUC-001
+- SUC-002
+- SUC-003
+- SUC-004
+- SUC-005
 ---
 
 # Sprint 027: Scheduler, Automated Backups, and Bug Fixes
