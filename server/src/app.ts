@@ -36,6 +36,7 @@ import { tokenAuth } from './middleware/tokenAuth';
 import { slackRouter } from './routes/slack';
 import { schedulerRouter } from './routes/scheduler';
 import { SchedulerService } from './services/scheduler.service';
+import { schedulerTickMiddleware } from './middleware/schedulerTick';
 import { createMcpHandler } from './mcp/server';
 
 const app = express();
@@ -72,6 +73,11 @@ const logger = pino(
 );
 
 app.use(pinoHttp({ logger }));
+
+// Scheduler tick piggyback — fires scheduler on incoming requests at a configurable interval.
+if (process.env.DISABLE_SCHEDULER_TICK !== 'true') {
+  app.use(schedulerTickMiddleware);
+}
 
 // Session middleware — PostgreSQL store for persistence across restarts.
 // Falls back to MemoryStore in test environment.

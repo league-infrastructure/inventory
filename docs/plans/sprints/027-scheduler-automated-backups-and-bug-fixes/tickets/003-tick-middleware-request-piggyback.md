@@ -1,7 +1,7 @@
 ---
 id: "003"
 title: "Tick Middleware (Request Piggyback)"
-status: todo
+status: done
 use-cases: [SUC-002]
 depends-on: ["002"]
 ---
@@ -33,13 +33,13 @@ routes). Only mount if `process.env.DISABLE_SCHEDULER_TICK !== 'true'`
 
 ## Acceptance Criteria
 
-- [ ] Middleware created at `server/src/middleware/schedulerTick.ts`
-- [ ] Fires tick when interval has elapsed
-- [ ] Does not block or delay the original request
-- [ ] Port is dynamic (reads process.env.PORT)
-- [ ] Interval is configurable via SCHEDULER_TICK_INTERVAL_MS
-- [ ] Can be disabled via DISABLE_SCHEDULER_TICK=true
-- [ ] Mounted in app.ts
+- [x] Middleware created at `server/src/middleware/schedulerTick.ts`
+- [x] Fires tick when interval has elapsed
+- [x] Does not block or delay the original request
+- [x] Port is dynamic (reads process.env.PORT)
+- [x] Interval is configurable via SCHEDULER_TICK_INTERVAL_MS
+- [x] Can be disabled via DISABLE_SCHEDULER_TICK=true
+- [x] Mounted in app.ts
 
 ## Testing
 
