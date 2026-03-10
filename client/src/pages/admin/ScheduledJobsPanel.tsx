@@ -15,7 +15,7 @@ export default function ScheduledJobsPanel() {
   const [jobs, setJobs] = useState<ScheduledJob[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const intervalRef = useRef<ReturnType<typeof setInterval>>();
+  const intervalRef = useRef<ReturnType<typeof setInterval>>(undefined);
 
   const loadJobs = () => {
     setLoading(true);
