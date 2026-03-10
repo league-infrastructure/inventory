@@ -86,6 +86,7 @@ DOCKER_CONTEXT="$PROD_DOCKER_CONTEXT" docker service update \
 echo "==> Running database migrations"
 DOCKER_CONTEXT="$PROD_DOCKER_CONTEXT" docker service rm inventory_migrate >/dev/null 2>&1 || true
 DOCKER_CONTEXT="$PROD_DOCKER_CONTEXT" docker service create \
+  --detach \
   --name inventory_migrate \
   --restart-condition=none \
   --with-registry-auth \
@@ -99,14 +100,15 @@ DOCKER_CONTEXT="$PROD_DOCKER_CONTEXT" docker service create \
 echo "==> Waiting for migrations to finish"
 while true; do
   STATE=$(DOCKER_CONTEXT="$PROD_DOCKER_CONTEXT" docker service ps inventory_migrate \
-    --format '{{.CurrentState}}' --filter 'desired-state=shutdown' | head -1)
+    --format '{{.CurrentState}}' --no-trunc 2>/dev/null | head -1)
   case "$STATE" in
     Complete*) echo "==> Migrations completed successfully"; break ;;
-    Failed*)   echo "ERROR: Migration failed" >&2
+    Failed*|Rejected*)
+               echo "ERROR: Migration failed" >&2
                DOCKER_CONTEXT="$PROD_DOCKER_CONTEXT" docker service logs inventory_migrate >&2
                DOCKER_CONTEXT="$PROD_DOCKER_CONTEXT" docker service rm inventory_migrate >/dev/null 2>&1
                exit 1 ;;
-    *)         sleep 2 ;;
+    *)         sleep 3 ;;
   esac
 done
 DOCKER_CONTEXT="$PROD_DOCKER_CONTEXT" docker service rm inventory_migrate >/dev/null 2>&1
