@@ -34,6 +34,7 @@ import { prisma } from './services/prisma';
 import { ServiceRegistry } from './services/service.registry';
 import { tokenAuth } from './middleware/tokenAuth';
 import { slackRouter } from './routes/slack';
+import { oauthRouter } from './routes/oauth';
 import { schedulerRouter } from './routes/scheduler';
 import { SchedulerService } from './services/scheduler.service';
 import { BackupService } from './services/backup.service';
@@ -165,6 +166,9 @@ app.use('/api', adminRouter);
 
 // Slack bot — mounted at root (not /api) to match Slack event subscription URLs
 app.use(slackRouter(services));
+
+// OAuth 2.0 endpoints for MCP connector authentication
+app.use(oauthRouter(services.tokens));
 
 // MCP server — token-authenticated endpoint for external AI clients
 const mcpTokenAuth = tokenAuth(services.tokens, prisma);
