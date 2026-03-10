@@ -1,7 +1,7 @@
 ---
 id: "007"
 title: "Admin Scheduled Jobs Panel"
-status: todo
+status: done
 use-cases: [SUC-001]
 depends-on: ["002"]
 ---
@@ -38,13 +38,13 @@ frontend calls these endpoints.
 
 ## Acceptance Criteria
 
-- [ ] ScheduledJobsPanel page created and renders job table
-- [ ] Shows all fields: name, description, frequency, timestamps, error
-- [ ] Errors highlighted in red
-- [ ] Toggle enabled/disabled works via API
-- [ ] "Run Now" button triggers job execution via API
-- [ ] Page linked from admin sidebar
-- [ ] Data auto-refreshes
+- [x] ScheduledJobsPanel page created and renders job table
+- [x] Shows all fields: name, description, frequency, timestamps, error
+- [x] Errors highlighted in red
+- [x] Toggle enabled/disabled works via API
+- [x] "Run Now" button triggers job execution via API
+- [x] Page linked from admin sidebar
+- [x] Data auto-refreshes
 
 ## Testing
 
