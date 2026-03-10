@@ -36,6 +36,8 @@ import { tokenAuth } from './middleware/tokenAuth';
 import { slackRouter } from './routes/slack';
 import { schedulerRouter } from './routes/scheduler';
 import { SchedulerService } from './services/scheduler.service';
+import { BackupService } from './services/backup.service';
+import { BackupRotationService } from './services/backupRotation.service';
 import { schedulerTickMiddleware } from './middleware/schedulerTick';
 import { createMcpHandler } from './mcp/server';
 
@@ -128,6 +130,12 @@ const services = ServiceRegistry.create();
 
 // Scheduler service — instantiated here so routes and middleware can share it
 const schedulerService = new SchedulerService(prisma);
+
+// Backup rotation — wired into scheduled jobs
+const backupService = new BackupService();
+const backupRotation = new BackupRotationService(backupService);
+schedulerService.registerHandler('daily-backup', () => backupRotation.runDaily());
+schedulerService.registerHandler('weekly-backup', () => backupRotation.runWeekly());
 
 // Routes
 app.use('/api', healthRouter);

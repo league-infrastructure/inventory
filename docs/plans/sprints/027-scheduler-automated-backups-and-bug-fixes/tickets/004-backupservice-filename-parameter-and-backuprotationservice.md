@@ -1,7 +1,7 @@
 ---
 id: "004"
 title: "BackupService Filename Parameter and BackupRotationService"
-status: todo
+status: done
 use-cases: [SUC-003]
 depends-on: ["002"]
 ---
@@ -42,14 +42,14 @@ Register handlers in SchedulerService dispatch map:
 
 ## Acceptance Criteria
 
-- [ ] BackupService.createBackup() accepts optional filename parameter
-- [ ] Existing manual backup behavior unchanged when filename omitted
-- [ ] BackupRotationService.runDaily() creates daily-<dow>-<date>.dump
-- [ ] runDaily() deletes existing backup with same day-of-week
-- [ ] BackupRotationService.runWeekly() creates weekly-<date>.dump
-- [ ] runWeekly() trims to 4 weekly backups
-- [ ] Manual backups (backup-* prefix) are never deleted by rotation
-- [ ] Handlers registered in SchedulerService dispatch map
+- [x] BackupService.createBackup() accepts optional filename parameter
+- [x] Existing manual backup behavior unchanged when filename omitted
+- [x] BackupRotationService.runDaily() creates daily-<dow>-<date>.dump
+- [x] runDaily() deletes existing backup with same day-of-week
+- [x] BackupRotationService.runWeekly() creates weekly-<date>.dump
+- [x] runWeekly() trims to 4 weekly backups
+- [x] Manual backups (backup-* prefix) are never deleted by rotation
+- [x] Handlers registered in SchedulerService dispatch map
 
 ## Testing
 
