@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Copy, Trash2, Plus, X, Printer, User, Building2 } from 'lucide-react';
+import { Copy, Trash2, Plus, X, Printer, User, Building2, AlertTriangle } from 'lucide-react';
+import ReportIssueModal from '../../components/ReportIssueModal';
 import EditableCell from '../../components/EditableCell';
 import InventoryCheckSection from '../../components/InventoryCheckSection';
 import LabelPrintModal from '../../components/LabelPrintModal';
@@ -99,6 +100,8 @@ export default function KitDetail() {
 
   // Label printing
   const [showLabelModal, setShowLabelModal] = useState(false);
+  // Issue reporting
+  const [showIssueModal, setShowIssueModal] = useState(false);
 
   // Computer add/remove
   const [showComputerAdd, setShowComputerAdd] = useState(false);
@@ -443,6 +446,12 @@ export default function KitDetail() {
         </div>
         {status === 'ACTIVE' && (
           <div className="flex gap-2">
+            <button
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-amber-600 text-white border-none cursor-pointer hover:bg-amber-700"
+              onClick={() => setShowIssueModal(true)}
+            >
+              <AlertTriangle size={14} /> Report Issue
+            </button>
             <button
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-primary text-white border-none cursor-pointer hover:bg-primary-hover"
               onClick={() => setShowLabelModal(true)}
@@ -925,6 +934,15 @@ export default function KitDetail() {
           kitName={`${form.number} — ${form.name}`}
           packs={packs}
           onClose={() => setShowLabelModal(false)}
+        />
+      )}
+
+      {showIssueModal && (
+        <ReportIssueModal
+          objectType="kit"
+          objectId={Number(id)}
+          objectName={`Kit ${form.number} — ${form.name}`}
+          onClose={() => setShowIssueModal(false)}
         />
       )}
     </div>

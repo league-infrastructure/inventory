@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
 import { ServiceRegistry } from '../services/service.registry';
-import { AiChatService } from '../services/ai-chat.service';
+import { AiChatService, ChatMessage } from '../services/ai-chat.service';
 import { prisma } from '../services/prisma';
 
 const SIGNING_SECRET = process.env.SLACK_SIGNING_SECRET || '';
@@ -194,14 +194,32 @@ export function slackRouter(services: ServiceRegistry): Router {
       // Send immediate receipt so the user knows we're working on it
       await postMessage(channel, "Got your message — working on it now.", threadTs);
 
+      // Load recent conversation history for this Slack user
+      const recentConvos = await prisma.slackConversation.findMany({
+        where: { slackUserId },
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+      });
+      const conversationHistory: ChatMessage[] = [];
+      for (const c of recentConvos.reverse()) {
+        conversationHistory.push({ role: 'user', content: c.userMessage });
+        conversationHistory.push({ role: 'assistant', content: c.assistantMessage });
+      }
+
       const aiServices = ServiceRegistry.create(undefined, 'MCP');
       let fullResponse = '';
       const response = await aiChat.chat(
-        text, [], user, aiServices,
+        text, conversationHistory, user, aiServices,
         (delta) => { fullResponse += delta; },
         undefined,
       );
-      await postMessage(channel, response || fullResponse || 'I processed your request but have no response to show.', threadTs);
+      const finalResponse = response || fullResponse || 'I processed your request but have no response to show.';
+      await postMessage(channel, finalResponse, threadTs);
+
+      // Save this exchange for future conversation context
+      await prisma.slackConversation.create({
+        data: { slackUserId, userMessage: text, assistantMessage: finalResponse },
+      });
     } catch (err: any) {
       console.error('Slack event processing error:', err);
       await postMessage(channel, `Sorry, something went wrong: ${err.message || 'unknown error'}`, threadTs);

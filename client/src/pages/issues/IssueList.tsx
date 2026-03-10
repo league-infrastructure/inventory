@@ -8,8 +8,10 @@ interface Issue {
   notes: string | null;
   createdAt: string;
   resolvedAt: string | null;
-  pack: { id: number; name: string };
-  item: { id: number; name: string };
+  pack: { id: number; name: string } | null;
+  item: { id: number; name: string } | null;
+  kit: { id: number; name: string } | null;
+  computer: { id: number; model: string | null; serialNumber: string | null } | null;
   reporter: { id: number; displayName: string };
   resolver: { id: number; displayName: string } | null;
 }
@@ -17,7 +19,18 @@ interface Issue {
 const TYPE_LABELS: Record<string, string> = {
   MISSING_ITEM: 'Missing Item',
   REPLENISHMENT: 'Replenishment',
+  DAMAGE: 'Damage',
+  MAINTENANCE: 'Maintenance',
+  OTHER: 'Other',
 };
+
+function issueTarget(issue: Issue): string {
+  if (issue.item && issue.pack) return `${issue.item.name} in ${issue.pack.name}`;
+  if (issue.pack) return issue.pack.name;
+  if (issue.kit) return issue.kit.name;
+  if (issue.computer) return issue.computer.model || issue.computer.serialNumber || 'Computer';
+  return 'Unknown';
+}
 
 export default function IssueList() {
   const [issues, setIssues] = useState<Issue[]>([]);
@@ -97,7 +110,7 @@ export default function IssueList() {
                     </span>
                   </div>
                   <p className="text-sm text-gray-700">
-                    <strong>{issue.item.name}</strong> in pack <strong>{issue.pack.name}</strong>
+                    <strong>{issueTarget(issue)}</strong>
                   </p>
                   {issue.notes && <p className="text-sm text-gray-500 mt-1">{issue.notes}</p>}
                   <p className="text-xs text-gray-400 mt-1">
