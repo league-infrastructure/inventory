@@ -1,7 +1,7 @@
 ---
-id: "026"
-title: "Miscellaneous Bug Fixes"
-status: planning
+id: '026'
+title: Miscellaneous Bug Fixes
+status: done
 branch: sprint/026-miscellaneous-bug-fixes
 use-cases: []
 ---
