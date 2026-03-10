@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { AlertTriangle, CheckCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { AlertTriangle, CheckCircle, Tags, Package, Monitor } from 'lucide-react';
 
 interface Issue {
   id: number;
@@ -24,12 +25,38 @@ const TYPE_LABELS: Record<string, string> = {
   OTHER: 'Other',
 };
 
-function issueTarget(issue: Issue): string {
-  if (issue.item && issue.pack) return `${issue.item.name} in ${issue.pack.name}`;
-  if (issue.pack) return issue.pack.name;
-  if (issue.kit) return issue.kit.name;
-  if (issue.computer) return issue.computer.model || issue.computer.serialNumber || 'Computer';
-  return 'Unknown';
+function IssueTarget({ issue }: { issue: Issue }) {
+  if (issue.kit) {
+    const label = issue.item && issue.pack
+      ? `${issue.item.name} in ${issue.pack.name}`
+      : issue.pack
+        ? issue.pack.name
+        : issue.kit.name;
+    return (
+      <span className="inline-flex items-center gap-1.5">
+        <Tags size={14} className="shrink-0 text-gray-400" />
+        <Link to={`/kits/${issue.kit.id}`} className="text-primary hover:underline">{label}</Link>
+      </span>
+    );
+  }
+  if (issue.computer) {
+    const label = issue.computer.model || issue.computer.serialNumber || 'Computer';
+    return (
+      <span className="inline-flex items-center gap-1.5">
+        <Monitor size={14} className="shrink-0 text-gray-400" />
+        <Link to={`/computers/${issue.computer.id}`} className="text-primary hover:underline">{label}</Link>
+      </span>
+    );
+  }
+  if (issue.pack) {
+    return (
+      <span className="inline-flex items-center gap-1.5">
+        <Package size={14} className="shrink-0 text-gray-400" />
+        <span>{issue.item ? `${issue.item.name} in ${issue.pack.name}` : issue.pack.name}</span>
+      </span>
+    );
+  }
+  return <span>Unknown</span>;
 }
 
 export default function IssueList() {
@@ -109,8 +136,8 @@ export default function IssueList() {
                       {issue.status}
                     </span>
                   </div>
-                  <p className="text-sm text-gray-700">
-                    <strong>{issueTarget(issue)}</strong>
+                  <p className="text-sm text-gray-700 font-medium">
+                    <IssueTarget issue={issue} />
                   </p>
                   {issue.notes && <p className="text-sm text-gray-500 mt-1">{issue.notes}</p>}
                   <p className="text-xs text-gray-400 mt-1">
