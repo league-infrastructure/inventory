@@ -1,8 +1,10 @@
 ---
-id: "001"
-title: "ScheduledJob Model and Migration"
-status: todo
-use-cases: [SUC-001, SUC-003]
+id: '001'
+title: ScheduledJob Model and Migration
+status: done
+use-cases:
+- SUC-001
+- SUC-003
 depends-on: []
 ---
 

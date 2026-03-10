@@ -1,8 +1,9 @@
 ---
-id: "005"
-title: "Slack AI Chat Immediate Receipt"
-status: todo
-use-cases: [SUC-004]
+id: '005'
+title: Slack AI Chat Immediate Receipt
+status: done
+use-cases:
+- SUC-004
 depends-on: []
 ---
 

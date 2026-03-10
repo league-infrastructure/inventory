@@ -1,8 +1,9 @@
 ---
-id: "006"
-title: "MCP Kit Category Fix and Audit Fields"
-status: todo
-use-cases: [SUC-005]
+id: '006'
+title: MCP Kit Category Fix and Audit Fields
+status: done
+use-cases:
+- SUC-005
 depends-on: []
 ---
 
