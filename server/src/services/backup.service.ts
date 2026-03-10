@@ -2,7 +2,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import * as fs from 'fs';
 import * as path from 'path';
-import { PutObjectCommand, ListObjectsV2Command, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { PutObjectCommand, ListObjectsV2Command, DeleteObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { s3Client, DO_SPACES_BUCKET } from './s3';
 
 const execAsync = promisify(exec);
@@ -183,6 +183,20 @@ export class BackupService {
     return Array.from(localMap.values()).sort((a, b) => b.filename.localeCompare(a.filename));
   }
 
+  private async downloadFromS3(filename: string, filePath: string): Promise<void> {
+    const resp = await s3Client.send(new GetObjectCommand({
+      Bucket: DO_SPACES_BUCKET,
+      Key: `backups/${filename}`,
+    }));
+    const body = resp.Body;
+    if (!body) throw new Error('Empty response from S3');
+    const chunks: Buffer[] = [];
+    for await (const chunk of body as AsyncIterable<Buffer>) {
+      chunks.push(chunk);
+    }
+    fs.writeFileSync(filePath, Buffer.concat(chunks));
+  }
+
   async restoreBackup(filename: string): Promise<void> {
     const dbUrl = process.env.DATABASE_URL;
     if (!dbUrl) throw new Error('DATABASE_URL not configured');
@@ -190,8 +204,15 @@ export class BackupService {
     // Sanitize filename to prevent path traversal
     const sanitized = path.basename(filename);
     const filePath = path.join(this.backupDir, sanitized);
+
+    // If file doesn't exist locally, try downloading from S3
     if (!fs.existsSync(filePath)) {
-      throw new Error(`Backup file not found: ${sanitized}`);
+      this.ensureDir();
+      try {
+        await this.downloadFromS3(sanitized, filePath);
+      } catch (err: any) {
+        throw new Error(`Backup file not found locally or in S3: ${sanitized}`);
+      }
     }
 
     if (await hasPgDump()) {

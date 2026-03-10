@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Download, Upload, FileSpreadsheet, FileJson, Check, X, Database, Trash2, RotateCcw } from 'lucide-react';
+import { Download, Upload, FileSpreadsheet, FileJson, Check, X, Database, Trash2, RotateCcw, HardDrive, Cloud } from 'lucide-react';
 
 interface ImportDiffRow {
   sheet: string;
@@ -20,6 +20,7 @@ interface BackupInfo {
   filename: string;
   size: number;
   createdAt: string;
+  location: 'local' | 's3' | 'both';
 }
 
 function formatBytes(bytes: number): string {
@@ -320,6 +321,8 @@ export default function ImportExport() {
                     <th className="px-3 py-2 text-left">Filename</th>
                     <th className="px-3 py-2 text-left">Size</th>
                     <th className="px-3 py-2 text-left">Created</th>
+                    <th className="px-3 py-2 text-center" title="Local"><HardDrive size={14} className="inline text-gray-400" /></th>
+                    <th className="px-3 py-2 text-center" title="S3"><Cloud size={14} className="inline text-gray-400" /></th>
                     <th className="px-3 py-2 text-right">Actions</th>
                   </tr>
                 </thead>
@@ -329,6 +332,20 @@ export default function ImportExport() {
                       <td className="px-3 py-2 font-mono text-xs">{b.filename}</td>
                       <td className="px-3 py-2 text-gray-500">{formatBytes(b.size)}</td>
                       <td className="px-3 py-2 text-gray-500 text-xs">{new Date(b.createdAt).toLocaleString()}</td>
+                      <td className="px-3 py-2 text-center">
+                        {(b.location === 'local' || b.location === 'both') ? (
+                          <Check size={14} className="inline text-green-500" />
+                        ) : (
+                          <X size={14} className="inline text-gray-300" />
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-center">
+                        {(b.location === 's3' || b.location === 'both') ? (
+                          <Check size={14} className="inline text-green-500" />
+                        ) : (
+                          <X size={14} className="inline text-gray-300" />
+                        )}
+                      </td>
                       <td className="px-3 py-2 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <button
