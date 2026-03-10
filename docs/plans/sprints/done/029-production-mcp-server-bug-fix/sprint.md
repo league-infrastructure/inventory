@@ -1,7 +1,7 @@
 ---
-id: "029"
-title: "Production MCP Server Bug Fix"
-status: planning
+id: 029
+title: Production MCP Server Bug Fix
+status: done
 branch: sprint/029-production-mcp-server-bug-fix
 use-cases: []
 ---
