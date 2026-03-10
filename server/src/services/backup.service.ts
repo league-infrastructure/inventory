@@ -16,6 +16,36 @@ async function hasPgDump(): Promise<boolean> {
   }
 }
 
+export const DOW_NAMES = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const;
+
+export function getAppVersion(): string {
+  const candidates = [
+    path.join(__dirname, '..', '..', 'package.json'),
+    path.join(process.cwd(), 'package.json'),
+  ];
+  for (const p of candidates) {
+    try {
+      const pkg = JSON.parse(fs.readFileSync(p, 'utf-8'));
+      if (pkg.version) return pkg.version;
+    } catch { /* try next */ }
+  }
+  return 'unknown';
+}
+
+export function getEnvLabel(): string {
+  return process.env.NODE_ENV === 'production' ? 'prod' : 'dev';
+}
+
+export function dateStamp(d: Date = new Date()): string {
+  return d.toISOString().slice(0, 10).replace(/-/g, '');
+}
+
+/** Extract the sequential number from a filename like "weekly-5-..." or "adhoc-12-..." */
+export function extractSeqNumber(filename: string): number {
+  const match = filename.match(/^\w+-(\d+)-/);
+  return match ? parseInt(match[1], 10) : 0;
+}
+
 export interface BackupInfo {
   filename: string;
   size: number;
@@ -42,8 +72,9 @@ export class BackupService {
     if (!dbUrl) throw new Error('DATABASE_URL not configured');
 
     if (!filename) {
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      filename = `backup-${timestamp}.dump`;
+      // Adhoc backup: find next sequential number from existing adhoc files
+      const nextSeq = await this.nextAdhocSeq();
+      filename = `adhoc-${nextSeq}-${dateStamp()}-${getEnvLabel()}-v${getAppVersion()}.dump`;
     }
     const filePath = path.join(this.backupDir, filename);
 
@@ -73,6 +104,24 @@ export class BackupService {
       createdAt: stats.mtime.toISOString(),
       location: 'both',
     };
+  }
+
+  private async nextAdhocSeq(): Promise<number> {
+    try {
+      const resp = await s3Client.send(new ListObjectsV2Command({
+        Bucket: DO_SPACES_BUCKET,
+        Prefix: 'backups/adhoc-',
+      }));
+      let max = 0;
+      for (const obj of resp.Contents || []) {
+        const name = obj.Key?.replace('backups/', '') || '';
+        const n = extractSeqNumber(name);
+        if (n > max) max = n;
+      }
+      return max + 1;
+    } catch {
+      return 1;
+    }
   }
 
   private async uploadToS3(filePath: string, filename: string): Promise<void> {
