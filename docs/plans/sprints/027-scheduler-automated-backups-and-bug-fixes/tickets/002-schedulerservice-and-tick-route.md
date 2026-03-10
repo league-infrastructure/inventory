@@ -1,7 +1,7 @@
 ---
 id: "002"
 title: "SchedulerService and Tick Route"
-status: todo
+status: done
 use-cases: [SUC-001]
 depends-on: ["001"]
 ---
@@ -46,13 +46,13 @@ Standalone — not in ServiceRegistry. Instantiated by the route module.
 
 ## Acceptance Criteria
 
-- [ ] SchedulerService created with tick(), listJobs(), updateJob(), runJobNow()
-- [ ] tick() uses FOR UPDATE SKIP LOCKED — concurrent calls skip locked jobs
-- [ ] Job errors captured in lastError and logged via Pino
-- [ ] nextRunAt always advances after execution (success or failure)
-- [ ] Route GET /api/scheduler/tick returns { executed: N }, no auth
-- [ ] Admin routes for list/update/run require requireAdmin
-- [ ] Routes registered in app.ts
+- [x] SchedulerService created with tick(), listJobs(), updateJob(), runJobNow()
+- [x] tick() uses FOR UPDATE SKIP LOCKED — concurrent calls skip locked jobs
+- [x] Job errors captured in lastError and logged via Pino
+- [x] nextRunAt always advances after execution (success or failure)
+- [x] Route GET /api/scheduler/tick returns { executed: N }, no auth
+- [x] Admin routes for list/update/run require requireAdmin
+- [x] Routes registered in app.ts
 
 ## Testing
 

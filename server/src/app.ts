@@ -34,6 +34,8 @@ import { prisma } from './services/prisma';
 import { ServiceRegistry } from './services/service.registry';
 import { tokenAuth } from './middleware/tokenAuth';
 import { slackRouter } from './routes/slack';
+import { schedulerRouter } from './routes/scheduler';
+import { SchedulerService } from './services/scheduler.service';
 import { createMcpHandler } from './mcp/server';
 
 const app = express();
@@ -118,6 +120,9 @@ app.use(passport.session());
 // Create the service registry (composition root)
 const services = ServiceRegistry.create();
 
+// Scheduler service — instantiated here so routes and middleware can share it
+const schedulerService = new SchedulerService(prisma);
+
 // Routes
 app.use('/api', healthRouter);
 app.use('/api', authRouter);
@@ -141,6 +146,7 @@ app.use('/api', aiChatRouter(services));
 app.use('/api', imageRouter(services));
 app.use('/api', categoriesRouter(services));
 app.use('/api', notesRouter(services));
+app.use('/api', schedulerRouter(schedulerService));
 app.use('/api', adminRouter);
 
 // Slack bot — mounted at root (not /api) to match Slack event subscription URLs
@@ -171,4 +177,5 @@ if (process.env.NODE_ENV === 'production') {
   });
 }
 
+export { schedulerService };
 export default app;
