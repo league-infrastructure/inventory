@@ -429,3 +429,13 @@ model Image {
   kits      Kit[]
   packs     Pack[]
 }
+
+model SlackConversation {
+  id               Int      @id @default(autoincrement())
+  slackUserId      String
+  userMessage      String
+  assistantMessage String
+  createdAt        DateTime @default(now())
+
+  @@index([slackUserId, createdAt])
+}

@@ -16,10 +16,12 @@ interface IssueRecord {
   id: number;
   type: string;
   status: string;
-  description: string | null;
-  packName: string;
-  itemName: string | null;
+  notes: string | null;
   createdAt: string;
+  pack: { id: number; name: string } | null;
+  item: { id: number; name: string } | null;
+  kit: { id: number; name: string } | null;
+  computer: { id: number; model: string | null; serialNumber: string | null } | null;
 }
 
 interface InventoryAgeRow {
@@ -177,19 +179,25 @@ function OpenIssuesWidget() {
       {!loading && issues.length === 0 && (
         <p className="text-sm text-gray-400">No open issues</p>
       )}
-      {issues.slice(0, 5).map((issue) => (
-        <div key={issue.id} className="py-2">
-          <div className="flex items-center gap-2">
-            <span className="px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
-              {issue.type.replace('_', ' ')}
-            </span>
-            <span className="text-sm text-gray-700">{issue.packName}</span>
+      {issues.slice(0, 5).map((issue) => {
+        const target = issue.kit?.name
+          || issue.pack?.name
+          || (issue.computer ? (issue.computer.model || issue.computer.serialNumber || 'Computer') : null)
+          || 'Unknown';
+        return (
+          <div key={issue.id} className="py-2">
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
+                {issue.type.replace('_', ' ')}
+              </span>
+              <span className="text-sm text-gray-700">{target}</span>
+            </div>
+            {issue.notes && (
+              <p className="text-xs text-gray-400 mt-0.5 truncate">{issue.notes}</p>
+            )}
           </div>
-          {issue.description && (
-            <p className="text-xs text-gray-400 mt-0.5 truncate">{issue.description}</p>
-          )}
-        </div>
-      ))}
+        );
+      })}
       {issues.length > 5 && (
         <Link to="/issues" className="text-xs text-primary hover:underline">
           View all ({issues.length})

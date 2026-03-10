@@ -79,6 +79,11 @@ function getToolDefinitions(): ToolDef[] {
     // ─── Transfers ────────────────────────────────────
     { name: 'transfer_kit', description: 'Transfer a kit to a new custodian and/or site', input_schema: { type: 'object', properties: { kitId: { type: 'number' }, custodianId: { type: ['number', 'null'] }, siteId: { type: ['number', 'null'] }, notes: { type: 'string' } }, required: ['kitId'] }, requiresQM: false },
     { name: 'transfer_computer', description: 'Transfer a standalone computer to a new custodian and/or site', input_schema: { type: 'object', properties: { computerId: { type: 'number' }, custodianId: { type: ['number', 'null'] }, siteId: { type: ['number', 'null'] }, notes: { type: 'string' } }, required: ['computerId'] }, requiresQM: false },
+
+    // ─── Issues ──────────────────────────────────────
+    { name: 'list_issues', description: 'List issues with optional filters by status, type, kitId, packId, or computerId', input_schema: { type: 'object', properties: { status: { type: 'string', description: 'OPEN or RESOLVED' }, type: { type: 'string', description: 'MISSING_ITEM, REPLENISHMENT, DAMAGE, MAINTENANCE, or OTHER' }, kitId: { type: 'number' }, packId: { type: 'number' }, computerId: { type: 'number' } }, required: [] }, requiresQM: false },
+    { name: 'create_issue', description: 'Create an issue on a kit, pack, or computer. Provide exactly one of kitId, packId, or computerId.', input_schema: { type: 'object', properties: { type: { type: 'string', description: 'MISSING_ITEM, REPLENISHMENT, DAMAGE, MAINTENANCE, or OTHER' }, kitId: { type: 'number' }, packId: { type: 'number' }, computerId: { type: 'number' }, itemId: { type: 'number' }, notes: { type: 'string' } }, required: ['type'] }, requiresQM: true },
+    { name: 'resolve_issue', description: 'Resolve an open issue by ID', input_schema: { type: 'object', properties: { id: { type: 'number' }, notes: { type: 'string' } }, required: ['id'] }, requiresQM: true },
   ];
 }
 
@@ -170,6 +175,11 @@ async function executeTool(
       // Transfers
       case 'transfer_kit': return JSON.stringify(await services.transfers.transfer({ objectType: 'Kit', objectId: input.kitId as number, custodianId: input.custodianId as number | null | undefined, siteId: input.siteId as number | null | undefined, notes: input.notes as string | undefined }, userId), null, 2);
       case 'transfer_computer': return JSON.stringify(await services.transfers.transfer({ objectType: 'Computer', objectId: input.computerId as number, custodianId: input.custodianId as number | null | undefined, siteId: input.siteId as number | null | undefined, notes: input.notes as string | undefined }, userId), null, 2);
+
+      // Issues
+      case 'list_issues': return JSON.stringify(await services.issues.list(input as any), null, 2);
+      case 'create_issue': return JSON.stringify(await services.issues.create(input as any, userId), null, 2);
+      case 'resolve_issue': return JSON.stringify(await services.issues.resolve(input.id as number, { notes: input.notes as string | undefined }, userId), null, 2);
 
       default:
         return JSON.stringify({ error: `Unknown tool: ${name}` });
