@@ -84,9 +84,11 @@ DOCKER_CONTEXT="$PROD_DOCKER_CONTEXT" docker service update \
 # One-shot swarm service that can access the database_url secret.
 # --restart-condition=none ensures it runs once and stops.
 echo "==> Running database migrations"
+DOCKER_CONTEXT="$PROD_DOCKER_CONTEXT" docker service rm inventory_migrate >/dev/null 2>&1 || true
 DOCKER_CONTEXT="$PROD_DOCKER_CONTEXT" docker service create \
   --name inventory_migrate \
   --restart-condition=none \
+  --with-registry-auth \
   --network inventory_default \
   --secret database_url \
   --entrypoint sh \
