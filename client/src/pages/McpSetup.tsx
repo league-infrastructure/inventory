@@ -216,7 +216,7 @@ export default function McpSetup() {
         </div>
 
         {/* Claude Desktop */}
-        <div>
+        <div className="mb-6">
           <h3 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
             <CheckCircle size={14} className="text-green-500" />
             Claude Desktop
@@ -239,6 +239,39 @@ export default function McpSetup() {
               </button>
             )}
           </div>
+        </div>
+
+        {/* Claude Web App */}
+        <div>
+          <h3 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+            <CheckCircle size={14} className="text-green-500" />
+            Claude Web App (claude.ai)
+          </h3>
+          <p className="text-sm text-gray-500 mb-2">
+            The web app uses OAuth to connect. Go to <strong>Settings → Connectors → Add Custom Connector</strong> and enter:
+          </p>
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-sm space-y-2">
+            <div className="flex gap-2">
+              <span className="font-medium text-gray-700 w-36 shrink-0">Name:</span>
+              <span className="text-gray-600">League Inventory</span>
+            </div>
+            <div className="flex gap-2">
+              <span className="font-medium text-gray-700 w-36 shrink-0">URL:</span>
+              <code className="text-xs bg-white border border-gray-200 rounded px-2 py-0.5">{serverUrl}/api/mcp</code>
+            </div>
+            <div className="flex gap-2">
+              <span className="font-medium text-gray-700 w-36 shrink-0">OAuth Client ID:</span>
+              <span className="text-gray-600">any label (e.g., <code className="text-xs bg-white border border-gray-200 rounded px-1">claude</code>)</span>
+            </div>
+            <div className="flex gap-2">
+              <span className="font-medium text-gray-700 w-36 shrink-0">OAuth Client Secret:</span>
+              <span className="text-gray-600">your API key from Step 1</span>
+            </div>
+          </div>
+          <p className="text-xs text-gray-400 mt-2">
+            Claude exchanges the client secret for a Bearer token via the OAuth token endpoint,
+            then uses it to authenticate MCP requests.
+          </p>
         </div>
 
       </section>

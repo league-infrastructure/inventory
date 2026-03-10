@@ -1,7 +1,7 @@
 ---
 id: "002"
 title: "Update MCP Setup page with OAuth connector instructions"
-status: todo
+status: done
 use-cases: []
 depends-on: []
 ---
@@ -20,9 +20,9 @@ the admin UI needs instructions explaining how to configure this:
 
 ## Acceptance Criteria
 
-- [ ] MCP Setup page documents OAuth connector setup steps
-- [ ] Instructions are clear enough for an admin to follow without help
-- [ ] Page references the API Tokens panel for token creation
+- [x] MCP Setup page documents OAuth connector setup steps
+- [x] Instructions are clear enough for an admin to follow without help
+- [x] Page references the API Tokens panel for token creation
 
 ## Testing
 
