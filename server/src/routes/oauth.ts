@@ -1,7 +1,13 @@
 import { Router, Request, Response } from 'express';
+import { PrismaClient } from '@prisma/client';
+import crypto from 'crypto';
 import { TokenService } from '../services/token.service';
 
-export function oauthRouter(tokenService: TokenService): Router {
+export function emailToClientId(email: string): string {
+  return crypto.createHash('sha256').update(email.toLowerCase()).digest('hex').slice(0, 32);
+}
+
+export function oauthRouter(tokenService: TokenService, prisma: PrismaClient): Router {
   const router = Router();
 
   // OAuth 2.0 Authorization Server Metadata (RFC 8414)
@@ -45,6 +51,13 @@ export function oauthRouter(tokenService: TokenService): Router {
       });
     }
 
+    if (!clientId) {
+      return res.status(401).json({
+        error: 'invalid_client',
+        error_description: 'client_id is required',
+      });
+    }
+
     if (!clientSecret) {
       return res.status(401).json({
         error: 'invalid_client',
@@ -54,7 +67,24 @@ export function oauthRouter(tokenService: TokenService): Router {
 
     try {
       // Validate the client_secret as an API token
-      await tokenService.validate(clientSecret);
+      const { userId } = await tokenService.validate(clientSecret);
+
+      // Look up the user's email and verify client_id matches its hash
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+      if (!user) {
+        return res.status(401).json({
+          error: 'invalid_client',
+          error_description: 'Invalid credentials',
+        });
+      }
+
+      const expectedClientId = emailToClientId(user.email);
+      if (clientId !== expectedClientId) {
+        return res.status(401).json({
+          error: 'invalid_client',
+          error_description: 'client_id does not match token owner',
+        });
+      }
 
       // The client_secret IS the access token — return it directly.
       // This is a pass-through: the token is already valid for Bearer auth.

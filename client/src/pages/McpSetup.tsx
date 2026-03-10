@@ -41,8 +41,20 @@ export default function McpSetup() {
   const [generating, setGenerating] = useState(false);
   const [copied, setCopied] = useState<string | false>(false);
   const [error, setError] = useState<string | null>(null);
+  const [clientId, setClientId] = useState<string>('');
 
   const serverUrl = window.location.origin;
+
+  // Compute OAuth client ID from email hash
+  useEffect(() => {
+    if (!user?.email) return;
+    const encoder = new TextEncoder();
+    crypto.subtle.digest('SHA-256', encoder.encode(user.email.toLowerCase()))
+      .then((buf) => {
+        const hex = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+        setClientId(hex.slice(0, 32));
+      });
+  }, [user?.email]);
 
   useEffect(() => {
     fetch('/api/tokens')
@@ -257,20 +269,62 @@ export default function McpSetup() {
             </div>
             <div className="flex gap-2">
               <span className="font-medium text-gray-700 w-36 shrink-0">URL:</span>
-              <code className="text-xs bg-white border border-gray-200 rounded px-2 py-0.5">{serverUrl}/api/mcp</code>
+              <div className="flex items-center gap-1">
+                <code className="text-xs bg-white border border-gray-200 rounded px-2 py-0.5">{serverUrl}/api/mcp</code>
+                <button
+                  onClick={() => copyToClipboard(`${serverUrl}/api/mcp`, 'oauth-url')}
+                  className="text-gray-400 hover:text-gray-600 cursor-pointer"
+                  title="Copy URL"
+                >
+                  <Copy size={12} />
+                </button>
+                {copied === 'oauth-url' && <span className="text-xs text-green-500">Copied!</span>}
+              </div>
             </div>
             <div className="flex gap-2">
               <span className="font-medium text-gray-700 w-36 shrink-0">OAuth Client ID:</span>
-              <span className="text-gray-600">any label (e.g., <code className="text-xs bg-white border border-gray-200 rounded px-1">claude</code>)</span>
+              <div className="flex items-center gap-1">
+                {clientId ? (
+                  <>
+                    <code className="text-xs bg-white border border-gray-200 rounded px-2 py-0.5 font-mono">{clientId}</code>
+                    <button
+                      onClick={() => copyToClipboard(clientId, 'oauth-client-id')}
+                      className="text-gray-400 hover:text-gray-600 cursor-pointer"
+                      title="Copy Client ID"
+                    >
+                      <Copy size={12} />
+                    </button>
+                    {copied === 'oauth-client-id' && <span className="text-xs text-green-500">Copied!</span>}
+                  </>
+                ) : (
+                  <span className="text-gray-400 italic">loading...</span>
+                )}
+              </div>
             </div>
             <div className="flex gap-2">
               <span className="font-medium text-gray-700 w-36 shrink-0">OAuth Client Secret:</span>
-              <span className="text-gray-600">your API key from Step 1</span>
+              <div className="flex items-center gap-1">
+                {hasFullToken ? (
+                  <>
+                    <code className="text-xs bg-white border border-gray-200 rounded px-2 py-0.5 font-mono break-all">{token}</code>
+                    <button
+                      onClick={() => copyToClipboard(token, 'oauth-secret')}
+                      className="text-gray-400 hover:text-gray-600 cursor-pointer"
+                      title="Copy Client Secret"
+                    >
+                      <Copy size={12} />
+                    </button>
+                    {copied === 'oauth-secret' && <span className="text-xs text-green-500">Copied!</span>}
+                  </>
+                ) : (
+                  <span className="text-gray-400 italic">{tokenInfo ? `${tokenInfo.prefix}... (generate a new token to see the full key)` : 'generate an API key in Step 1'}</span>
+                )}
+              </div>
             </div>
           </div>
           <p className="text-xs text-gray-400 mt-2">
             Claude exchanges the client secret for a Bearer token via the OAuth token endpoint,
-            then uses it to authenticate MCP requests.
+            then uses it to authenticate MCP requests. The Client ID is derived from your email address.
           </p>
         </div>
 

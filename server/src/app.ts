@@ -168,7 +168,7 @@ app.use('/api', adminRouter);
 app.use(slackRouter(services));
 
 // OAuth 2.0 endpoints for MCP connector authentication
-app.use(oauthRouter(services.tokens));
+app.use(oauthRouter(services.tokens, prisma));
 
 // MCP server — token-authenticated endpoint for external AI clients
 const mcpTokenAuth = tokenAuth(services.tokens, prisma);
