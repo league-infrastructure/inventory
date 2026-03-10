@@ -4,6 +4,13 @@ declare module 'express-session' {
   interface SessionData {
     isAdmin?: boolean;
     returnTo?: string;
+    pendingOAuth?: {
+      client_id: string;
+      redirect_uri: string;
+      state?: string;
+      code_challenge?: string;
+      code_challenge_method?: string;
+    };
   }
 }
 
