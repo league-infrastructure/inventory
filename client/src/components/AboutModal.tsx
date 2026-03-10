@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 
 interface Props {
@@ -5,6 +6,15 @@ interface Props {
 }
 
 export default function AboutModal({ onClose }: Props) {
+  const [version, setVersion] = useState<string>('');
+
+  useEffect(() => {
+    fetch('/api/admin/env')
+      .then((r) => r.json())
+      .then((d) => setVersion(d.version ?? ''))
+      .catch(() => {});
+  }, []);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="fixed inset-0 bg-black/50" onClick={onClose} />
@@ -22,7 +32,8 @@ export default function AboutModal({ onClose }: Props) {
             alt="League Robot"
             className="w-20 h-20 mb-4"
           />
-          <h2 className="text-lg font-bold text-gray-900 mb-1">LAP Inventory</h2>
+          <h2 className="text-lg font-bold text-gray-900 mb-1">Inventory</h2>
+          {version && <p className="text-xs text-gray-400 mb-1">v{version}</p>}
           <p className="text-sm text-gray-500 mb-4">
             The League administration application
           </p>

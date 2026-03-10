@@ -147,7 +147,7 @@ export class LabelService {
 
     // === CONTENT ROW — RIGHT COLUMN (name, auto-sized to fit) ===
     const contentHeight = LABEL_HEIGHT_PT - contentTop - MARGIN;
-    const availWidth = rightColWidth - 8;
+    const availWidth = rightColWidth - 33;
     const maxFontSize = 36;
     const minFontSize = 10;
 
