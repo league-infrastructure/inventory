@@ -31,6 +31,9 @@ test-results/
 playwright-report/
 blob-report/
 
+# Backups
+server/backups/
+
 # Logs
 *.log
 pids/
