@@ -88,6 +88,7 @@ enum ContainerType {
   LARGE_TOTE
   SMALL_TOTE
   DUFFEL
+  PENCIL_BOX
 }
 
 model Kit {
