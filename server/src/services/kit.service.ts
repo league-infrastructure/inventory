@@ -6,7 +6,7 @@ import { KitRecord, KitDetailRecord, CreateKitInput, UpdateKitInput, CONTAINER_T
 
 export class KitService extends BaseService<KitRecord, CreateKitInput, UpdateKitInput> {
   protected readonly entityName = 'Kit';
-  protected readonly auditFields = ['number', 'containerType', 'name', 'description', 'status', 'siteId', 'qrCode'];
+  protected readonly auditFields = ['number', 'containerType', 'name', 'description', 'status', 'siteId', 'qrCode', 'categoryId', 'custodianId'];
 
   constructor(prisma: PrismaClient, audit: AuditService) {
     super(prisma, audit);
