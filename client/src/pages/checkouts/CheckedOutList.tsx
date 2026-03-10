@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Tags, Monitor } from 'lucide-react';
 import SortableHeader from '../../components/SortableHeader';
 import { useTableSort } from '../../lib/useTableSort';
 
@@ -130,11 +131,9 @@ export default function CheckedOutList() {
                   onClick={() => navigate(row.link)}
                 >
                   <td className="px-4 py-3">
-                    <span className={`inline-block px-2 py-0.5 text-xs font-medium rounded ${
-                      row.type === 'Kit' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'
-                    }`}>
-                      {row.type}
-                    </span>
+                    {row.type === 'Kit'
+                      ? <Tags size={16} className="text-gray-400" />
+                      : <Monitor size={16} className="text-gray-400" />}
                   </td>
                   <td className="px-4 py-3 font-medium text-gray-900">{row.name}</td>
                   <td className="px-4 py-3 text-gray-600">{row._custodian}</td>

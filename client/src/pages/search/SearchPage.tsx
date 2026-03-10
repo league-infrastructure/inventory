@@ -18,14 +18,6 @@ const typeIcons: Record<string, any> = {
   site: MapPin,
 };
 
-const typeColors: Record<string, string> = {
-  kit: 'bg-blue-100 text-blue-800',
-  pack: 'bg-purple-100 text-purple-800',
-  item: 'bg-green-100 text-green-800',
-  computer: 'bg-orange-100 text-orange-800',
-  site: 'bg-gray-100 text-gray-800',
-};
-
 export default function SearchPage() {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -91,13 +83,13 @@ export default function SearchPage() {
                   to={r.url}
                   className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 no-underline text-gray-900"
                 >
-                  <div>
-                    <div className="font-medium">{r.title}</div>
-                    {r.subtitle && <div className="text-sm text-gray-500">{r.subtitle}</div>}
+                  <div className="flex items-center gap-2">
+                    {(() => { const I = typeIcons[r.type] || Box; return <I size={16} className="shrink-0 text-gray-400" />; })()}
+                    <div>
+                      <div className="font-medium">{r.title}</div>
+                      {r.subtitle && <div className="text-sm text-gray-500">{r.subtitle}</div>}
+                    </div>
                   </div>
-                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${typeColors[r.type]}`}>
-                    {r.type}
-                  </span>
                 </Link>
               ))}
             </div>

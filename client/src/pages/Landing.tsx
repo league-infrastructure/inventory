@@ -139,18 +139,14 @@ function TransferredOutWidget() {
         <p className="text-sm text-gray-400">No items currently transferred out</p>
       )}
       {allItems.slice(0, 5).map((item) => (
-        <div key={`${item.type}-${item.id}`} className="flex items-center justify-between py-2">
+        <div key={`${item.type}-${item.id}`} className="flex items-center gap-2 py-2">
+          {item.type === 'kit' ? <Tags size={14} className="shrink-0 text-gray-400" /> : <Monitor size={14} className="shrink-0 text-gray-400" />}
           <Link
             to={item.type === 'kit' ? `/kits/${item.id}` : `/computers/${item.id}`}
             className="text-sm text-primary hover:underline"
           >
-            {item.type === 'kit' ? `Kit #${item.number}: ${item.name}` : item.name}
+            {item.type === 'kit' ? `#${item.number}: ${item.name}` : item.name}
           </Link>
-          <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-            item.type === 'kit' ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800'
-          }`}>
-            {item.type}
-          </span>
         </div>
       ))}
       {allItems.length > 5 && (
@@ -180,17 +176,26 @@ function OpenIssuesWidget() {
         <p className="text-sm text-gray-400">No open issues</p>
       )}
       {issues.slice(0, 5).map((issue) => {
-        const target = issue.kit?.name
+        const targetLabel = issue.kit?.name
           || issue.pack?.name
           || (issue.computer ? (issue.computer.model || issue.computer.serialNumber || 'Computer') : null)
           || 'Unknown';
+        const targetLink = issue.kit ? `/kits/${issue.kit.id}`
+          : issue.computer ? `/computers/${issue.computer.id}`
+          : null;
+        const TargetIcon = issue.kit ? Tags : issue.computer ? Monitor : null;
         return (
           <div key={issue.id} className="py-2">
             <div className="flex items-center gap-2">
               <span className="px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
                 {issue.type.replace('_', ' ')}
               </span>
-              <span className="text-sm text-gray-700">{target}</span>
+              {TargetIcon && <TargetIcon size={14} className="shrink-0 text-gray-400" />}
+              {targetLink ? (
+                <Link to={targetLink} className="text-sm text-primary hover:underline">{targetLabel}</Link>
+              ) : (
+                <span className="text-sm text-gray-700">{targetLabel}</span>
+              )}
             </div>
             {issue.notes && (
               <p className="text-xs text-gray-400 mt-0.5 truncate">{issue.notes}</p>
@@ -229,12 +234,15 @@ function NeedsInventoryWidget() {
       )}
       {overdue.slice(0, 5).map((r) => (
         <div key={`${r.type}-${r.id}`} className="flex items-center justify-between py-2">
-          <Link
-            to={r.type === 'kit' ? `/kits/${r.id}` : `/computers/${r.id}`}
-            className="text-sm text-primary hover:underline"
-          >
-            {r.name}
-          </Link>
+          <div className="flex items-center gap-2">
+            {r.type === 'kit' ? <Tags size={14} className="shrink-0 text-gray-400" /> : <Monitor size={14} className="shrink-0 text-gray-400" />}
+            <Link
+              to={r.type === 'kit' ? `/kits/${r.id}` : `/computers/${r.id}`}
+              className="text-sm text-primary hover:underline"
+            >
+              {r.name}
+            </Link>
+          </div>
           <span className={`px-2 py-0.5 rounded text-xs font-medium ${
             r.daysSinceInventory === null ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
           }`}>

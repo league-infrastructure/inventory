@@ -73,7 +73,7 @@ export class SearchService {
       results.push({
         type: 'kit',
         id: k.id,
-        title: `Kit #${k.number}: ${k.name}`,
+        title: `#${k.number}: ${k.name}`,
         subtitle: k.status,
         url: `/kits/${k.id}`,
       });
@@ -83,7 +83,7 @@ export class SearchService {
         type: 'pack',
         id: p.id,
         title: p.name,
-        subtitle: `Kit #${p.kit.number}: ${p.kit.name}`,
+        subtitle: `in #${p.kit.number}: ${p.kit.name}`,
         url: `/packs`,
       });
     }
