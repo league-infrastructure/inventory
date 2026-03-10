@@ -95,14 +95,20 @@ export class BackupService {
 
     const stats = fs.statSync(filePath);
 
-    // Upload to S3 (DigitalOcean Spaces) under backups/
-    await this.uploadToS3(filePath, filename);
+    // Upload to S3 (DigitalOcean Spaces) under backups/ — best-effort
+    let location: 'local' | 's3' | 'both' = 'local';
+    try {
+      await this.uploadToS3(filePath, filename);
+      location = 'both';
+    } catch (err: any) {
+      console.error(`S3 upload failed for ${filename}: ${err.message}. Backup saved locally only.`);
+    }
 
     return {
       filename,
       size: stats.size,
       createdAt: stats.mtime.toISOString(),
-      location: 'both',
+      location,
     };
   }
 

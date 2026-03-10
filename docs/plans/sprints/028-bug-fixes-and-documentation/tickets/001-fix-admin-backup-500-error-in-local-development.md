@@ -1,7 +1,7 @@
 ---
 id: "001"
 title: "Fix admin backup 500 error in local development"
-status: todo
+status: done
 use-cases: []
 depends-on: []
 ---
@@ -26,9 +26,9 @@ Investigate the actual error — possible causes:
 
 ## Acceptance Criteria
 
-- [ ] Admin backup button works in local dev
-- [ ] Backup file is created locally even if S3 is unavailable
-- [ ] Error messages are clear when S3 is not configured
+- [x] Admin backup button works in local dev
+- [x] Backup file is created locally even if S3 is unavailable
+- [x] Error messages are clear when S3 is not configured
 
 ## Testing
 
