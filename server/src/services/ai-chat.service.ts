@@ -90,7 +90,18 @@ function getToolDefinitions(): ToolDef[] {
 /**
  * Build the system prompt with dynamic user context.
  */
-async function buildSystemPrompt(user: User, services: ServiceRegistry): Promise<string> {
+/** Page context from the frontend — which page/entity the user is viewing. */
+export interface PageContext {
+  page: string;
+  entityType?: string;
+  entityId?: number;
+}
+
+async function buildSystemPrompt(
+  user: User,
+  services: ServiceRegistry,
+  pageContext?: PageContext,
+): Promise<string> {
   let prompt = SYSTEM_PROMPT_TEMPLATE
     .replace('{{userName}}', user.displayName)
     .replace('{{userRole}}', user.role)
@@ -98,6 +109,26 @@ async function buildSystemPrompt(user: User, services: ServiceRegistry): Promise
 
   // Remove location section placeholder (we don't have coords from the web chat)
   prompt = prompt.replace(/\{\{#userLocation\}\}[\s\S]*?\{\{\/userLocation\}\}/g, '');
+
+  // Inject page context if available
+  if (pageContext?.entityType && pageContext?.entityId) {
+    let entityDesc = `${pageContext.entityType} (ID: ${pageContext.entityId})`;
+    try {
+      if (pageContext.entityType === 'kit') {
+        const kit = await services.kits.get(pageContext.entityId);
+        entityDesc = `Kit #${kit.number}: ${kit.name}`;
+      } else if (pageContext.entityType === 'computer') {
+        const computer = await services.computers.get(pageContext.entityId);
+        entityDesc = `Computer: ${computer.hostName?.name || computer.model || `#${computer.id}`}`;
+      } else if (pageContext.entityType === 'site') {
+        const site = await services.sites.get(pageContext.entityId);
+        entityDesc = `Site: ${site.name}`;
+      }
+    } catch { /* use fallback description */ }
+    prompt += `\n\n## Current Page\n\nThe user is currently viewing the **${pageContext.page}** page for **${entityDesc}**. When they say "this kit", "this computer", or similar, they are referring to this entity.\n`;
+  } else if (pageContext?.page) {
+    prompt += `\n\n## Current Page\n\nThe user is currently on the **${pageContext.page}** page.\n`;
+  }
 
   // Fetch recent activity for context
   try {
@@ -260,13 +291,14 @@ export class AiChatService {
     services: ServiceRegistry,
     onDelta: OnDelta,
     onToolUse?: OnToolUse,
+    pageContext?: PageContext,
   ): Promise<string> {
     if (!this.client) {
       throw new Error('AI is not configured — set ANTHROPIC_API_KEY');
     }
 
     const tools = this.getToolsForRole(user.role);
-    const systemPrompt = await buildSystemPrompt(user, services);
+    const systemPrompt = await buildSystemPrompt(user, services, pageContext);
 
     // Build messages array from history + current message
     const messages: Anthropic.MessageParam[] = [

@@ -23,9 +23,10 @@ export function aiChatRouter(services: ServiceRegistry): Router {
       return res.status(503).json({ error: 'AI is not configured — set ANTHROPIC_API_KEY' });
     }
 
-    const { message, conversationHistory = [] } = req.body as {
+    const { message, conversationHistory = [], pageContext } = req.body as {
       message: string;
       conversationHistory?: ChatMessage[];
+      pageContext?: { page: string; entityType?: string; entityId?: number };
     };
 
     if (!message || typeof message !== 'string') {
@@ -60,6 +61,7 @@ export function aiChatRouter(services: ServiceRegistry): Router {
         aiServices,
         (text) => sendEvent({ type: 'delta', text }),
         (name, input) => sendEvent({ type: 'tool_use', name, input }),
+        pageContext,
       );
 
       sendEvent({ type: 'done', fullText });
