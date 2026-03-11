@@ -1,5 +1,8 @@
 ---
-status: pending
+status: done
+sprint: '031'
+tickets:
+- '001'
 ---
 
 # AI chat assistant should receive page context

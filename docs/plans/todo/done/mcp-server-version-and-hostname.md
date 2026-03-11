@@ -1,5 +1,8 @@
 ---
-status: pending
+status: done
+sprint: '031'
+tickets:
+- '002'
 ---
 
 # MCP server should expose app version and server hostname

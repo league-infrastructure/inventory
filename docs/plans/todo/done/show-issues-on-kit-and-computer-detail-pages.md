@@ -1,5 +1,5 @@
 ---
-status: pending
+status: done
 ---
 
 # Show issues on kit and computer detail pages
