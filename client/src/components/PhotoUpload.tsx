@@ -137,8 +137,8 @@ export default function PhotoUpload({ objectType, objectId, imageId, onUpdate, c
   }
 
   return (
-    <div className="mt-6">
-      <h2 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+    <div className="mt-8">
+      <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
         <Camera size={16} className="text-gray-400" />
         Photo
       </h2>

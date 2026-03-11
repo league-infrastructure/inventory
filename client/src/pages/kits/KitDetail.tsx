@@ -898,8 +898,8 @@ export default function KitDetail() {
 
       {/* Transfer history */}
       {transferHistory.length > 0 && (
-        <div className="mb-8">
-          <h3 className="text-sm font-semibold text-gray-700 mb-2">Transfer History</h3>
+        <div className="mt-8">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Transfer History</h2>
           <div className="bg-white border border-gray-200 rounded-lg overflow-x-auto">
             <table className="w-full text-sm">
               <thead>

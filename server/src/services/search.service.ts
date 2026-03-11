@@ -26,6 +26,7 @@ export class SearchService {
     const [kits, packs, items, computers, sites] = await Promise.all([
       this.prisma.kit.findMany({
         where: {
+          status: 'ACTIVE',
           OR: [
             ...kitNumberFilter,
             { name: { contains: query, mode: 'insensitive' } },

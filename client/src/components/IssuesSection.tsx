@@ -45,8 +45,8 @@ export default function IssuesSection({ kitId, computerId }: Props) {
   if (issues.length === 0) return null;
 
   return (
-    <div className="mt-6">
-      <h2 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+    <div className="mt-8">
+      <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
         <AlertTriangle size={16} className="text-amber-500" />
         Open Issues ({issues.length})
       </h2>
