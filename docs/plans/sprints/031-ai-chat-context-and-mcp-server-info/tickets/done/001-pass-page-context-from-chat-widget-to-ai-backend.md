@@ -1,7 +1,7 @@
 ---
 id: "001"
 title: "Pass page context from chat widget to AI backend"
-status: in-progress
+status: done
 use-cases:
   - SUC-031-001
 depends-on: []
@@ -18,12 +18,12 @@ route, AI service, and system prompt template.
 
 ## Acceptance Criteria
 
-- [ ] `AiChat.tsx` extracts entity type and ID from the current URL
-- [ ] Page context is sent as `pageContext` in the POST body
-- [ ] `ai-chat.ts` route accepts and passes `pageContext` to the service
-- [ ] `ai-chat.service.ts` looks up entity name and injects context into prompt
-- [ ] System prompt template includes page context section
-- [ ] Chat works normally on pages without entity context (e.g., dashboard)
+- [x] `AiChat.tsx` extracts entity type and ID from the current URL
+- [x] Page context is sent as `pageContext` in the POST body
+- [x] `ai-chat.ts` route accepts and passes `pageContext` to the service
+- [x] `ai-chat.service.ts` looks up entity name and injects context into prompt
+- [x] System prompt template includes page context section
+- [x] Chat works normally on pages without entity context (e.g., dashboard)
 
 ## Testing
 

@@ -1,7 +1,7 @@
 ---
 id: "002"
 title: "Extend MCP get_version tool with hostname and environment"
-status: todo
+status: done
 use-cases:
   - SUC-031-002
 depends-on: []
@@ -18,10 +18,10 @@ agents discover it when asked about the server hostname.
 
 ## Acceptance Criteria
 
-- [ ] `get_version` returns `hostname` field
-- [ ] `get_version` returns `environment` field
-- [ ] Tool description mentions "hostname" and "server" for discoverability
-- [ ] Existing `version` and `name` fields are unchanged
+- [x] `get_version` returns `hostname` field
+- [x] `get_version` returns `environment` field
+- [x] Tool description mentions "hostname" and "server" for discoverability
+- [x] Existing `version` and `name` fields are unchanged
 
 ## Testing
 
