@@ -7,6 +7,7 @@ import InventoryCheckSection from '../../components/InventoryCheckSection';
 import LabelPrintModal from '../../components/LabelPrintModal';
 import PhotoUpload from '../../components/PhotoUpload';
 import NotesSection from '../../components/NotesSection';
+import IssuesSection from '../../components/IssuesSection';
 import type { ContainerType } from '../../lib/containers';
 import { CONTAINER_TYPE_LABELS } from '../../lib/containers';
 
@@ -925,6 +926,8 @@ export default function KitDetail() {
           </div>
         </div>
       )}
+
+      <IssuesSection kitId={Number(id)} />
 
       <NotesSection objectType="Kit" objectId={Number(id)} />
 

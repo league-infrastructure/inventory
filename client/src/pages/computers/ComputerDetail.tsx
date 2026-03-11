@@ -5,6 +5,7 @@ import TransferModal from '../../components/TransferModal';
 import PhotoUpload from '../../components/PhotoUpload';
 import NotesSection from '../../components/NotesSection';
 import ReportIssueModal from '../../components/ReportIssueModal';
+import IssuesSection from '../../components/IssuesSection';
 
 interface Site { id: number; name: string; }
 interface Kit { id: number; name: string; }
@@ -334,6 +335,8 @@ export default function ComputerDetail() {
       </form>
 
       <PhotoUpload objectType="Computer" objectId={parseInt(id!, 10)} imageId={imageId} onUpdate={loadComputer} />
+
+      <IssuesSection computerId={parseInt(id!, 10)} />
 
       <NotesSection objectType="Computer" objectId={parseInt(id!, 10)} />
 
