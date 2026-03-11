@@ -226,7 +226,7 @@ export class BackupService {
       const projectRoot = path.resolve(__dirname, '..', '..', '..');
       const composeFile = process.env.COMPOSE_FILE || path.join(projectRoot, 'docker-compose.dev.yml');
       await execAsync(
-        `cat "${filePath}" | docker compose -f "${composeFile}" exec -T db pg_restore --clean --if-exists --no-owner --no-acl --dbname=app`,
+        `cat "${filePath}" | docker compose -f "${composeFile}" exec -T db pg_restore --clean --if-exists --no-owner --no-acl -U app --dbname=app`,
         { maxBuffer: 50 * 1024 * 1024 },
       );
     }
