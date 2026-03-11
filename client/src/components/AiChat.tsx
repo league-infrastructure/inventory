@@ -1,11 +1,49 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { MessageSquare, Send, X } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
+}
+
+interface PageContext {
+  page: string;
+  entityType?: string;
+  entityId?: number;
+}
+
+function getPageContext(pathname: string): PageContext | null {
+  const patterns: { pattern: RegExp; type: string; page: string }[] = [
+    { pattern: /^\/kits\/(\d+)/, type: 'kit', page: 'Kit Detail' },
+    { pattern: /^\/computers\/(\d+)/, type: 'computer', page: 'Computer Detail' },
+    { pattern: /^\/sites\/(\d+)/, type: 'site', page: 'Site Detail' },
+  ];
+
+  for (const { pattern, type, page } of patterns) {
+    const match = pathname.match(pattern);
+    if (match) {
+      return { page, entityType: type, entityId: parseInt(match[1], 10) };
+    }
+  }
+
+  // Non-entity pages
+  const pageNames: Record<string, string> = {
+    '/': 'Dashboard',
+    '/kits': 'Kits List',
+    '/computers': 'Computers List',
+    '/sites': 'Sites List',
+    '/issues': 'Issues List',
+    '/search': 'Search',
+    '/checkouts': 'Checked Out',
+  };
+
+  for (const [path, name] of Object.entries(pageNames)) {
+    if (pathname === path) return { page: name };
+  }
+
+  return null;
 }
 
 export default function AiChat() {
@@ -17,6 +55,7 @@ export default function AiChat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Intercept internal links in markdown and use client-side navigation
   const markdownComponents = useCallback(() => ({
@@ -76,7 +115,7 @@ export default function AiChat() {
       const res = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, conversationHistory: history }),
+        body: JSON.stringify({ message: text, conversationHistory: history, pageContext: getPageContext(location.pathname) }),
       });
 
       if (!res.ok) {

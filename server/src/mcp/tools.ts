@@ -4,6 +4,7 @@ import { mcpContext } from './context';
 import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { hostname } from 'os';
 import { hasQMAccess } from '../contracts';
 
 // MCP clients struggle with anyOf schemas (nullable/optional numbers).
@@ -54,9 +55,19 @@ export function registerTools(server: McpServer): void {
 
   const pkg = JSON.parse(readFileSync(join(__dirname, '..', '..', 'package.json'), 'utf-8'));
 
-  server.tool('get_version', 'Get the application version from package.json', {}, async () => {
-    return ok({ version: pkg.version, name: pkg.name });
-  });
+  server.tool(
+    'get_version',
+    'Get the application version, server hostname, and deployment environment. Use this tool when asked about the app version, which server the app is running on, or the deployment environment.',
+    {},
+    async () => {
+      return ok({
+        version: pkg.version,
+        name: pkg.name,
+        hostname: hostname(),
+        environment: process.env.NODE_ENV || 'development',
+      });
+    },
+  );
 
   // ─── Sites ──────────────────────────────────────────────────────────
 
