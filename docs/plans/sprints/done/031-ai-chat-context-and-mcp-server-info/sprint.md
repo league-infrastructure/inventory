@@ -1,11 +1,11 @@
 ---
-id: "031"
-title: "AI Chat Context and MCP Server Info"
-status: active
+id: '031'
+title: AI Chat Context and MCP Server Info
+status: done
 branch: sprint/031-ai-chat-context-and-mcp-server-info
 use-cases:
-  - SUC-031-001
-  - SUC-031-002
+- SUC-031-001
+- SUC-031-002
 ---
 
 # Sprint 031: AI Chat Context and MCP Server Info
