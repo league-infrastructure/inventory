@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Tags, ArrowRightLeft, User, Building2, Archive } from 'lucide-react';
+import { Plus, Tags, ArrowRightLeft, User, Building2, Archive, Printer, X } from 'lucide-react';
 import { useTableSort } from '../../lib/useTableSort';
 import SortableHeader from '../../components/SortableHeader';
 import TransferModal from '../../components/TransferModal';
@@ -24,6 +24,7 @@ export default function ComputerList() {
   const [error, setError] = useState<string | null>(null);
   const [dispositionFilter, setDispositionFilter] = useState('ACTIVE');
   const [transferComputerId, setTransferComputerId] = useState<number | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
   const enriched = useMemo(() => computers.map((c) => ({
     ...c,
@@ -47,7 +48,46 @@ export default function ComputerList() {
       .finally(() => setLoading(false));
   }
 
-  useEffect(() => { loadComputers(); }, [dispositionFilter]);
+  useEffect(() => { loadComputers(); setSelectedIds(new Set()); }, [dispositionFilter]);
+
+  function toggleSelect(id: number) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    setSelectedIds((prev) => {
+      if (prev.size === sorted.length) return new Set();
+      return new Set(sorted.map((c) => c.id));
+    });
+  }
+
+  function handlePrintSingle(e: React.MouseEvent, computerId: number) {
+    e.stopPropagation();
+    window.open(`/api/labels/computer/${computerId}/compact`, '_blank');
+  }
+
+  async function handleBatchPrint() {
+    const ids = Array.from(selectedIds);
+    if (!ids.length) return;
+    try {
+      const res = await fetch('/api/labels/computers/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ computerIds: ids }),
+      });
+      if (!res.ok) throw new Error('Failed to generate labels');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+    } catch (e: any) {
+      setError(e.message);
+    }
+  }
 
   function handleTransferClick(e: React.MouseEvent, computer: Computer) {
     e.stopPropagation();
@@ -105,6 +145,15 @@ export default function ComputerList() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200">
+                <th className="px-2 py-3 w-8">
+                  <input
+                    type="checkbox"
+                    checked={sorted.length > 0 && selectedIds.size === sorted.length}
+                    onChange={toggleSelectAll}
+                    className="cursor-pointer"
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                </th>
                 <SortableHeader label="Host Name" sortKey="hostName.name" currentSort={sort} onSort={toggleSort} filterValue={filters['hostName.name']} onFilter={setFilter} />
                 <SortableHeader label="Model" sortKey="model" currentSort={sort} onSort={toggleSort} filterValue={filters['model']} onFilter={setFilter} />
                 <SortableHeader label="Disposition" sortKey="disposition" currentSort={sort} onSort={toggleSort} filterValue={filters['disposition']} onFilter={setFilter} />
@@ -121,6 +170,15 @@ export default function ComputerList() {
                   className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
                   onClick={() => navigate(`/computers/${c.id}`)}
                 >
+                  <td className="px-2 py-3 w-8">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(c.id)}
+                      onChange={() => toggleSelect(c.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="cursor-pointer"
+                    />
+                  </td>
                   <td className="px-4 py-3 font-medium text-gray-900">
                     {c.hostName?.name || `#${c.id}`}
                   </td>
@@ -155,20 +213,49 @@ export default function ComputerList() {
                     ) : '—'}
                   </td>
                   <td className="px-4 py-3 hidden sm:table-cell">
-                    {!c.kit && (
+                    <div className="flex gap-1">
                       <button
-                        onClick={(e) => handleTransferClick(e, c)}
-                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md bg-blue-50 text-blue-700 border border-blue-200 cursor-pointer hover:bg-blue-100"
-                        title="Transfer"
+                        onClick={(e) => handlePrintSingle(e, c.id)}
+                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md bg-gray-50 text-gray-700 border border-gray-200 cursor-pointer hover:bg-gray-100"
+                        title="Print Label"
                       >
-                        <ArrowRightLeft size={12} />
+                        <Printer size={12} />
                       </button>
-                    )}
+                      {!c.kit && (
+                        <button
+                          onClick={(e) => handleTransferClick(e, c)}
+                          className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md bg-blue-50 text-blue-700 border border-blue-200 cursor-pointer hover:bg-blue-100"
+                          title="Transfer"
+                        >
+                          <ArrowRightLeft size={12} />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-3 bg-white border border-gray-300 rounded-xl shadow-lg">
+          <span className="text-sm font-medium text-gray-700">{selectedIds.size} selected</span>
+          <button
+            onClick={handleBatchPrint}
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg bg-primary text-white border-none cursor-pointer hover:bg-primary-hover"
+          >
+            <Printer size={14} />
+            Print Labels
+          </button>
+          <button
+            onClick={() => setSelectedIds(new Set())}
+            className="inline-flex items-center gap-1 px-2 py-1.5 text-sm text-gray-500 cursor-pointer hover:text-gray-700 bg-transparent border-none"
+            title="Clear selection"
+          >
+            <X size={14} />
+          </button>
         </div>
       )}
 

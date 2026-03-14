@@ -1,12 +1,12 @@
 ---
-id: "004"
-title: "Computer List Checkbox Selection and Batch Print"
-status: todo
+id: '004'
+title: Computer List Checkbox Selection and Batch Print
+status: in-progress
 use-cases:
-  - SUC-002
-  - SUC-003
+- SUC-002
+- SUC-003
 depends-on:
-  - "002"
+- '002'
 ---
 <!-- CLASI: Before changing code or making plans, review the SE process in CLAUDE.md -->
 
