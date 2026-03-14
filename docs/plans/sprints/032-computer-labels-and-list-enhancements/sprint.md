@@ -1,7 +1,7 @@
 ---
 id: "032"
 title: "Computer Labels and List Enhancements"
-status: planning
+status: active
 branch: sprint/032-computer-labels-and-list-enhancements
 use-cases:
   - SUC-001
