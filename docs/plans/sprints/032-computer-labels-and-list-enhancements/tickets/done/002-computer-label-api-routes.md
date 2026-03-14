@@ -1,7 +1,7 @@
 ---
 id: '002'
 title: Computer Label API Routes
-status: in-progress
+status: done
 use-cases:
 - SUC-001
 - SUC-002
