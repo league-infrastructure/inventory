@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { User, Building2, Archive, ArrowRightLeft, AlertTriangle } from 'lucide-react';
+import { User, Building2, Archive, ArrowRightLeft, AlertTriangle, Printer } from 'lucide-react';
 import TransferModal from '../../components/TransferModal';
 import PhotoUpload from '../../components/PhotoUpload';
 import NotesSection from '../../components/NotesSection';
@@ -184,6 +184,12 @@ export default function ComputerDetail() {
         <div className="flex items-center gap-4 mb-6 p-4 bg-white border border-gray-200 rounded-lg">
           <img src={qrDataUrl} alt="QR Code" className="w-24 h-24" />
           <code className="text-xs text-gray-500">{qrCode}</code>
+          <button
+            className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-blue-50 text-blue-700 border border-blue-200 cursor-pointer hover:bg-blue-100"
+            onClick={() => window.open(`/api/labels/computer/${id}/compact`, '_blank')}
+          >
+            <Printer size={14} /> Print Label
+          </button>
         </div>
       )}
 

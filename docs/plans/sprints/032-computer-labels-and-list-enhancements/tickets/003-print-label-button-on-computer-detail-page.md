@@ -1,11 +1,11 @@
 ---
-id: "003"
-title: "Print Label Button on Computer Detail Page"
-status: todo
+id: '003'
+title: Print Label Button on Computer Detail Page
+status: in-progress
 use-cases:
-  - SUC-001
+- SUC-001
 depends-on:
-  - "002"
+- '002'
 ---
 <!-- CLASI: Before changing code or making plans, review the SE process in CLAUDE.md -->
 
