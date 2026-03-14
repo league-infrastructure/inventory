@@ -1,9 +1,9 @@
 ---
-id: "005"
-title: "Sortable Last Updated Column on Computer List"
-status: todo
+id: '005'
+title: Sortable Last Updated Column on Computer List
+status: in-progress
 use-cases:
-  - SUC-004
+- SUC-004
 depends-on: []
 ---
 <!-- CLASI: Before changing code or making plans, review the SE process in CLAUDE.md -->

@@ -9,6 +9,7 @@ interface Computer {
   id: number;
   model: string | null;
   disposition: string;
+  updatedAt: string;
   hostName: { name: string } | null;
   site: { id: number; name: string } | null;
   kit: { id: number; name: string } | null;
@@ -16,6 +17,21 @@ interface Computer {
 }
 
 import { DISPOSITIONS, dispositionClasses } from '../../lib/dispositions';
+
+function formatUpdatedAt(iso: string): string {
+  const date = new Date(iso);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return 'just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
 
 export default function ComputerList() {
   const navigate = useNavigate();
@@ -160,6 +176,7 @@ export default function ComputerList() {
                 <SortableHeader label="Custodian" sortKey="_custodian" currentSort={sort} onSort={toggleSort} filterValue={filters['_custodian']} onFilter={setFilter} className="hidden sm:table-cell" />
                 <SortableHeader label="Location" sortKey="_location" currentSort={sort} onSort={toggleSort} filterValue={filters['_location']} onFilter={setFilter} className="hidden sm:table-cell" />
                 <SortableHeader label="Kit" sortKey="_kit" currentSort={sort} onSort={toggleSort} filterValue={filters['_kit']} onFilter={setFilter} className="hidden sm:table-cell" />
+                <SortableHeader label="Last Updated" sortKey="updatedAt" currentSort={sort} onSort={toggleSort} className="hidden sm:table-cell" />
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 hidden sm:table-cell">Actions</th>
               </tr>
             </thead>
@@ -211,6 +228,9 @@ export default function ComputerList() {
                         {c.kit.name}
                       </span>
                     ) : '—'}
+                  </td>
+                  <td className="px-4 py-3 text-gray-500 text-xs hidden sm:table-cell" title={c.updatedAt ? new Date(c.updatedAt).toLocaleString() : ''}>
+                    {c.updatedAt ? formatUpdatedAt(c.updatedAt) : '—'}
                   </td>
                   <td className="px-4 py-3 hidden sm:table-cell">
                     <div className="flex gap-1">
