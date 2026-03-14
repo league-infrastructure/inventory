@@ -1,3 +1,7 @@
+---
+status: done
+---
+
 # Architecture — Version 003
 
 > Target state after sprint 032. Changes from version 002: extends the
