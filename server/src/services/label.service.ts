@@ -1,7 +1,10 @@
 import PDFDocument from 'pdfkit';
 import QRCode from 'qrcode';
+import * as path from 'path';
 import { PrismaClient } from '@prisma/client';
 import { NotFoundError } from './errors';
+
+const FLAG_IMAGE_PATH = path.join(__dirname, '..', 'assets', 'flag.png');
 
 // Dymo large shipping label: 59mm x 102mm — printed landscape
 const LABEL_WIDTH_PT = 102 * 2.83465;  // ~289pt (long edge horizontal)
@@ -281,27 +284,33 @@ export class LabelService {
     const m = COMPACT_MARGIN;
     const contentHeight = COMPACT_HEIGHT_PT - m * 2;
     const qrSize = contentHeight; // full-height QR
-    const rightLeft = m + qrSize + 4;
+    const rightLeft = m + qrSize + 6;
     const rightWidth = COMPACT_WIDTH_PT - rightLeft - m;
 
     // === LEFT: QR code (full height) ===
     doc.image(qrBuffer, m, m, { width: qrSize, height: qrSize });
 
-    // === RIGHT TOP: Header (flag + org + contact) ===
-    this.drawFlagLogo(doc, rightLeft, m, 0.35);
-    const headerTextLeft = rightLeft + 16;
-    doc.fontSize(5.5).font('Helvetica-Bold')
+    // === RIGHT TOP: Header (flag image + org + contact) ===
+    const flagSize = 14;
+    try {
+      doc.image(FLAG_IMAGE_PATH, rightLeft, m + 1, { width: flagSize, height: flagSize });
+    } catch {
+      // Fallback: skip flag if image not found
+    }
+    const headerTextLeft = rightLeft + flagSize + 3;
+    const headerTextWidth = rightWidth - flagSize - 3;
+    doc.fontSize(6).font('Helvetica-Bold')
        .text('The League Of Amazing Programmers', headerTextLeft, m + 1, {
-         width: rightWidth - 16,
+         width: headerTextWidth,
        });
-    doc.fontSize(5).font('Helvetica')
+    doc.fontSize(5.5).font('Helvetica')
        .text(CONTACT_LINE, headerTextLeft, doc.y, {
-         width: rightWidth - 16,
+         width: headerTextWidth,
        });
 
-    // === MIDDLE: Machine name (large) ===
-    const headerBottom = m + 16;
-    const machineNameSize = machineName.length <= 12 ? 11 : machineName.length <= 20 ? 9 : 7;
+    // === Machine name (large) ===
+    const headerBottom = m + 18;
+    const machineNameSize = machineName.length <= 12 ? 14 : machineName.length <= 20 ? 11 : 9;
     doc.fontSize(machineNameSize).font('Helvetica-Bold')
        .text(machineName, rightLeft, headerBottom, {
          width: rightWidth,
@@ -309,15 +318,15 @@ export class LabelService {
 
     // === Credentials line ===
     if (credentials) {
-      doc.fontSize(6).font('Helvetica')
+      doc.fontSize(7.5).font('Helvetica')
          .text(credentials, rightLeft, doc.y + 1, {
            width: rightWidth,
          });
     }
 
-    // === BOTTOM: Serial number (small) ===
+    // === Serial number (bottom, small) ===
     if (serialNumber) {
-      doc.fontSize(5).font('Helvetica')
+      doc.fontSize(6).font('Helvetica')
          .text(`SN: ${serialNumber}`, rightLeft, doc.y + 1, {
            width: rightWidth,
          });

@@ -16,6 +16,16 @@ async function hasPgDump(): Promise<boolean> {
   }
 }
 
+async function findDbContainer(): Promise<string> {
+  // Find the running PostgreSQL container by port mapping (5432 inside)
+  const { stdout } = await execAsync(
+    `docker ps --filter "publish=5433" --format "{{.Names}}" | head -1`,
+  );
+  const name = stdout.trim();
+  if (!name) throw new Error('No running database container found on port 5433');
+  return name;
+}
+
 export const DOW_NAMES = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const;
 
 export function getAppVersion(): string {
@@ -86,10 +96,9 @@ export class BackupService {
       );
     } else {
       // Local dev fallback: run pg_dump inside the Docker db container
-      const projectRoot = path.resolve(__dirname, '..', '..', '..');
-      const composeFile = process.env.COMPOSE_FILE || path.join(projectRoot, 'docker-compose.dev.yml');
+      const container = await findDbContainer();
       await execAsync(
-        `docker compose -f "${composeFile}" exec -T db pg_dump --format=custom --no-owner --no-acl -U app app > "${filePath}"`,
+        `docker exec ${container} pg_dump --format=custom --no-owner --no-acl -U app app > "${filePath}"`,
         { maxBuffer: 50 * 1024 * 1024 },
       );
     }
@@ -180,7 +189,11 @@ export class BackupService {
       // If S3 is unreachable, just show local backups
     }
 
-    return Array.from(localMap.values()).sort((a, b) => b.filename.localeCompare(a.filename));
+    return Array.from(localMap.values()).sort((a, b) => {
+      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return dateB - dateA;
+    });
   }
 
   private async downloadFromS3(filename: string, filePath: string): Promise<void> {
@@ -223,10 +236,9 @@ export class BackupService {
       );
     } else {
       // Local dev fallback: pipe dump into the Docker db container
-      const projectRoot = path.resolve(__dirname, '..', '..', '..');
-      const composeFile = process.env.COMPOSE_FILE || path.join(projectRoot, 'docker-compose.dev.yml');
+      const container = await findDbContainer();
       await execAsync(
-        `cat "${filePath}" | docker compose -f "${composeFile}" exec -T db pg_restore --clean --if-exists --no-owner --no-acl -U app --dbname=app`,
+        `cat "${filePath}" | docker exec -i ${container} pg_restore --clean --if-exists --no-owner --no-acl -U app --dbname=app`,
         { maxBuffer: 50 * 1024 * 1024 },
       );
     }

@@ -90,6 +90,8 @@ export default function ComputerList() {
   async function handleBatchPrint() {
     const ids = Array.from(selectedIds);
     if (!ids.length) return;
+    // Open window immediately (synchronous with click) to avoid popup blocker
+    const pdfWindow = window.open('', '_blank');
     try {
       const res = await fetch('/api/labels/computers/batch', {
         method: 'POST',
@@ -99,8 +101,13 @@ export default function ComputerList() {
       if (!res.ok) throw new Error('Failed to generate labels');
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
-      window.open(url, '_blank');
+      if (pdfWindow) {
+        pdfWindow.location.href = url;
+      } else {
+        window.open(url, '_blank');
+      }
     } catch (e: any) {
+      if (pdfWindow) pdfWindow.close();
       setError(e.message);
     }
   }
