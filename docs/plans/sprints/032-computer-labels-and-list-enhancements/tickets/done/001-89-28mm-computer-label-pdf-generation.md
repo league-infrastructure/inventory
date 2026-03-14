@@ -1,7 +1,7 @@
 ---
 id: '001'
 title: "89\xD728mm Computer Label PDF Generation"
-status: in-progress
+status: done
 use-cases:
 - SUC-001
 depends-on: []
