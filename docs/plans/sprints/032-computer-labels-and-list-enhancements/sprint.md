@@ -120,4 +120,8 @@ Before tickets can be created, all of the following must be true:
 
 ## Tickets
 
-(To be created after sprint approval.)
+1. **#001** — 89×28mm Computer Label PDF Generation (SUC-001)
+2. **#002** — Computer Label API Routes (SUC-001, SUC-002, SUC-003) → depends on #001
+3. **#003** — Print Label Button on Computer Detail Page (SUC-001) → depends on #002
+4. **#004** — Computer List Checkbox Selection and Batch Print (SUC-002, SUC-003) → depends on #002
+5. **#005** — Sortable Last Updated Column on Computer List (SUC-004) — independent
