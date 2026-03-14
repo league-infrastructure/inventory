@@ -1,13 +1,13 @@
 ---
-id: "032"
-title: "Computer Labels and List Enhancements"
-status: active
+id: '032'
+title: Computer Labels and List Enhancements
+status: done
 branch: sprint/032-computer-labels-and-list-enhancements
 use-cases:
-  - SUC-001
-  - SUC-002
-  - SUC-003
-  - SUC-004
+- SUC-001
+- SUC-002
+- SUC-003
+- SUC-004
 ---
 <!-- CLASI: Before changing code or making plans, review the SE process in CLAUDE.md -->
 
