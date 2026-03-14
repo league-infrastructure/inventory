@@ -1,13 +1,13 @@
 ---
-id: "003"
-title: "Update Computer Detail Form for Dual Credentials"
-status: todo
+id: '001'
+title: Protect Scheduled Backups from Manual Deletion
+status: done
 use-cases: []
 depends-on: []
 ---
 <!-- CLASI: Before changing code or making plans, review the SE process in CLAUDE.md -->
 
-# Update Computer Detail Form for Dual Credentials
+# Protect Scheduled Backups from Manual Deletion
 
 ## Description
 

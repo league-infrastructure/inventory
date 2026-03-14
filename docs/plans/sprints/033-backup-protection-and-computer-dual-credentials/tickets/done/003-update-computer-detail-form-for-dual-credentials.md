@@ -1,13 +1,13 @@
 ---
-id: "004"
-title: "Update Compact Label to Use Student Credentials"
-status: todo
+id: '003'
+title: Update Computer Detail Form for Dual Credentials
+status: done
 use-cases: []
 depends-on: []
 ---
 <!-- CLASI: Before changing code or making plans, review the SE process in CLAUDE.md -->
 
-# Update Compact Label to Use Student Credentials
+# Update Computer Detail Form for Dual Credentials
 
 ## Description
 

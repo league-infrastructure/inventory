@@ -1,13 +1,13 @@
 ---
-id: "001"
-title: "Protect Scheduled Backups from Manual Deletion"
-status: todo
+id: '002'
+title: Add Student Credentials to Computer Model
+status: done
 use-cases: []
 depends-on: []
 ---
 <!-- CLASI: Before changing code or making plans, review the SE process in CLAUDE.md -->
 
-# Protect Scheduled Backups from Manual Deletion
+# Add Student Credentials to Computer Model
 
 ## Description
 

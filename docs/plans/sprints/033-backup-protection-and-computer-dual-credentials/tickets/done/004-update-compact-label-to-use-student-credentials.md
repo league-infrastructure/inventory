@@ -1,13 +1,13 @@
 ---
-id: "002"
-title: "Add Student Credentials to Computer Model"
-status: todo
+id: '004'
+title: Update Compact Label to Use Student Credentials
+status: done
 use-cases: []
 depends-on: []
 ---
 <!-- CLASI: Before changing code or making plans, review the SE process in CLAUDE.md -->
 
-# Add Student Credentials to Computer Model
+# Update Compact Label to Use Student Credentials
 
 ## Description
 
