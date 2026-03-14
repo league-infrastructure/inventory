@@ -1,11 +1,11 @@
 ---
-id: "033"
-title: "Backup Protection and Computer Dual Credentials"
-status: active
+id: '033'
+title: Backup Protection and Computer Dual Credentials
+status: done
 branch: sprint/033-backup-protection-and-computer-dual-credentials
 use-cases:
-  - SUC-001
-  - SUC-002
+- SUC-001
+- SUC-002
 ---
 <!-- CLASI: Before changing code or making plans, review the SE process in CLAUDE.md -->
 
