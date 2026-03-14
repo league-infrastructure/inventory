@@ -1,7 +1,7 @@
 ---
 id: "033"
 title: "Backup Protection and Computer Dual Credentials"
-status: planning
+status: active
 branch: sprint/033-backup-protection-and-computer-dual-credentials
 use-cases:
   - SUC-001
