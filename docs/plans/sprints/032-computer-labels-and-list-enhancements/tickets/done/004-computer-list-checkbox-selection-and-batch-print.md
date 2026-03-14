@@ -1,7 +1,7 @@
 ---
 id: '004'
 title: Computer List Checkbox Selection and Batch Print
-status: in-progress
+status: done
 use-cases:
 - SUC-002
 - SUC-003
