@@ -1,7 +1,7 @@
 ---
 id: '003'
 title: Print Label Button on Computer Detail Page
-status: in-progress
+status: done
 use-cases:
 - SUC-001
 depends-on:
