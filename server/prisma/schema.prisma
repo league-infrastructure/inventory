@@ -186,8 +186,10 @@ model Computer {
   serialNumber    String?
   serviceTag      String?
   model           String?
-  defaultUsername String?
-  defaultPassword String?
+  defaultUsername  String?
+  defaultPassword  String?
+  studentUsername   String?
+  studentPassword   String?
   disposition     ComputerDisposition @default(ACTIVE)
   dateReceived    DateTime?
   lastInventoried DateTime?

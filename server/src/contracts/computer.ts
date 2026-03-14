@@ -5,6 +5,8 @@ export interface ComputerRecord {
   model: string | null;
   defaultUsername: string | null;
   defaultPassword: string | null;
+  studentUsername: string | null;
+  studentPassword: string | null;
   disposition: string;
   dateReceived: string | null;
   lastInventoried: string | null;
@@ -32,6 +34,8 @@ export interface CreateComputerInput {
   model?: string | null;
   defaultUsername?: string | null;
   defaultPassword?: string | null;
+  studentUsername?: string | null;
+  studentPassword?: string | null;
   disposition?: string;
   dateReceived?: string | null;
   lastInventoried?: string | null;

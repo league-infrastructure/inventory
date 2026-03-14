@@ -246,6 +246,12 @@ export class BackupService {
 
   async deleteBackup(filename: string): Promise<void> {
     const sanitized = path.basename(filename);
+
+    // Protect scheduled backups from manual deletion
+    if (sanitized.startsWith('daily-') || sanitized.startsWith('weekly-')) {
+      throw new Error('Scheduled backups cannot be deleted manually. They are managed by the automatic rotation system.');
+    }
+
     const filePath = path.join(this.backupDir, sanitized);
 
     // Delete locally if present

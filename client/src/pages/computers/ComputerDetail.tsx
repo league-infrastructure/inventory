@@ -21,6 +21,8 @@ interface FormState {
   model: string;
   defaultUsername: string;
   defaultPassword: string;
+  studentUsername: string;
+  studentPassword: string;
   disposition: string;
   dateReceived: string;
   notes: string;
@@ -42,7 +44,8 @@ export default function ComputerDetail() {
 
   const [form, setForm] = useState<FormState>({
     serialNumber: '', serviceTag: '', model: '', defaultUsername: '',
-    defaultPassword: '', disposition: 'ACTIVE', dateReceived: '',
+    defaultPassword: '', studentUsername: '', studentPassword: '',
+    disposition: 'ACTIVE', dateReceived: '',
     notes: '', siteId: '', kitId: '', hostNameId: '', categoryId: '',
   });
   const savedForm = useRef<FormState>(form);
@@ -75,6 +78,8 @@ export default function ComputerDetail() {
           model: c.model || '',
           defaultUsername: c.defaultUsername || '',
           defaultPassword: c.defaultPassword || '',
+          studentUsername: c.studentUsername || '',
+          studentPassword: c.studentPassword || '',
           disposition: c.disposition,
           dateReceived: c.dateReceived ? c.dateReceived.substring(0, 10) : '',
           notes: c.notes || '',
@@ -130,6 +135,8 @@ export default function ComputerDetail() {
         model: form.model || null,
         defaultUsername: form.defaultUsername || null,
         defaultPassword: form.defaultPassword || null,
+        studentUsername: form.studentUsername || null,
+        studentPassword: form.studentPassword || null,
         disposition: form.disposition,
         dateReceived: form.dateReceived || null,
         notes: form.notes || null,
@@ -256,14 +263,27 @@ export default function ComputerDetail() {
           </label>
         </div>
 
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide pt-2">Admin Credentials</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <label className="block">
-            <span className="text-sm font-medium text-gray-700">Default Username</span>
+            <span className="text-sm font-medium text-gray-700">Admin Username</span>
             <input value={form.defaultUsername} onChange={(e) => updateField('defaultUsername', e.target.value)} className={inputClass} />
           </label>
           <label className="block">
-            <span className="text-sm font-medium text-gray-700">Default Password</span>
+            <span className="text-sm font-medium text-gray-700">Admin Password</span>
             <input value={form.defaultPassword} onChange={(e) => updateField('defaultPassword', e.target.value)} className={inputClass} />
+          </label>
+        </div>
+
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide pt-2">Student Credentials</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <label className="block">
+            <span className="text-sm font-medium text-gray-700">Student Username</span>
+            <input value={form.studentUsername} onChange={(e) => updateField('studentUsername', e.target.value)} className={inputClass} />
+          </label>
+          <label className="block">
+            <span className="text-sm font-medium text-gray-700">Student Password</span>
+            <input value={form.studentPassword} onChange={(e) => updateField('studentPassword', e.target.value)} className={inputClass} />
           </label>
         </div>
 
