@@ -1,7 +1,7 @@
 ---
 id: '005'
 title: Sortable Last Updated Column on Computer List
-status: in-progress
+status: done
 use-cases:
 - SUC-004
 depends-on: []
