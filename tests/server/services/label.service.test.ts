@@ -87,4 +87,33 @@ describe('LabelService', () => {
   it('throws NotFoundError for nonexistent computer', async () => {
     await expect(labelService.generateComputerLabel(999999)).rejects.toThrow('Computer not found');
   });
+
+  it('generates a compact (89x28mm) computer label PDF', async () => {
+    const pdf = await labelService.generateComputerLabel89x28(computerId);
+    expect(pdf).toBeInstanceOf(Buffer);
+    expect(pdf.length).toBeGreaterThan(100);
+    expect(pdf.subarray(0, 5).toString()).toBe('%PDF-');
+  });
+
+  it('generates batch compact computer labels PDF', async () => {
+    const pdf = await labelService.generateComputerBatchLabels([computerId]);
+    expect(pdf).toBeInstanceOf(Buffer);
+    expect(pdf.subarray(0, 5).toString()).toBe('%PDF-');
+  });
+
+  it('throws for empty computerIds in batch', async () => {
+    await expect(labelService.generateComputerBatchLabels([])).rejects.toThrow('No computer IDs provided');
+  });
+
+  it('throws NotFoundError for nonexistent computer in compact label', async () => {
+    await expect(labelService.generateComputerLabel89x28(999999)).rejects.toThrow('Computer not found');
+  });
+
+  it('handles computer with missing optional fields in compact label', async () => {
+    // The test computer has a model and serial but no hostname, username, or password
+    // It should still generate a valid PDF
+    const pdf = await labelService.generateComputerLabel89x28(computerId);
+    expect(pdf).toBeInstanceOf(Buffer);
+    expect(pdf.subarray(0, 5).toString()).toBe('%PDF-');
+  });
 });

@@ -8,6 +8,11 @@ const LABEL_WIDTH_PT = 102 * 2.83465;  // ~289pt (long edge horizontal)
 const LABEL_HEIGHT_PT = 59 * 2.83465;  // ~167pt (short edge vertical)
 const MARGIN = 8;
 
+// Compact computer label: 89mm x 28mm
+const COMPACT_WIDTH_PT = 89 * 2.83465;   // ~252pt
+const COMPACT_HEIGHT_PT = 28 * 2.83465;  // ~79pt
+const COMPACT_MARGIN = 4;
+
 const ORG_NAME = 'The League Of\nAmazing Programmers';
 const CONTACT_LINE = 'jointheleague.org (858) 284-0481';
 
@@ -252,6 +257,132 @@ export class LabelService {
     const number = computer.hostName?.name || String(computerId);
 
     this.addLabelContent(doc, qrBuffer, number, title);
+
+    doc.end();
+    return new Promise((resolve) => {
+      doc.on('end', () => resolve(Buffer.concat(buffers)));
+    });
+  }
+
+  private createCompactDoc(): typeof PDFDocument.prototype {
+    return new PDFDocument({
+      size: [COMPACT_WIDTH_PT, COMPACT_HEIGHT_PT],
+      margins: { top: COMPACT_MARGIN, bottom: COMPACT_MARGIN, left: COMPACT_MARGIN, right: COMPACT_MARGIN },
+    });
+  }
+
+  private addCompactLabelContent(
+    doc: any,
+    qrBuffer: Buffer,
+    machineName: string,
+    credentials: string | null,
+    serialNumber: string | null,
+  ): void {
+    const m = COMPACT_MARGIN;
+    const contentHeight = COMPACT_HEIGHT_PT - m * 2;
+    const qrSize = contentHeight; // full-height QR
+    const rightLeft = m + qrSize + 4;
+    const rightWidth = COMPACT_WIDTH_PT - rightLeft - m;
+
+    // === LEFT: QR code (full height) ===
+    doc.image(qrBuffer, m, m, { width: qrSize, height: qrSize });
+
+    // === RIGHT TOP: Header (flag + org + contact) ===
+    this.drawFlagLogo(doc, rightLeft, m, 0.35);
+    const headerTextLeft = rightLeft + 16;
+    doc.fontSize(5.5).font('Helvetica-Bold')
+       .text('The League Of Amazing Programmers', headerTextLeft, m + 1, {
+         width: rightWidth - 16,
+       });
+    doc.fontSize(5).font('Helvetica')
+       .text(CONTACT_LINE, headerTextLeft, doc.y, {
+         width: rightWidth - 16,
+       });
+
+    // === MIDDLE: Machine name (large) ===
+    const headerBottom = m + 16;
+    const machineNameSize = machineName.length <= 12 ? 11 : machineName.length <= 20 ? 9 : 7;
+    doc.fontSize(machineNameSize).font('Helvetica-Bold')
+       .text(machineName, rightLeft, headerBottom, {
+         width: rightWidth,
+       });
+
+    // === Credentials line ===
+    if (credentials) {
+      doc.fontSize(6).font('Helvetica')
+         .text(credentials, rightLeft, doc.y + 1, {
+           width: rightWidth,
+         });
+    }
+
+    // === BOTTOM: Serial number (small) ===
+    if (serialNumber) {
+      doc.fontSize(5).font('Helvetica')
+         .text(`SN: ${serialNumber}`, rightLeft, doc.y + 1, {
+           width: rightWidth,
+         });
+    }
+  }
+
+  async generateComputerLabel89x28(computerId: number): Promise<Buffer> {
+    const computer = await this.prisma.computer.findUnique({
+      where: { id: computerId },
+      include: {
+        hostName: { select: { name: true } },
+      },
+    });
+    if (!computer) throw new NotFoundError('Computer not found');
+
+    const qrBuffer = await this.generateQrBuffer(`/qr/c/${computerId}`);
+    const doc = this.createCompactDoc();
+    const buffers: Buffer[] = [];
+    doc.on('data', (chunk: Buffer) => buffers.push(chunk));
+
+    const machineName = computer.hostName?.name || computer.model || `#${computerId}`;
+    const credentials = (computer.defaultUsername || computer.defaultPassword)
+      ? `user: ${computer.defaultUsername || '—'}  pass: ${computer.defaultPassword || '—'}`
+      : null;
+    const serialNumber = computer.serialNumber || null;
+
+    this.addCompactLabelContent(doc, qrBuffer, machineName, credentials, serialNumber);
+
+    doc.end();
+    return new Promise((resolve) => {
+      doc.on('end', () => resolve(Buffer.concat(buffers)));
+    });
+  }
+
+  async generateComputerBatchLabels(computerIds: number[]): Promise<Buffer> {
+    if (!computerIds.length) throw new Error('No computer IDs provided');
+
+    const doc = this.createCompactDoc();
+    const buffers: Buffer[] = [];
+    doc.on('data', (chunk: Buffer) => buffers.push(chunk));
+
+    for (let i = 0; i < computerIds.length; i++) {
+      const computerId = computerIds[i];
+      const computer = await this.prisma.computer.findUnique({
+        where: { id: computerId },
+        include: { hostName: { select: { name: true } } },
+      });
+      if (!computer) throw new NotFoundError(`Computer ${computerId} not found`);
+
+      if (i > 0) {
+        doc.addPage({
+          size: [COMPACT_WIDTH_PT, COMPACT_HEIGHT_PT],
+          margins: { top: COMPACT_MARGIN, bottom: COMPACT_MARGIN, left: COMPACT_MARGIN, right: COMPACT_MARGIN },
+        });
+      }
+
+      const qrBuffer = await this.generateQrBuffer(`/qr/c/${computerId}`);
+      const machineName = computer.hostName?.name || computer.model || `#${computerId}`;
+      const credentials = (computer.defaultUsername || computer.defaultPassword)
+        ? `user: ${computer.defaultUsername || '—'}  pass: ${computer.defaultPassword || '—'}`
+        : null;
+      const serialNumber = computer.serialNumber || null;
+
+      this.addCompactLabelContent(doc, qrBuffer, machineName, credentials, serialNumber);
+    }
 
     doc.end();
     return new Promise((resolve) => {

@@ -1,9 +1,9 @@
 ---
-id: "001"
-title: "89×28mm Computer Label PDF Generation"
-status: todo
+id: '001'
+title: "89\xD728mm Computer Label PDF Generation"
+status: in-progress
 use-cases:
-  - SUC-001
+- SUC-001
 depends-on: []
 ---
 <!-- CLASI: Before changing code or making plans, review the SE process in CLAUDE.md -->
