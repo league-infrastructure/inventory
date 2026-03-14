@@ -1,13 +1,13 @@
 ---
-id: "002"
-title: "Computer Label API Routes"
-status: todo
+id: '002'
+title: Computer Label API Routes
+status: in-progress
 use-cases:
-  - SUC-001
-  - SUC-002
-  - SUC-003
+- SUC-001
+- SUC-002
+- SUC-003
 depends-on:
-  - "001"
+- '001'
 ---
 <!-- CLASI: Before changing code or making plans, review the SE process in CLAUDE.md -->
 
