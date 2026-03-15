@@ -18,14 +18,10 @@ async function hasPgDump(): Promise<boolean> {
 
 const PG_DOCKER_IMAGE = 'postgres:16-alpine';
 
-/** Run pg_dump or pg_restore via a temporary Docker container that connects
- *  to the database over the host network using DATABASE_URL. */
-async function dockerPgCmd(cmd: string, maxBuffer = 50 * 1024 * 1024): Promise<string> {
-  const { stdout } = await execAsync(
-    `docker run --rm --network host ${PG_DOCKER_IMAGE} ${cmd}`,
-    { maxBuffer },
-  );
-  return stdout;
+/** Rewrite a DATABASE_URL so a Docker container can reach the host's DB.
+ *  On macOS, containers can't use localhost — must use host.docker.internal. */
+function dockerDbUrl(dbUrl: string): string {
+  return dbUrl.replace(/localhost|127\.0\.0\.1/g, 'host.docker.internal');
 }
 
 export const DOW_NAMES = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const;
@@ -97,9 +93,9 @@ export class BackupService {
         { maxBuffer: 50 * 1024 * 1024 },
       );
     } else {
-      // Local dev fallback: run pg_dump in a temporary container via host network
+      // Local dev fallback: run pg_dump in a temporary container
       await execAsync(
-        `docker run --rm --network host ${PG_DOCKER_IMAGE} pg_dump --format=custom --no-owner --no-acl "${dbUrl}" > "${filePath}"`,
+        `docker run --rm ${PG_DOCKER_IMAGE} pg_dump --format=custom --no-owner --no-acl "${dockerDbUrl(dbUrl)}" > "${filePath}"`,
         { maxBuffer: 50 * 1024 * 1024 },
       );
     }
@@ -237,14 +233,19 @@ export class BackupService {
       );
     } else {
       // Local dev fallback: run pg_restore in a temporary container via host network.
-      // Mount the backups directory (not the file directly) to avoid OrbStack
-      // creating a directory stub when mounting a single file.
-      const absDir = path.resolve(this.backupDir);
-      const basename = path.basename(filePath);
-      await execAsync(
-        `docker run --rm --network host -v "${absDir}:/backups:ro" ${PG_DOCKER_IMAGE} pg_restore --clean --if-exists --no-owner --no-acl --dbname="${dbUrl}" "/backups/${basename}"`,
-        { maxBuffer: 50 * 1024 * 1024 },
-      );
+      // OrbStack on macOS mounts .dump files as directories, so we docker-cp the
+      // file into the container instead of using a volume mount.
+      const absPath = path.resolve(filePath);
+      const cname = `inv_restore_${Date.now()}`;
+      try {
+        await execAsync(
+          `docker create --name ${cname} ${PG_DOCKER_IMAGE} pg_restore --clean --if-exists --no-owner --no-acl --dbname="${dockerDbUrl(dbUrl)}" /tmp/restore.dump`,
+        );
+        await execAsync(`docker cp "${absPath}" ${cname}:/tmp/restore.dump`);
+        await execAsync(`docker start -a ${cname}`, { maxBuffer: 50 * 1024 * 1024 });
+      } finally {
+        await execAsync(`docker rm -f ${cname}`).catch(() => {});
+      }
     }
   }
 
