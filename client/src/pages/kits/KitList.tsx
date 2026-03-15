@@ -110,7 +110,7 @@ export default function KitList() {
   const checkingKit = kits.find((k) => k.id === checkingKitId);
 
   return (
-    <div className="max-w-5xl">
+    <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Kits</h1>
         <Link

@@ -119,7 +119,7 @@ export default function ComputerList() {
   }
 
   return (
-    <div className="max-w-5xl">
+    <div>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Computers</h1>
         <div className="flex gap-2">
