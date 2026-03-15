@@ -11,10 +11,12 @@
 # Requires: .env with PROD_DOCKER_CONTEXT, GITHUB_TOKEN
 set -e
 
-# Load environment — base .env first, then production overrides
+# Load production environment via dotconfig
+# Assembles config/prod/ into a dedicated file, never touching .env
+DEPLOY_ENV=".env.deploy"
+dotconfig load prod --output "$DEPLOY_ENV"
 set -a
-. ./.env
-. ./config/prod/public.env
+. "./$DEPLOY_ENV"
 set +a
 
 IMAGE="ghcr.io/league-infrastructure/inventory-server"
@@ -120,5 +122,8 @@ while true; do
   esac
 done
 DOCKER_CONTEXT="$PROD_DOCKER_CONTEXT" docker service rm inventory_migrate >/dev/null 2>&1
+
+# Clean up deploy env file
+rm -f "$DEPLOY_ENV"
 
 echo "==> Done — deployed $IMAGE:$VERSION"
