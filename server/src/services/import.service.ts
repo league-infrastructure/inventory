@@ -242,17 +242,30 @@ export class ImportService {
         const existingId = row['ID'] ? parseInt(row['ID'], 10) : null;
 
         if (existingId && !isNaN(existingId)) {
-          // Update existing computer
+          // Update existing computer — convert raw FK fields to relation syntax
           const existing = await this.prisma.computer.findUnique({ where: { id: existingId } });
           if (!existing) {
             result.errors.push(`${rowLabel}: computer ID ${existingId} not found, skipping`);
             result.skipped++;
             continue;
           }
-          await this.prisma.computer.update({ where: { id: existingId }, data });
-          if (data.hostNameId) {
-            await this.prisma.hostName.update({ where: { id: data.hostNameId }, data: { computerId: existingId } });
+          const updateData: any = { ...data };
+          const fkToRelation: Record<string, string> = {
+            siteId: 'site', kitId: 'kit', osId: 'os',
+            custodianId: 'custodian', categoryId: 'category', hostNameId: 'hostName',
+          };
+          for (const [fk, rel] of Object.entries(fkToRelation)) {
+            if (fk in updateData) {
+              const val = updateData[fk];
+              delete updateData[fk];
+              if (val != null) {
+                updateData[rel] = { connect: { id: val } };
+              } else {
+                updateData[rel] = { disconnect: true };
+              }
+            }
           }
+          await this.prisma.computer.update({ where: { id: existingId }, data: updateData });
           await this.audit.write({
             userId, objectType: 'Computer', objectId: existingId,
             field: 'csv-import', oldValue: null, newValue: JSON.stringify(data),
