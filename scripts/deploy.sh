@@ -44,8 +44,9 @@ if [ "$APP_DOMAIN" != "inventory.jointheleague.org" ]; then
   exit 1
 fi
 
-# 4. Read version from package.json and verify tag exists on HEAD
+# 4. Read version from package.json and propagate to server/package.json
 VERSION=$(node -p "require('./package.json').version")
+node -e "const f='server/package.json'; const p=JSON.parse(require('fs').readFileSync(f)); p.version='$VERSION'; require('fs').writeFileSync(f, JSON.stringify(p, null, 2)+'\n')"
 TAG="v$VERSION"
 
 HEAD=$(git rev-parse HEAD)
