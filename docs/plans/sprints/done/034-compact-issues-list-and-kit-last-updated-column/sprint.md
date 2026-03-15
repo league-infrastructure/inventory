@@ -1,11 +1,11 @@
 ---
-id: "034"
-title: "Compact Issues List and Kit Last Updated Column"
-status: active
+id: '034'
+title: Compact Issues List and Kit Last Updated Column
+status: done
 branch: sprint/034-compact-issues-list-and-kit-last-updated-column
 use-cases:
-  - SUC-001
-  - SUC-002
+- SUC-001
+- SUC-002
 ---
 
 # Sprint 034: Compact Issues List and Kit Last Updated Column
