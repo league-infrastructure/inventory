@@ -15,8 +15,8 @@ export default function ComputerForm() {
   const [serialNumber, setSerialNumber] = useState('');
   const [serviceTag, setServiceTag] = useState('');
   const [model, setModel] = useState('');
-  const [defaultUsername, setDefaultUsername] = useState('');
-  const [defaultPassword, setDefaultPassword] = useState('');
+  const [adminUsername, setDefaultUsername] = useState('');
+  const [adminPassword, setDefaultPassword] = useState('');
   const [disposition, setDisposition] = useState('ACTIVE');
   const [dateReceived, setDateReceived] = useState('');
   const [notes, setNotes] = useState('');
@@ -48,8 +48,8 @@ export default function ComputerForm() {
           setSerialNumber(c.serialNumber || '');
           setServiceTag(c.serviceTag || '');
           setModel(c.model || '');
-          setDefaultUsername(c.defaultUsername || '');
-          setDefaultPassword(c.defaultPassword || '');
+          setDefaultUsername(c.adminUsername || '');
+          setDefaultPassword(c.adminPassword || '');
           setDisposition(c.disposition);
           setDateReceived(c.dateReceived ? c.dateReceived.substring(0, 10) : '');
           setNotes(c.notes || '');
@@ -74,8 +74,8 @@ export default function ComputerForm() {
       serialNumber: serialNumber || null,
       serviceTag: serviceTag || null,
       model: model || null,
-      defaultUsername: defaultUsername || null,
-      defaultPassword: defaultPassword || null,
+      adminUsername: adminUsername || null,
+      adminPassword: adminPassword || null,
       disposition,
       dateReceived: dateReceived || null,
       notes: notes || null,
@@ -137,12 +137,12 @@ export default function ComputerForm() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <label className="block">
-            <span className="text-sm font-medium text-gray-700">Default Username</span>
-            <input value={defaultUsername} onChange={(e) => setDefaultUsername(e.target.value)} className={inputClass} />
+            <span className="text-sm font-medium text-gray-700">Admin Username</span>
+            <input value={adminUsername} onChange={(e) => setDefaultUsername(e.target.value)} className={inputClass} />
           </label>
           <label className="block">
-            <span className="text-sm font-medium text-gray-700">Default Password</span>
-            <input value={defaultPassword} onChange={(e) => setDefaultPassword(e.target.value)} className={inputClass} />
+            <span className="text-sm font-medium text-gray-700">Admin Password</span>
+            <input value={adminPassword} onChange={(e) => setDefaultPassword(e.target.value)} className={inputClass} />
           </label>
         </div>
 

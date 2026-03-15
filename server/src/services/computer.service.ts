@@ -23,7 +23,7 @@ const COMPUTER_INCLUDES = {
 export class ComputerService extends BaseService<ComputerRecord, CreateComputerInput, UpdateComputerInput> {
   protected readonly entityName = 'Computer';
   protected readonly auditFields = [
-    'serialNumber', 'serviceTag', 'model', 'defaultUsername', 'defaultPassword', 'studentUsername', 'studentPassword',
+    'serialNumber', 'serviceTag', 'model', 'adminUsername', 'adminPassword', 'studentUsername', 'studentPassword',
     'disposition', 'dateReceived', 'lastInventoried', 'notes', 'siteId', 'kitId', 'osId', 'qrCode',
   ];
 
@@ -101,8 +101,8 @@ export class ComputerService extends BaseService<ComputerRecord, CreateComputerI
         serialNumber: input.serialNumber || null,
         serviceTag: input.serviceTag || null,
         model: input.model || null,
-        defaultUsername: input.defaultUsername || null,
-        defaultPassword: input.defaultPassword || null,
+        adminUsername: input.adminUsername || null,
+        adminPassword: input.adminPassword || null,
         studentUsername: input.studentUsername ?? 'student',
         studentPassword: input.studentPassword ?? 'student',
         ...(input.disposition && { disposition: input.disposition as ComputerDisposition }),
@@ -192,8 +192,8 @@ export class ComputerService extends BaseService<ComputerRecord, CreateComputerI
     if (input.serialNumber !== undefined) data.serialNumber = input.serialNumber || null;
     if (input.serviceTag !== undefined) data.serviceTag = input.serviceTag || null;
     if (input.model !== undefined) data.model = input.model || null;
-    if (input.defaultUsername !== undefined) data.defaultUsername = input.defaultUsername || null;
-    if (input.defaultPassword !== undefined) data.defaultPassword = input.defaultPassword || null;
+    if (input.adminUsername !== undefined) data.adminUsername = input.adminUsername || null;
+    if (input.adminPassword !== undefined) data.adminPassword = input.adminPassword || null;
     if (input.studentUsername !== undefined) data.studentUsername = input.studentUsername || null;
     if (input.studentPassword !== undefined) data.studentPassword = input.studentPassword || null;
     if (input.disposition !== undefined) data.disposition = input.disposition as ComputerDisposition;

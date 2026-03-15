@@ -3,8 +3,8 @@ export interface ComputerRecord {
   serialNumber: string | null;
   serviceTag: string | null;
   model: string | null;
-  defaultUsername: string | null;
-  defaultPassword: string | null;
+  adminUsername: string | null;
+  adminPassword: string | null;
   studentUsername: string | null;
   studentPassword: string | null;
   disposition: string;
@@ -32,8 +32,8 @@ export interface CreateComputerInput {
   serialNumber?: string | null;
   serviceTag?: string | null;
   model?: string | null;
-  defaultUsername?: string | null;
-  defaultPassword?: string | null;
+  adminUsername?: string | null;
+  adminPassword?: string | null;
   studentUsername?: string | null;
   studentPassword?: string | null;
   disposition?: string;

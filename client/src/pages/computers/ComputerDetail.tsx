@@ -19,8 +19,8 @@ interface FormState {
   serialNumber: string;
   serviceTag: string;
   model: string;
-  defaultUsername: string;
-  defaultPassword: string;
+  adminUsername: string;
+  adminPassword: string;
   studentUsername: string;
   studentPassword: string;
   disposition: string;
@@ -43,8 +43,8 @@ export default function ComputerDetail() {
   const [qrCode, setQrCode] = useState<string | null>(null);
 
   const [form, setForm] = useState<FormState>({
-    serialNumber: '', serviceTag: '', model: '', defaultUsername: '',
-    defaultPassword: '', studentUsername: '', studentPassword: '',
+    serialNumber: '', serviceTag: '', model: '', adminUsername: '',
+    adminPassword: '', studentUsername: '', studentPassword: '',
     disposition: 'ACTIVE', dateReceived: '',
     notes: '', siteId: '', kitId: '', hostNameId: '', categoryId: '',
   });
@@ -76,8 +76,8 @@ export default function ComputerDetail() {
           serialNumber: c.serialNumber || '',
           serviceTag: c.serviceTag || '',
           model: c.model || '',
-          defaultUsername: c.defaultUsername || '',
-          defaultPassword: c.defaultPassword || '',
+          adminUsername: c.adminUsername || '',
+          adminPassword: c.adminPassword || '',
           studentUsername: c.studentUsername || '',
           studentPassword: c.studentPassword || '',
           disposition: c.disposition,
@@ -133,8 +133,8 @@ export default function ComputerDetail() {
         serialNumber: form.serialNumber || null,
         serviceTag: form.serviceTag || null,
         model: form.model || null,
-        defaultUsername: form.defaultUsername || null,
-        defaultPassword: form.defaultPassword || null,
+        adminUsername: form.adminUsername || null,
+        adminPassword: form.adminPassword || null,
         studentUsername: form.studentUsername || null,
         studentPassword: form.studentPassword || null,
         disposition: form.disposition,
@@ -267,11 +267,11 @@ export default function ComputerDetail() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <label className="block">
             <span className="text-sm font-medium text-gray-700">Admin Username</span>
-            <input value={form.defaultUsername} onChange={(e) => updateField('defaultUsername', e.target.value)} className={inputClass} />
+            <input value={form.adminUsername} onChange={(e) => updateField('adminUsername', e.target.value)} className={inputClass} />
           </label>
           <label className="block">
             <span className="text-sm font-medium text-gray-700">Admin Password</span>
-            <input value={form.defaultPassword} onChange={(e) => updateField('defaultPassword', e.target.value)} className={inputClass} />
+            <input value={form.adminPassword} onChange={(e) => updateField('adminPassword', e.target.value)} className={inputClass} />
           </label>
         </div>
 

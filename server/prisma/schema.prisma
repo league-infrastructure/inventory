@@ -186,8 +186,8 @@ model Computer {
   serialNumber    String?
   serviceTag      String?
   model           String?
-  defaultUsername  String?
-  defaultPassword  String?
+  adminUsername     String?
+  adminPassword     String?
   studentUsername   String?
   studentPassword   String?
   disposition     ComputerDisposition @default(ACTIVE)

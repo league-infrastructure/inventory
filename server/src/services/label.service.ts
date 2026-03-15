@@ -385,8 +385,8 @@ export class LabelService {
 
       const qrBuffer = await this.generateQrBuffer(`/qr/c/${computerId}`);
       const machineName = computer.hostName?.name || computer.model || `#${computerId}`;
-      const credentials = (computer.defaultUsername || computer.defaultPassword)
-        ? `user: ${computer.defaultUsername || '—'}  pass: ${computer.defaultPassword || '—'}`
+      const credentials = (computer.studentUsername || computer.studentPassword)
+        ? `user: ${computer.studentUsername || '—'}  pass: ${computer.studentPassword || '—'}`
         : null;
       const serialNumber = computer.serialNumber || null;
 
