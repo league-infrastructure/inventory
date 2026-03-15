@@ -19,7 +19,11 @@ export class ExportService {
     const [sites, kits, packs, items, computers, hostNames] = await Promise.all([
       this.prisma.site.findMany({ orderBy: { id: 'asc' } }),
       this.prisma.kit.findMany({
-        include: { site: { select: { name: true } }, custodian: { select: { displayName: true } } },
+        include: {
+          site: { select: { name: true } },
+          custodian: { select: { displayName: true } },
+          category: { select: { name: true } },
+        },
         orderBy: { number: 'asc' },
       }),
       this.prisma.pack.findMany({
@@ -36,6 +40,8 @@ export class ExportService {
           kit: { select: { number: true, name: true } },
           hostName: { select: { name: true } },
           custodian: { select: { displayName: true } },
+          os: { select: { name: true } },
+          category: { select: { name: true } },
         },
         orderBy: { id: 'asc' },
       }),
@@ -55,6 +61,7 @@ export class ExportService {
         containerType: k.containerType, description: k.description,
         status: k.status, siteName: k.site?.name ?? null,
         custodianName: k.custodian?.displayName ?? null,
+        categoryName: k.category?.name ?? null,
         qrCode: k.qrCode,
       })),
       packs: packs.map((p) => ({
@@ -69,11 +76,15 @@ export class ExportService {
       })),
       computers: computers.map((c) => ({
         id: c.id, hostName: c.hostName?.name ?? null,
-        model: c.model, serialNumber: c.serialNumber,
-        serviceTag: c.serviceTag, disposition: c.disposition,
+        manufacturer: c.manufacturer, model: c.model,
+        modelNumber: c.modelNumber, manufacturedYear: c.manufacturedYear,
+        serialNumber: c.serialNumber, serviceTag: c.serviceTag,
+        disposition: c.disposition,
+        operatingSystem: c.os?.name ?? null,
         siteName: c.site?.name ?? null,
         kitNumber: c.kit?.number ?? null, kitName: c.kit?.name ?? null,
         custodianName: c.custodian?.displayName ?? null,
+        categoryName: c.category?.name ?? null,
         adminUsername: c.adminUsername, adminPassword: c.adminPassword,
         studentUsername: c.studentUsername, studentPassword: c.studentPassword,
         dateReceived: c.dateReceived?.toISOString().split('T')[0] ?? null,
@@ -112,7 +123,11 @@ export class ExportService {
     // Kits sheet
     const kitsSheet = workbook.addWorksheet('Kits');
     const kits = await this.prisma.kit.findMany({
-      include: { site: { select: { name: true } } },
+      include: {
+        site: { select: { name: true } },
+        custodian: { select: { displayName: true } },
+        category: { select: { name: true } },
+      },
       orderBy: { number: 'asc' },
     });
     kitsSheet.columns = [
@@ -123,6 +138,8 @@ export class ExportService {
       { header: 'Description', key: 'description', width: 40 },
       { header: 'Status', key: 'status', width: 10 },
       { header: 'Site', key: 'site', width: 20 },
+      { header: 'Custodian', key: 'custodian', width: 20 },
+      { header: 'Category', key: 'category', width: 20 },
       { header: 'QR Code', key: 'qrCode', width: 15 },
     ];
     for (const kit of kits) {
@@ -134,6 +151,8 @@ export class ExportService {
         description: kit.description || '',
         status: kit.status,
         site: kit.site?.name ?? '',
+        custodian: kit.custodian?.displayName ?? '',
+        category: kit.category?.name ?? '',
         qrCode: kit.qrCode || '',
       });
     }
@@ -195,18 +214,27 @@ export class ExportService {
         site: { select: { name: true } },
         kit: { select: { number: true, name: true } },
         hostName: { select: { name: true } },
+        custodian: { select: { displayName: true } },
+        os: { select: { name: true } },
+        category: { select: { name: true } },
       },
       orderBy: { id: 'asc' },
     });
     computersSheet.columns = [
       { header: 'ID', key: 'id', width: 8 },
       { header: 'Host Name', key: 'hostName', width: 20 },
+      { header: 'Manufacturer', key: 'manufacturer', width: 15 },
       { header: 'Model', key: 'model', width: 25 },
+      { header: 'Model Number', key: 'modelNumber', width: 18 },
+      { header: 'Operating System', key: 'os', width: 18 },
+      { header: 'Manufactured Year', key: 'manufacturedYear', width: 18 },
       { header: 'Serial Number', key: 'serialNumber', width: 20 },
       { header: 'Service Tag', key: 'serviceTag', width: 15 },
       { header: 'Disposition', key: 'disposition', width: 15 },
       { header: 'Site', key: 'site', width: 20 },
       { header: 'Kit', key: 'kit', width: 20 },
+      { header: 'Custodian', key: 'custodian', width: 20 },
+      { header: 'Category', key: 'category', width: 18 },
       { header: 'Date Received', key: 'dateReceived', width: 15 },
       { header: 'Last Inventoried', key: 'lastInventoried', width: 15 },
       { header: 'Admin Username', key: 'adminUsername', width: 15 },
@@ -219,12 +247,18 @@ export class ExportService {
       computersSheet.addRow({
         id: c.id,
         hostName: c.hostName?.name || '',
+        manufacturer: c.manufacturer || '',
         model: c.model || '',
+        modelNumber: c.modelNumber || '',
+        os: c.os?.name || '',
+        manufacturedYear: c.manufacturedYear ?? '',
         serialNumber: c.serialNumber || '',
         serviceTag: c.serviceTag || '',
         disposition: c.disposition,
         site: c.site?.name || '',
         kit: c.kit ? `#${c.kit.number} ${c.kit.name}` : '',
+        custodian: c.custodian?.displayName || '',
+        category: c.category?.name || '',
         dateReceived: c.dateReceived ? c.dateReceived.toISOString().split('T')[0] : '',
         lastInventoried: c.lastInventoried ? c.lastInventoried.toISOString().split('T')[0] : '',
         adminUsername: c.adminUsername || '',
