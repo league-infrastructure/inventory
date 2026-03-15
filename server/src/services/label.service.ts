@@ -283,12 +283,15 @@ export class LabelService {
   ): void {
     const m = COMPACT_MARGIN;
     const contentHeight = COMPACT_HEIGHT_PT - m * 2;
-    const qrSize = contentHeight; // full-height QR
-    const rightLeft = m + qrSize + 6;
+    const qrFull = contentHeight; // original full-height QR
+    const qrSize = qrFull * 0.95; // 5% smaller
+    const qrX = m + (qrFull - qrSize); // shift right to keep right edge fixed
+    const qrY = m + (qrFull - qrSize) / 2; // vertically center
+    const rightLeft = m + qrFull + 6; // text column stays put
     const rightWidth = COMPACT_WIDTH_PT - rightLeft - m;
 
-    // === LEFT: QR code (full height) ===
-    doc.image(qrBuffer, m, m, { width: qrSize, height: qrSize });
+    // === LEFT: QR code (95% height, right-edge anchored) ===
+    doc.image(qrBuffer, qrX, qrY, { width: qrSize, height: qrSize });
 
     // === RIGHT TOP: Header (flag image + org + contact) ===
     const flagSize = 16;
