@@ -11,9 +11,10 @@
 # Requires: .env with PROD_DOCKER_CONTEXT, GITHUB_TOKEN
 set -e
 
-# Load environment
+# Load environment — base .env first, then production overrides
 set -a
 . ./.env
+. ./config/prod/public.env
 set +a
 
 IMAGE="ghcr.io/league-infrastructure/inventory-server"
