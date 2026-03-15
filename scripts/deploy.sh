@@ -35,7 +35,14 @@ if [ "$BRANCH" != "master" ]; then
   exit 1
 fi
 
-# 3. Read version from package.json and verify tag exists on HEAD
+# 3. APP_DOMAIN must be the production domain (not a dev value)
+if [ "$APP_DOMAIN" != "inventory.jointheleague.org" ]; then
+  echo "ERROR: APP_DOMAIN is '$APP_DOMAIN' — expected 'inventory.jointheleague.org'." >&2
+  echo "  Check config/prod/public.env is sourced correctly." >&2
+  exit 1
+fi
+
+# 4. Read version from package.json and verify tag exists on HEAD
 VERSION=$(node -p "require('./package.json').version")
 TAG="v$VERSION"
 
