@@ -291,43 +291,41 @@ export class LabelService {
     doc.image(qrBuffer, m, m, { width: qrSize, height: qrSize });
 
     // === RIGHT TOP: Header (flag image + org + contact) ===
-    const flagSize = 14;
+    const flagSize = 16;
     try {
-      doc.image(FLAG_IMAGE_PATH, rightLeft, m + 1, { width: flagSize, height: flagSize });
+      doc.image(FLAG_IMAGE_PATH, rightLeft, m, { width: flagSize, height: flagSize });
     } catch {
       // Fallback: skip flag if image not found
     }
     const headerTextLeft = rightLeft + flagSize + 3;
     const headerTextWidth = rightWidth - flagSize - 3;
-    doc.fontSize(6).font('Helvetica-Bold')
+    doc.fontSize(7.9).font('Helvetica-Bold')
        .text('The League Of Amazing Programmers', headerTextLeft, m + 1, {
          width: headerTextWidth,
        });
-    doc.fontSize(5.5).font('Helvetica')
+    doc.fontSize(6).font('Helvetica')
        .text(CONTACT_LINE, headerTextLeft, doc.y, {
          width: headerTextWidth,
        });
 
     // === Machine name (large) ===
-    const headerBottom = m + 18;
-    const machineNameSize = machineName.length <= 12 ? 14 : machineName.length <= 20 ? 11 : 9;
+    const headerBottom = doc.y + 1;
+    const machineNameSize = machineName.length <= 12 ? 22 : machineName.length <= 20 ? 17 : 14;
     doc.fontSize(machineNameSize).font('Helvetica-Bold')
        .text(machineName, rightLeft, headerBottom, {
          width: rightWidth,
        });
 
-    // === Credentials line ===
+    // === Credentials + serial: tight below machine name ===
     if (credentials) {
-      doc.fontSize(7.5).font('Helvetica')
-         .text(credentials, rightLeft, doc.y + 1, {
+      doc.fontSize(12).font('Helvetica')
+         .text(credentials, rightLeft, doc.y, {
            width: rightWidth,
          });
     }
-
-    // === Serial number (bottom, small) ===
     if (serialNumber) {
       doc.fontSize(6).font('Helvetica')
-         .text(`SN: ${serialNumber}`, rightLeft, doc.y + 1, {
+         .text(`SN: ${serialNumber}`, rightLeft, doc.y, {
            width: rightWidth,
          });
     }
