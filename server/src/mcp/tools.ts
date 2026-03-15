@@ -389,6 +389,7 @@ export function registerTools(server: McpServer): void {
   server.tool('create_computer', 'Create a new computer', {
     serialNumber: z.string().optional(),
     serviceTag: z.string().optional(),
+    manufacturer: z.string().optional().describe('Dell, Lenovo, Apple, HP, or Other'),
     model: z.string().optional(),
     modelNumber: z.string().optional(),
     manufacturedYear: z.number().optional(),
@@ -414,6 +415,7 @@ export function registerTools(server: McpServer): void {
     id: z.number(),
     serialNumber: z.string().optional(),
     serviceTag: z.string().optional(),
+    manufacturer: z.string().optional().describe('Dell, Lenovo, Apple, HP, or Other'),
     model: z.string().optional(),
     modelNumber: z.string().optional(),
     manufacturedYear: z.number().optional(),

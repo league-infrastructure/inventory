@@ -20,6 +20,7 @@ interface Category { id: number; name: string; }
 interface FormState {
   serialNumber: string;
   serviceTag: string;
+  manufacturer: string;
   model: string;
   modelNumber: string;
   manufacturedYear: string;
@@ -45,7 +46,7 @@ export default function ComputerDetail() {
   const [showCredentials, setShowCredentials] = useState(false);
 
   const [form, setForm] = useState<FormState>({
-    serialNumber: '', serviceTag: '', model: '', modelNumber: '', manufacturedYear: '', adminUsername: '',
+    serialNumber: '', serviceTag: '', manufacturer: '', model: '', modelNumber: '', manufacturedYear: '', adminUsername: '',
     adminPassword: '', studentUsername: '', studentPassword: '',
     disposition: 'ACTIVE', dateReceived: '',
     notes: '', siteId: '', kitId: '', hostNameId: '', osId: '', categoryId: '',
@@ -82,6 +83,7 @@ export default function ComputerDetail() {
         const initial: FormState = {
           serialNumber: c.serialNumber || '',
           serviceTag: c.serviceTag || '',
+          manufacturer: c.manufacturer || '',
           model: c.model || '',
           modelNumber: c.modelNumber || '',
           manufacturedYear: c.manufacturedYear ? String(c.manufacturedYear) : '',
@@ -146,6 +148,7 @@ export default function ComputerDetail() {
       const next: FormState = {
         serialNumber: updated.serialNumber || '',
         serviceTag: updated.serviceTag || '',
+        manufacturer: updated.manufacturer || '',
         model: updated.model || '',
         modelNumber: updated.modelNumber || '',
         manufacturedYear: updated.manufacturedYear ? String(updated.manufacturedYear) : '',
@@ -259,6 +262,24 @@ export default function ComputerDetail() {
         <div className="flex-1 min-w-0 space-y-4">
           {/* Identity fields */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-400 uppercase tracking-wider mb-1">Manufacturer</label>
+              <div className="text-lg text-gray-900">
+                <EditableCell
+                  value={form.manufacturer}
+                  onSave={(v) => saveField('manufacturer', v)}
+                  as="select"
+                  options={[
+                    { value: '', label: 'None' },
+                    { value: 'Dell', label: 'Dell' },
+                    { value: 'Lenovo', label: 'Lenovo' },
+                    { value: 'Apple', label: 'Apple' },
+                    { value: 'HP', label: 'HP' },
+                    { value: 'Other', label: 'Other' },
+                  ]}
+                />
+              </div>
+            </div>
             <div>
               <label className="block text-sm font-semibold text-gray-400 uppercase tracking-wider mb-1">Model</label>
               <div className="text-lg text-gray-900">

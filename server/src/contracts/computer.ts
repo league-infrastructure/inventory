@@ -2,6 +2,7 @@ export interface ComputerRecord {
   id: number;
   serialNumber: string | null;
   serviceTag: string | null;
+  manufacturer: string | null;
   model: string | null;
   modelNumber: string | null;
   manufacturedYear: number | null;
@@ -33,6 +34,7 @@ export interface ComputerRecord {
 export interface CreateComputerInput {
   serialNumber?: string | null;
   serviceTag?: string | null;
+  manufacturer?: string | null;
   model?: string | null;
   modelNumber?: string | null;
   manufacturedYear?: number | null;

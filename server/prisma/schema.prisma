@@ -185,6 +185,7 @@ model Computer {
   id              Int                 @id @default(autoincrement())
   serialNumber    String?
   serviceTag      String?
+  manufacturer    String?
   model           String?
   modelNumber     String?
   manufacturedYear Int?
