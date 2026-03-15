@@ -23,6 +23,21 @@ interface Kit {
   category: { id: number; name: string } | null;
 }
 
+function formatUpdatedAt(iso: string): string {
+  const date = new Date(iso);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return 'just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
 function kitDisplayName(kit: Kit): string {
   return `${CONTAINER_TYPE_LABELS[kit.containerType] || kit.containerType} ${kit.number} — ${kit.name}`;
 }
@@ -126,6 +141,7 @@ export default function KitList() {
                 <SortableHeader label="Custodian" sortKey="_custodian" currentSort={sort} onSort={toggleSort} filterValue={filters['_custodian']} onFilter={setFilter} />
                 <SortableHeader label="Location" sortKey="_location" currentSort={sort} onSort={toggleSort} filterValue={filters['_location']} onFilter={setFilter} />
                 <SortableHeader label="Last Inventory" sortKey="lastInventoried" currentSort={sort} onSort={toggleSort} />
+                <SortableHeader label="Last Updated" sortKey="updatedAt" currentSort={sort} onSort={toggleSort} className="hidden sm:table-cell" />
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500">Actions</th>
               </tr>
             </thead>
@@ -163,6 +179,9 @@ export default function KitList() {
                       {kit.lastInventoried
                         ? new Date(kit.lastInventoried).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
                         : '—'}
+                    </td>
+                    <td className="px-4 py-3 text-gray-500 text-xs hidden sm:table-cell" title={kit.updatedAt ? new Date(kit.updatedAt).toLocaleString() : ''}>
+                      {kit.updatedAt ? formatUpdatedAt(kit.updatedAt) : '—'}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1.5">

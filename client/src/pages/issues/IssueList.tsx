@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, CheckCircle, Tags, Package, Monitor } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Tags, Package, Monitor, Search } from 'lucide-react';
 
 interface Issue {
   id: number;
@@ -25,44 +25,48 @@ const TYPE_LABELS: Record<string, string> = {
   OTHER: 'Other',
 };
 
-function IssueTarget({ issue }: { issue: Issue }) {
+function issueTargetText(issue: Issue): string {
   if (issue.kit) {
-    const label = issue.item && issue.pack
-      ? `${issue.item.name} in ${issue.pack.name}`
-      : issue.pack
-        ? issue.pack.name
-        : issue.kit.name;
+    if (issue.item && issue.pack) return `${issue.item.name} in ${issue.pack.name}`;
+    if (issue.pack) return issue.pack.name;
+    return issue.kit.name;
+  }
+  if (issue.computer) return issue.computer.model || issue.computer.serialNumber || 'Computer';
+  if (issue.pack) return issue.item ? `${issue.item.name} in ${issue.pack.name}` : issue.pack.name;
+  return 'Unknown';
+}
+
+function IssueTargetLink({ issue }: { issue: Issue }) {
+  const text = issueTargetText(issue);
+  if (issue.kit) {
     return (
-      <span className="inline-flex items-center gap-1.5">
-        <Tags size={14} className="shrink-0 text-gray-400" />
-        <Link to={`/kits/${issue.kit.id}`} className="text-primary hover:underline">{label}</Link>
-      </span>
+      <Link to={`/kits/${issue.kit.id}`} className="text-primary hover:underline">{text}</Link>
     );
   }
   if (issue.computer) {
-    const label = issue.computer.model || issue.computer.serialNumber || 'Computer';
     return (
-      <span className="inline-flex items-center gap-1.5">
-        <Monitor size={14} className="shrink-0 text-gray-400" />
-        <Link to={`/computers/${issue.computer.id}`} className="text-primary hover:underline">{label}</Link>
-      </span>
+      <Link to={`/computers/${issue.computer.id}`} className="text-primary hover:underline">{text}</Link>
     );
   }
-  if (issue.pack) {
-    return (
-      <span className="inline-flex items-center gap-1.5">
-        <Package size={14} className="shrink-0 text-gray-400" />
-        <span>{issue.item ? `${issue.item.name} in ${issue.pack.name}` : issue.pack.name}</span>
-      </span>
-    );
-  }
-  return <span>Unknown</span>;
+  return <span>{text}</span>;
+}
+
+function TargetIcon({ issue }: { issue: Issue }) {
+  if (issue.kit) return <Tags size={13} className="shrink-0 text-gray-400" />;
+  if (issue.computer) return <Monitor size={13} className="shrink-0 text-gray-400" />;
+  if (issue.pack) return <Package size={13} className="shrink-0 text-gray-400" />;
+  return null;
+}
+
+function formatShortDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
 export default function IssueList() {
   const [issues, setIssues] = useState<Issue[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('OPEN');
+  const [search, setSearch] = useState('');
   const [resolving, setResolving] = useState<number | null>(null);
   const [resolveNotes, setResolveNotes] = useState('');
 
@@ -74,6 +78,18 @@ export default function IssueList() {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [statusFilter]);
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return issues;
+    const q = search.toLowerCase();
+    return issues.filter((issue) => {
+      const target = issueTargetText(issue).toLowerCase();
+      const type = (TYPE_LABELS[issue.type] || issue.type).toLowerCase();
+      const reporter = issue.reporter.displayName.toLowerCase();
+      const notes = (issue.notes || '').toLowerCase();
+      return target.includes(q) || type.includes(q) || reporter.includes(q) || notes.includes(q);
+    });
+  }, [issues, search]);
 
   async function handleResolve(issueId: number) {
     const res = await fetch(`/api/issues/${issueId}/resolve`, {
@@ -89,8 +105,8 @@ export default function IssueList() {
   }
 
   return (
-    <div className="max-w-4xl">
-      <div className="flex items-center justify-between mb-6">
+    <div className="max-w-5xl">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
         <h1 className="text-2xl font-bold text-gray-900">Issues</h1>
         <div className="flex gap-2">
           <button
@@ -112,80 +128,99 @@ export default function IssueList() {
         </div>
       </div>
 
+      <div className="relative mb-4">
+        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        <input
+          type="text"
+          placeholder="Search issues..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+        />
+      </div>
+
       {loading ? (
         <p className="text-gray-500 text-sm">Loading...</p>
-      ) : issues.length === 0 ? (
+      ) : filtered.length === 0 ? (
         <div className="bg-green-50 border border-green-200 rounded-lg p-6 text-center">
           <CheckCircle size={24} className="mx-auto text-green-500 mb-2" />
-          <p className="text-sm text-green-700">No {statusFilter.toLowerCase()} issues</p>
+          <p className="text-sm text-green-700">
+            {search ? 'No matching issues' : `No ${statusFilter.toLowerCase()} issues`}
+          </p>
         </div>
       ) : (
-        <div className="space-y-3">
-          {issues.map((issue) => (
-            <div key={issue.id} className="bg-white border border-gray-200 rounded-lg p-4">
-              <div className="flex items-start justify-between">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <AlertTriangle size={14} className={issue.type === 'MISSING_ITEM' ? 'text-red-500' : 'text-amber-500'} />
-                    <span className="text-sm font-medium text-gray-900">
-                      {TYPE_LABELS[issue.type] || issue.type}
-                    </span>
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                      issue.status === 'OPEN' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
-                    }`}>
-                      {issue.status}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-700 font-medium">
-                    <IssueTarget issue={issue} />
-                  </p>
-                  {issue.notes && <p className="text-sm text-gray-500 mt-1">{issue.notes}</p>}
-                  <p className="text-xs text-gray-400 mt-1">
-                    Reported by {issue.reporter.displayName} on{' '}
-                    {new Date(issue.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                    {issue.resolver && (
-                      <> — Resolved by {issue.resolver.displayName}</>
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <table className="w-full text-sm">
+            <tbody>
+              {filtered.map((issue) => (
+                <tr key={issue.id} className="border-b border-gray-100 hover:bg-gray-50">
+                  <td className="px-3 py-2 align-top w-5">
+                    <AlertTriangle size={14} className={`mt-0.5 ${issue.type === 'MISSING_ITEM' ? 'text-red-500' : 'text-amber-500'}`} />
+                  </td>
+                  <td className="px-2 py-2">
+                    {/* Line 1: type badge, target, reporter, date */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
+                        issue.status === 'OPEN' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+                      }`}>
+                        {issue.status}
+                      </span>
+                      <span className="text-xs font-medium text-gray-600">
+                        {TYPE_LABELS[issue.type] || issue.type}
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <TargetIcon issue={issue} />
+                        <IssueTargetLink issue={issue} />
+                      </span>
+                      <span className="text-xs text-gray-400 hidden sm:inline">
+                        {issue.reporter.displayName} — {formatShortDate(issue.createdAt)}
+                        {issue.resolver && <> — resolved by {issue.resolver.displayName}</>}
+                      </span>
+                    </div>
+                    {/* Line 2: notes/description */}
+                    {issue.notes && (
+                      <p className="text-xs text-gray-500 mt-0.5 truncate max-w-xl">{issue.notes}</p>
                     )}
-                  </p>
-                </div>
-                {issue.status === 'OPEN' && (
-                  <div>
-                    {resolving === issue.id ? (
-                      <div className="flex flex-col gap-2">
-                        <input
-                          placeholder="Resolution notes (optional)"
-                          value={resolveNotes}
-                          onChange={(e) => setResolveNotes(e.target.value)}
-                          className="px-2 py-1 border border-gray-300 rounded text-sm w-48"
-                        />
-                        <div className="flex gap-1">
+                  </td>
+                  <td className="px-3 py-2 align-top text-right whitespace-nowrap">
+                    {issue.status === 'OPEN' && (
+                      <>
+                        {resolving === issue.id ? (
+                          <div className="flex items-center gap-1">
+                            <input
+                              placeholder="Notes"
+                              value={resolveNotes}
+                              onChange={(e) => setResolveNotes(e.target.value)}
+                              className="px-2 py-1 border border-gray-300 rounded text-xs w-28"
+                            />
+                            <button
+                              className="px-2 py-1 text-xs rounded bg-green-600 text-white border-none cursor-pointer"
+                              onClick={() => handleResolve(issue.id)}
+                            >
+                              OK
+                            </button>
+                            <button
+                              className="px-2 py-1 text-xs rounded bg-gray-400 text-white border-none cursor-pointer"
+                              onClick={() => setResolving(null)}
+                            >
+                              X
+                            </button>
+                          </div>
+                        ) : (
                           <button
-                            className="px-2 py-1 text-xs rounded bg-green-600 text-white border-none cursor-pointer"
-                            onClick={() => handleResolve(issue.id)}
+                            className="px-2 py-1 text-xs font-medium rounded bg-green-600 text-white border-none cursor-pointer hover:bg-green-700"
+                            onClick={() => setResolving(issue.id)}
                           >
-                            Confirm
+                            Resolve
                           </button>
-                          <button
-                            className="px-2 py-1 text-xs rounded bg-gray-500 text-white border-none cursor-pointer"
-                            onClick={() => setResolving(null)}
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <button
-                        className="px-3 py-1.5 text-sm font-medium rounded-lg bg-green-600 text-white border-none cursor-pointer hover:bg-green-700"
-                        onClick={() => setResolving(issue.id)}
-                      >
-                        Resolve
-                      </button>
+                        )}
+                      </>
                     )}
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
