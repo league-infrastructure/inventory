@@ -284,7 +284,7 @@ export class LabelService {
     const m = COMPACT_MARGIN;
     const contentHeight = COMPACT_HEIGHT_PT - m * 2;
     const qrFull = contentHeight; // original full-height QR
-    const qrSize = qrFull * 0.95; // 5% smaller
+    const qrSize = qrFull * 0.90; // 10% smaller
     const qrX = m + (qrFull - qrSize); // shift right to keep right edge fixed
     const qrY = m + (qrFull - qrSize) / 2; // vertically center
     const rightLeft = m + qrFull + 6; // text column stays put
