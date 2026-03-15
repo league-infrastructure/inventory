@@ -21,6 +21,21 @@ procedures that are already documented here.
 | [docs/testing.md](docs/testing.md) | Test pyramid, auth bypass for tests, database/API/E2E test setup, test helpers |
 | [docs/contracts.md](docs/contracts.md) | Data contract types for all domain entities, canonical JSON wire formats |
 
+## MANDATORY: Never Expose Database IDs to Users
+
+**NEVER mention database IDs, primary keys, or foreign keys when
+communicating with humans unless they explicitly ask for them.**
+
+- **Kits** are identified by their `number` field, NOT the database `id`.
+  "Kit 17" means `number=17`, not `id=17`. Always look up, sort, search,
+  and report kits by `number`.
+- **Computers** are identified by host name (e.g., "Aho") or model, not
+  by database ID.
+- **Sites** are identified by name, not by ID.
+- **All entities** should be presented using their human-meaningful
+  identifiers. Use database IDs only internally for tool calls and API
+  requests — never surface them in user-facing output.
+
 ## Architecture Rules
 
 ### Service Layer

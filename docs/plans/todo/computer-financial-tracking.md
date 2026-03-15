@@ -26,3 +26,4 @@ over the lifecycle of each device.
   (historical cost, book value, market value)
 - Display on the computer detail page, possibly in a "Financial" section
 - Consider whether these should appear on reports or exports
+- These values can be presented in a collapsed section to reduce clutter. 

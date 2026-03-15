@@ -71,7 +71,7 @@ export function registerTools(server: McpServer): void {
 
   // ─── Sites ──────────────────────────────────────────────────────────
 
-  server.tool('list_sites', 'List all active sites', {}, async () => {
+  server.tool('list_sites', 'List all active sites. When presenting sites to users, identify them by name, never by database ID.', {}, async () => {
     return safeCall(async () => {
       const { services } = getContext();
       return ok(await services.sites.list());
@@ -137,7 +137,7 @@ export function registerTools(server: McpServer): void {
 
   // ─── Kits ───────────────────────────────────────────────────────────
 
-  server.tool('list_kits', 'List all kits, optionally filtered by status', {
+  server.tool('list_kits', 'List all kits, optionally filtered by status. IMPORTANT: When presenting kits to users, always refer to them by their "number" field (e.g. "Kit 17"), never by database "id". Sort and search by number, not id.', {
     status: z.string().optional(),
   }, async ({ status }) => {
     return safeCall(async () => {
@@ -146,7 +146,7 @@ export function registerTools(server: McpServer): void {
     });
   });
 
-  server.tool('get_kit', 'Get a kit by ID with packs and computers', { id: z.number() }, async ({ id }) => {
+  server.tool('get_kit', 'Get a kit by database ID with packs and computers. NOTE: Users refer to kits by their "number" field, not database ID. Use list_kits to find the database ID for a given kit number, then call this tool.', { id: z.number() }, async ({ id }) => {
     return safeCall(async () => {
       const { services } = getContext();
       return ok(await services.kits.get(id));
@@ -372,14 +372,14 @@ export function registerTools(server: McpServer): void {
 
   // ─── Computers ──────────────────────────────────────────────────────
 
-  server.tool('list_computers', 'List all computers', {}, async () => {
+  server.tool('list_computers', 'List all computers. IMPORTANT: When presenting computers to users, identify them by host name or model, never by database ID.', {}, async () => {
     return safeCall(async () => {
       const { services } = getContext();
       return ok(await services.computers.list());
     });
   });
 
-  server.tool('get_computer', 'Get a computer by ID', { id: z.number() }, async ({ id }) => {
+  server.tool('get_computer', 'Get a computer by database ID. NOTE: Users identify computers by host name or model, not database ID. Use list_computers to find the database ID first.', { id: z.number() }, async ({ id }) => {
     return safeCall(async () => {
       const { services } = getContext();
       return ok(await services.computers.get(id));
@@ -390,6 +390,7 @@ export function registerTools(server: McpServer): void {
     serialNumber: z.string().optional(),
     serviceTag: z.string().optional(),
     model: z.string().optional(),
+    modelNumber: z.string().optional(),
     adminUsername: z.string().optional(),
     adminPassword: z.string().optional(),
     disposition: z.string().optional(),
@@ -413,6 +414,7 @@ export function registerTools(server: McpServer): void {
     serialNumber: z.string().optional(),
     serviceTag: z.string().optional(),
     model: z.string().optional(),
+    modelNumber: z.string().optional(),
     adminUsername: z.string().optional(),
     adminPassword: z.string().optional(),
     disposition: z.string().optional(),

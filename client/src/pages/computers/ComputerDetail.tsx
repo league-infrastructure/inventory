@@ -1,14 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { User, Building2, Archive, ArrowRightLeft, AlertTriangle, Printer } from 'lucide-react';
+import { User, Building2, Archive, AlertTriangle, Printer, Eye, EyeOff } from 'lucide-react';
 import TransferModal from '../../components/TransferModal';
 import PhotoUpload from '../../components/PhotoUpload';
 import NotesSection from '../../components/NotesSection';
 import ReportIssueModal from '../../components/ReportIssueModal';
 import IssuesSection from '../../components/IssuesSection';
+import EditableCell from '../../components/EditableCell';
 
 interface Site { id: number; name: string; }
-interface Kit { id: number; name: string; }
+interface Kit { id: number; name: string; number: number; }
 interface HostName { id: number; name: string; computerId: number | null; }
 
 import { DISPOSITIONS, dispositionClasses } from '../../lib/dispositions';
@@ -19,6 +20,7 @@ interface FormState {
   serialNumber: string;
   serviceTag: string;
   model: string;
+  modelNumber: string;
   adminUsername: string;
   adminPassword: string;
   studentUsername: string;
@@ -39,11 +41,10 @@ export default function ComputerDetail() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
-  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
-  const [qrCode, setQrCode] = useState<string | null>(null);
+  const [showCredentials, setShowCredentials] = useState(false);
 
   const [form, setForm] = useState<FormState>({
-    serialNumber: '', serviceTag: '', model: '', adminUsername: '',
+    serialNumber: '', serviceTag: '', model: '', modelNumber: '', adminUsername: '',
     adminPassword: '', studentUsername: '', studentPassword: '',
     disposition: 'ACTIVE', dateReceived: '',
     notes: '', siteId: '', kitId: '', hostNameId: '', categoryId: '',
@@ -53,7 +54,9 @@ export default function ComputerDetail() {
   const [sites, setSites] = useState<Site[]>([]);
   const [kits, setKits] = useState<Kit[]>([]);
   const [hostNames, setHostNames] = useState<HostName[]>([]);
+  const [custodianId, setCustodianId] = useState<number | null>(null);
   const [custodianName, setCustodianName] = useState<string | null>(null);
+  const [users, setUsers] = useState<{ id: number; displayName: string }[]>([]);
   const [imageId, setImageId] = useState<number | null>(null);
   const [showTransfer, setShowTransfer] = useState(false);
   const [showIssueModal, setShowIssueModal] = useState(false);
@@ -70,12 +73,14 @@ export default function ComputerDetail() {
       fetch('/api/kits').then((r) => r.json()),
       fetch('/api/hostnames').then((r) => r.json()),
       fetch('/api/categories').then((r) => r.json()),
+      fetch('/api/auth/users').then((r) => r.ok ? r.json() : []),
     ])
-      .then(([c, s, k, h, cats]) => {
+      .then(([c, s, k, h, cats, u]) => {
         const initial: FormState = {
           serialNumber: c.serialNumber || '',
           serviceTag: c.serviceTag || '',
           model: c.model || '',
+          modelNumber: c.modelNumber || '',
           adminUsername: c.adminUsername || '',
           adminPassword: c.adminPassword || '',
           studentUsername: c.studentUsername || '',
@@ -91,13 +96,14 @@ export default function ComputerDetail() {
         setForm(initial);
         savedForm.current = initial;
         setDirty(false);
-        setQrCode(c.qrCode || null);
+        setCustodianId(c.custodian?.id ?? null);
         setCustodianName(c.custodian?.displayName ?? null);
         setImageId(c.imageId ?? null);
         setSites(s);
         setKits(k);
         setHostNames(h);
         setCategories(cats);
+        setUsers(u);
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
@@ -105,11 +111,6 @@ export default function ComputerDetail() {
 
   useEffect(() => {
     loadComputer();
-
-    fetch(`/api/qr/c/${id}`)
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => { if (data?.qrDataUrl) setQrDataUrl(data.qrDataUrl); })
-      .catch(() => {});
   }, [id]);
 
   function updateField<K extends keyof FormState>(key: K, value: FormState[K]) {
@@ -118,6 +119,80 @@ export default function ComputerDetail() {
       setDirty(JSON.stringify(next) !== JSON.stringify(savedForm.current));
       return next;
     });
+  }
+
+  async function saveField(field: string, value: string) {
+    setSaveError(null);
+    const body: Record<string, unknown> = {};
+    if (field === 'siteId' || field === 'kitId' || field === 'hostNameId' || field === 'categoryId') {
+      body[field] = value ? parseInt(value, 10) : null;
+    } else if (field === 'disposition') {
+      body[field] = value;
+    } else {
+      body[field] = value || null;
+    }
+    try {
+      const res = await fetch(`/api/computers/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to save');
+      }
+      const updated = await res.json();
+      const next: FormState = {
+        serialNumber: updated.serialNumber || '',
+        serviceTag: updated.serviceTag || '',
+        model: updated.model || '',
+        modelNumber: updated.modelNumber || '',
+        adminUsername: updated.adminUsername || '',
+        adminPassword: updated.adminPassword || '',
+        studentUsername: updated.studentUsername || '',
+        studentPassword: updated.studentPassword || '',
+        disposition: updated.disposition,
+        dateReceived: updated.dateReceived ? updated.dateReceived.substring(0, 10) : '',
+        notes: updated.notes || '',
+        siteId: updated.site?.id || '',
+        kitId: updated.kit?.id || '',
+        hostNameId: updated.hostName?.id || '',
+        categoryId: updated.category?.id || '',
+      };
+      setForm(next);
+      savedForm.current = next;
+      setDirty(false);
+      setCustodianId(updated.custodian?.id ?? null);
+      setCustodianName(updated.custodian?.displayName ?? null);
+    } catch (e: any) {
+      setSaveError(e.message);
+    }
+  }
+
+  async function saveCustodian(value: string) {
+    setSaveError(null);
+    const newCustodianId = value ? parseInt(value, 10) : null;
+    if (newCustodianId === custodianId) return;
+    try {
+      const res = await fetch('/api/transfers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          objectType: 'Computer',
+          objectId: Number(id),
+          custodianId: newCustodianId,
+          siteId: form.siteId || null,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Transfer failed');
+      }
+      setCustodianId(newCustodianId);
+      setCustodianName(newCustodianId ? users.find((u) => u.id === newCustodianId)?.displayName ?? null : null);
+    } catch (e: any) {
+      setSaveError(e.message);
+    }
   }
 
   const availableHostNames = hostNames.filter(
@@ -133,6 +208,7 @@ export default function ComputerDetail() {
         serialNumber: form.serialNumber || null,
         serviceTag: form.serviceTag || null,
         model: form.model || null,
+        modelNumber: form.modelNumber || null,
         adminUsername: form.adminUsername || null,
         adminPassword: form.adminPassword || null,
         studentUsername: form.studentUsername || null,
@@ -166,199 +242,208 @@ export default function ComputerDetail() {
   if (error) return <p className="text-red-600 text-sm">{error}</p>;
 
   const inputClass = "mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white";
-  const displayName = form.model || `Computer #${id}`;
+  const hostNameStr = hostNames.find((h) => h.id === form.hostNameId)?.name;
+  const displayName = hostNameStr || `Computer #${id}`;
+
+  const hasCredentials = form.adminUsername || form.adminPassword || form.studentUsername || form.studentPassword;
+
+  const modelDisplay = [form.model, form.modelNumber].filter(Boolean).join(' ') || '';
 
   return (
-    <div className="max-w-lg">
+    <div className="max-w-4xl">
       <Link to="/computers" className="text-sm text-primary hover:underline">
         &larr; Back to Computers
       </Link>
 
-      <div className="flex items-center gap-3 mt-4 mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">{displayName}</h1>
-        <span className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium ${dispositionClasses(form.disposition)}`}>
-          {form.disposition.replace(/_/g, ' ')}
-        </span>
-        <button
-          className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-amber-600 text-white border-none cursor-pointer hover:bg-amber-700"
-          onClick={() => setShowIssueModal(true)}
-        >
-          <AlertTriangle size={14} /> Report Issue
-        </button>
-      </div>
-
-      {qrDataUrl && (
-        <div className="flex items-center gap-4 mb-6 p-4 bg-white border border-gray-200 rounded-lg">
-          <img src={qrDataUrl} alt="QR Code" className="w-24 h-24" />
-          <code className="text-xs text-gray-500">{qrCode}</code>
+      {/* Header: host name (editable) + model (editable) + disposition + actions */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mt-4 mb-6">
+        <div className="flex items-center gap-2 flex-wrap">
+          <h1 className="text-2xl font-bold text-gray-900">
+            <EditableCell
+              value={String(form.hostNameId)}
+              onSave={(v) => saveField('hostNameId', v)}
+              as="select"
+              options={[{ value: '', label: displayName }, ...availableHostNames.map((h) => ({ value: String(h.id), label: h.name }))]}
+            />
+          </h1>
+          <ModelEditor
+            model={form.model}
+            modelNumber={form.modelNumber}
+            onSave={(m, mn) => {
+              if (m !== form.model) saveField('model', m);
+              if (mn !== form.modelNumber) saveField('modelNumber', mn);
+            }}
+          />
+          <EditableCell
+            value={form.disposition}
+            onSave={(v) => saveField('disposition', v)}
+            as="select"
+            options={DISPOSITIONS.map((d) => ({ value: d, label: d.replace(/_/g, ' ') }))}
+            className={`text-xs px-2 py-0.5 rounded-full font-medium ${dispositionClasses(form.disposition)}`}
+          />
+        </div>
+        <div className="flex gap-2">
           <button
-            className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-blue-50 text-blue-700 border border-blue-200 cursor-pointer hover:bg-blue-100"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-amber-600 text-white border-none cursor-pointer hover:bg-amber-700"
+            onClick={() => setShowIssueModal(true)}
+          >
+            <AlertTriangle size={14} /> Report Issue
+          </button>
+          <button
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-blue-50 text-blue-700 border border-blue-200 cursor-pointer hover:bg-blue-100"
             onClick={() => window.open(`/api/labels/computer/${id}/compact`, '_blank')}
           >
             <Printer size={14} /> Print Label
           </button>
         </div>
-      )}
-
-      {/* Custody */}
-      <div className="mb-6 bg-white border border-gray-200 rounded-lg p-4">
-        <h2 className="text-sm font-semibold text-gray-700 mb-2">Custody</h2>
-        <div className="space-y-1.5">
-          <p className="text-sm text-gray-800 inline-flex items-center gap-1.5">
-            <User size={14} className="shrink-0 text-gray-400" />
-            <span className="font-medium">Who:</span>{' '}
-            {custodianName ? (
-              <span className="text-amber-600 font-medium">{custodianName}</span>
-            ) : (
-              <span className="text-green-600">Admin (storeroom)</span>
-            )}
-          </p>
-          <p className="text-sm text-gray-800 inline-flex items-center gap-1.5">
-            <Building2 size={14} className="shrink-0 text-gray-400" />
-            <span className="font-medium">Where:</span>{' '}
-            {form.siteId ? (
-              <span>{sites.find((s) => s.id === form.siteId)?.name ?? '—'}</span>
-            ) : (
-              <span className="text-gray-400">No site</span>
-            )}
-          </p>
-          {form.kitId && (
-            <p className="text-sm text-gray-800 inline-flex items-center gap-1.5">
-              <Archive size={14} className="shrink-0 text-gray-400" />
-              <span className="font-medium">Kit:</span>{' '}
-              <Link to={`/kits/${form.kitId}`} className="text-primary hover:underline">
-                {kits.find((k) => k.id === form.kitId)?.name ?? `Kit #${form.kitId}`}
-              </Link>
-            </p>
-          )}
-        </div>
       </div>
-
-      {!form.kitId && (
-        <button
-          onClick={() => setShowTransfer(true)}
-          className="mb-6 inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg bg-blue-50 text-blue-700 border border-blue-200 cursor-pointer hover:bg-blue-100"
-        >
-          <ArrowRightLeft size={16} />
-          Transfer
-        </button>
-      )}
 
       {saveError && <p className="text-red-600 text-sm mb-4">{saveError}</p>}
 
-      <form onSubmit={handleSave} className="space-y-4">
-        <label className="block">
-          <span className="text-sm font-medium text-gray-700">Model</span>
-          <input value={form.model} onChange={(e) => updateField('model', e.target.value)} className={inputClass} />
-        </label>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <label className="block">
-            <span className="text-sm font-medium text-gray-700">Serial Number</span>
-            <input value={form.serialNumber} onChange={(e) => updateField('serialNumber', e.target.value)} className={inputClass} />
-          </label>
-          <label className="block">
-            <span className="text-sm font-medium text-gray-700">Service Tag</span>
-            <input value={form.serviceTag} onChange={(e) => updateField('serviceTag', e.target.value)} className={inputClass} />
-          </label>
-        </div>
-
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide pt-2">Admin Credentials</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <label className="block">
-            <span className="text-sm font-medium text-gray-700">Admin Username</span>
-            <input value={form.adminUsername} onChange={(e) => updateField('adminUsername', e.target.value)} className={inputClass} />
-          </label>
-          <label className="block">
-            <span className="text-sm font-medium text-gray-700">Admin Password</span>
-            <input value={form.adminPassword} onChange={(e) => updateField('adminPassword', e.target.value)} className={inputClass} />
-          </label>
-        </div>
-
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide pt-2">Student Credentials</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <label className="block">
-            <span className="text-sm font-medium text-gray-700">Student Username</span>
-            <input value={form.studentUsername} onChange={(e) => updateField('studentUsername', e.target.value)} className={inputClass} />
-          </label>
-          <label className="block">
-            <span className="text-sm font-medium text-gray-700">Student Password</span>
-            <input value={form.studentPassword} onChange={(e) => updateField('studentPassword', e.target.value)} className={inputClass} />
-          </label>
-        </div>
-
-        <label className="block">
-          <span className="text-sm font-medium text-gray-700">Disposition</span>
-          <select value={form.disposition} onChange={(e) => updateField('disposition', e.target.value)} className={inputClass}>
-            {DISPOSITIONS.map((d) => (
-              <option key={d} value={d}>{d.replace(/_/g, ' ')}</option>
-            ))}
-          </select>
-        </label>
-
-        <label className="block">
-          <span className="text-sm font-medium text-gray-700">Host Name</span>
-          <select value={form.hostNameId} onChange={(e) => updateField('hostNameId', e.target.value ? parseInt(e.target.value, 10) : '')} className={inputClass}>
-            <option value="">None</option>
-            {availableHostNames.map((h) => (
-              <option key={h.id} value={h.id}>{h.name}</option>
-            ))}
-          </select>
-        </label>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <label className="block">
-            <span className="text-sm font-medium text-gray-700">Site</span>
-            <select value={form.siteId} onChange={(e) => updateField('siteId', e.target.value ? parseInt(e.target.value, 10) : '')} className={inputClass}>
-              <option value="">None</option>
-              {sites.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
-          </label>
-          <label className="block">
-            <span className="text-sm font-medium text-gray-700">Kit</span>
-            <select value={form.kitId} onChange={(e) => updateField('kitId', e.target.value ? parseInt(e.target.value, 10) : '')} className={inputClass}>
-              <option value="">None</option>
-              {kits.map((k) => (
-                <option key={k.id} value={k.id}>{k.name}</option>
-              ))}
-            </select>
-          </label>
-        </div>
-
-        <label className="block">
-          <span className="text-sm font-medium text-gray-700">Category</span>
-          <select value={form.categoryId} onChange={(e) => updateField('categoryId', e.target.value ? parseInt(e.target.value, 10) : '')} className={inputClass}>
-            <option value="">None</option>
-            {categories.map((cat) => (
-              <option key={cat.id} value={cat.id}>{cat.name}</option>
-            ))}
-          </select>
-        </label>
-
-        <label className="block">
-          <span className="text-sm font-medium text-gray-700">Date Received</span>
-          <input type="date" value={form.dateReceived} onChange={(e) => updateField('dateReceived', e.target.value)} className={inputClass} />
-        </label>
-
-        <label className="block">
-          <span className="text-sm font-medium text-gray-700">Notes</span>
-          <textarea value={form.notes} onChange={(e) => updateField('notes', e.target.value)} className={inputClass + " resize-y"} rows={3} />
-        </label>
-
-        {dirty && (
-          <div className="pt-2">
-            <button
-              type="submit"
-              className="px-6 py-2 bg-primary text-white text-sm font-medium rounded-lg border-none cursor-pointer hover:bg-primary-hover disabled:opacity-50"
-              disabled={saving}
-            >
-              {saving ? 'Saving...' : 'Save Changes'}
-            </button>
+      {/* Two-column layout: details left, QR + custody right */}
+      <div className="flex flex-col lg:flex-row gap-6 mb-8">
+        {/* Left column: fields */}
+        <div className="flex-1 min-w-0 space-y-4">
+          {/* Identity fields */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-400 uppercase tracking-wider mb-1">Serial Number</label>
+              <div className="text-lg text-gray-900">
+                <EditableCell value={form.serialNumber} onSave={(v) => saveField('serialNumber', v)} placeholder="add serial" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-400 uppercase tracking-wider mb-1">Service Tag</label>
+              <div className="text-lg text-gray-900">
+                <EditableCell value={form.serviceTag} onSave={(v) => saveField('serviceTag', v)} placeholder="add tag" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-400 uppercase tracking-wider mb-1">Category</label>
+              <div className="text-lg text-gray-900">
+                <EditableCell
+                  value={String(form.categoryId)}
+                  onSave={(v) => saveField('categoryId', v)}
+                  as="select"
+                  options={[{ value: '', label: 'None' }, ...categories.map((c) => ({ value: String(c.id), label: c.name }))]}
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-400 uppercase tracking-wider mb-1">Date Received</label>
+              <div className="text-lg text-gray-900">
+                <EditableCell value={form.dateReceived} onSave={(v) => saveField('dateReceived', v)} placeholder="none" />
+              </div>
+            </div>
           </div>
-        )}
-      </form>
+
+          {/* Credentials box with toggle */}
+          <div className="bg-white border border-gray-200 rounded-lg">
+            <button
+              className="w-full flex items-center justify-between px-4 py-3 bg-transparent border-none cursor-pointer text-left"
+              onClick={() => setShowCredentials(!showCredentials)}
+            >
+              <h3 className="text-sm font-semibold text-gray-700">Credentials</h3>
+              <span className="text-gray-400">
+                {showCredentials ? <EyeOff size={16} /> : <Eye size={16} />}
+              </span>
+            </button>
+            {showCredentials && (
+              <div className="px-4 pb-4 space-y-3">
+                {(!hasCredentials) && (
+                  <p className="text-sm text-gray-400 italic">No credentials set.</p>
+                )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <label className="block">
+                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Admin Username</span>
+                    <input value={form.adminUsername} onChange={(e) => updateField('adminUsername', e.target.value)} onBlur={() => saveField('adminUsername', form.adminUsername)} className={inputClass} />
+                  </label>
+                  <label className="block">
+                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Admin Password</span>
+                    <input value={form.adminPassword} onChange={(e) => updateField('adminPassword', e.target.value)} onBlur={() => saveField('adminPassword', form.adminPassword)} className={inputClass} />
+                  </label>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <label className="block">
+                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Student Username</span>
+                    <input value={form.studentUsername} onChange={(e) => updateField('studentUsername', e.target.value)} onBlur={() => saveField('studentUsername', form.studentUsername)} className={inputClass} />
+                  </label>
+                  <label className="block">
+                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Student Password</span>
+                    <input value={form.studentPassword} onChange={(e) => updateField('studentPassword', e.target.value)} onBlur={() => saveField('studentPassword', form.studentPassword)} className={inputClass} />
+                  </label>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Notes field */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-400 uppercase tracking-wider mb-1">Notes</label>
+            <textarea
+              value={form.notes}
+              onChange={(e) => updateField('notes', e.target.value)}
+              onBlur={() => saveField('notes', form.notes)}
+              className="w-full min-h-[3rem] px-3 py-2 text-base text-gray-900 border border-gray-300 rounded-md resize-vertical focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+              rows={2}
+              placeholder="Add notes..."
+            />
+          </div>
+        </div>
+
+        {/* Right column: QR + Custody */}
+        <div className="w-full lg:w-60 shrink-0">
+          <div className="bg-white border border-gray-200 rounded-lg p-5 space-y-5">
+            {/* QR code */}
+            <div className="flex flex-col items-center">
+              <img
+                src={`/api/labels/qr/c/${id}?v=${Date.now()}`}
+                alt="QR code"
+                className="w-20 h-20"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              />
+              <code className="text-[10px] text-gray-400 mt-1">/qr/c/{id}</code>
+            </div>
+
+            <hr className="border-gray-200" />
+
+            {/* Custody */}
+            <div>
+              <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Custody</h3>
+              <div className="space-y-3">
+                <div className="text-base flex items-center gap-2">
+                  <User size={16} className="shrink-0 text-gray-400" />
+                  <EditableCell
+                    value={String(custodianId ?? '')}
+                    onSave={saveCustodian}
+                    as="select"
+                    options={[{ value: '', label: 'Storeroom' }, ...users.map((u) => ({ value: String(u.id), label: u.displayName }))]}
+                    className={custodianName ? 'text-amber-600 font-medium' : 'text-green-600 font-medium'}
+                  />
+                </div>
+                <div className="text-base flex items-center gap-2">
+                  <Building2 size={16} className="shrink-0 text-gray-400" />
+                  <EditableCell
+                    value={String(form.siteId)}
+                    onSave={(v) => saveField('siteId', v)}
+                    as="select"
+                    options={[{ value: '', label: 'No site' }, ...sites.map((s) => ({ value: String(s.id), label: s.name }))]}
+                  />
+                </div>
+                <div className="text-base flex items-center gap-2">
+                  <Archive size={16} className="shrink-0 text-gray-400" />
+                  <EditableCell
+                    value={String(form.kitId)}
+                    onSave={(v) => saveField('kitId', v)}
+                    as="select"
+                    options={[{ value: '', label: 'No kit' }, ...kits.map((k) => ({ value: String(k.id), label: k.name }))]}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <PhotoUpload objectType="Computer" objectId={parseInt(id!, 10)} imageId={imageId} onUpdate={loadComputer} />
 
@@ -383,6 +468,85 @@ export default function ComputerDetail() {
           onClose={() => setShowIssueModal(false)}
         />
       )}
+    </div>
+  );
+}
+
+function ModelEditor({ model, modelNumber, onSave }: {
+  model: string;
+  modelNumber: string;
+  onSave: (model: string, modelNumber: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draftModel, setDraftModel] = useState(model);
+  const [draftNumber, setDraftNumber] = useState(modelNumber);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setDraftModel(model);
+    setDraftNumber(modelNumber);
+  }, [model, modelNumber]);
+
+  function commit() {
+    setEditing(false);
+    const m = draftModel.trim();
+    const mn = draftNumber.trim();
+    if (m !== model || mn !== modelNumber) {
+      onSave(m, mn);
+    }
+  }
+
+  function handleBlur(e: React.FocusEvent) {
+    // Only commit if focus is leaving the container entirely
+    if (containerRef.current && !containerRef.current.contains(e.relatedTarget as Node)) {
+      commit();
+    }
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      commit();
+    } else if (e.key === 'Escape') {
+      setDraftModel(model);
+      setDraftNumber(modelNumber);
+      setEditing(false);
+    }
+  }
+
+  const display = [model, modelNumber].filter(Boolean).join(' ');
+
+  if (!editing) {
+    return (
+      <span
+        className="text-base text-gray-500 cursor-pointer hover:bg-gray-100 rounded px-1 -mx-1"
+        onClick={() => setEditing(true)}
+        title="Click to edit model"
+      >
+        {display || <span className="text-gray-300 italic">add model</span>}
+      </span>
+    );
+  }
+
+  return (
+    <div ref={containerRef} className="inline-flex items-center gap-1.5">
+      <input
+        autoFocus
+        value={draftModel}
+        onChange={(e) => setDraftModel(e.target.value)}
+        onBlur={handleBlur}
+        onKeyDown={handleKeyDown}
+        placeholder="Model"
+        className="px-1 py-0 border border-primary rounded text-sm w-28"
+      />
+      <input
+        value={draftNumber}
+        onChange={(e) => setDraftNumber(e.target.value)}
+        onBlur={handleBlur}
+        onKeyDown={handleKeyDown}
+        placeholder="Model #"
+        className="px-1 py-0 border border-gray-300 rounded text-sm w-24"
+      />
     </div>
   );
 }

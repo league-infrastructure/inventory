@@ -3,6 +3,7 @@ export interface ComputerRecord {
   serialNumber: string | null;
   serviceTag: string | null;
   model: string | null;
+  modelNumber: string | null;
   adminUsername: string | null;
   adminPassword: string | null;
   studentUsername: string | null;
@@ -32,6 +33,7 @@ export interface CreateComputerInput {
   serialNumber?: string | null;
   serviceTag?: string | null;
   model?: string | null;
+  modelNumber?: string | null;
   adminUsername?: string | null;
   adminPassword?: string | null;
   studentUsername?: string | null;

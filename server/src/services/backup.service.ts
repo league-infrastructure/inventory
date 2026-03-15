@@ -16,14 +16,16 @@ async function hasPgDump(): Promise<boolean> {
   }
 }
 
-async function findDbContainer(): Promise<string> {
-  // Find the running PostgreSQL container by port mapping (5432 inside)
+const PG_DOCKER_IMAGE = 'postgres:16-alpine';
+
+/** Run pg_dump or pg_restore via a temporary Docker container that connects
+ *  to the database over the host network using DATABASE_URL. */
+async function dockerPgCmd(cmd: string, maxBuffer = 50 * 1024 * 1024): Promise<string> {
   const { stdout } = await execAsync(
-    `docker ps --filter "publish=5433" --format "{{.Names}}" | head -1`,
+    `docker run --rm --network host ${PG_DOCKER_IMAGE} ${cmd}`,
+    { maxBuffer },
   );
-  const name = stdout.trim();
-  if (!name) throw new Error('No running database container found on port 5433');
-  return name;
+  return stdout;
 }
 
 export const DOW_NAMES = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const;
@@ -95,10 +97,9 @@ export class BackupService {
         { maxBuffer: 50 * 1024 * 1024 },
       );
     } else {
-      // Local dev fallback: run pg_dump inside the Docker db container
-      const container = await findDbContainer();
+      // Local dev fallback: run pg_dump in a temporary container via host network
       await execAsync(
-        `docker exec ${container} pg_dump --format=custom --no-owner --no-acl -U app app > "${filePath}"`,
+        `docker run --rm --network host ${PG_DOCKER_IMAGE} pg_dump --format=custom --no-owner --no-acl "${dbUrl}" > "${filePath}"`,
         { maxBuffer: 50 * 1024 * 1024 },
       );
     }
@@ -235,10 +236,13 @@ export class BackupService {
         { maxBuffer: 50 * 1024 * 1024 },
       );
     } else {
-      // Local dev fallback: pipe dump into the Docker db container
-      const container = await findDbContainer();
+      // Local dev fallback: run pg_restore in a temporary container via host network.
+      // Mount the backups directory (not the file directly) to avoid OrbStack
+      // creating a directory stub when mounting a single file.
+      const absDir = path.resolve(this.backupDir);
+      const basename = path.basename(filePath);
       await execAsync(
-        `cat "${filePath}" | docker exec -i ${container} pg_restore --clean --if-exists --no-owner --no-acl -U app --dbname=app`,
+        `docker run --rm --network host -v "${absDir}:/backups:ro" ${PG_DOCKER_IMAGE} pg_restore --clean --if-exists --no-owner --no-acl --dbname="${dbUrl}" "/backups/${basename}"`,
         { maxBuffer: 50 * 1024 * 1024 },
       );
     }

@@ -186,6 +186,7 @@ model Computer {
   serialNumber    String?
   serviceTag      String?
   model           String?
+  modelNumber     String?
   adminUsername     String?
   adminPassword     String?
   studentUsername   String?
