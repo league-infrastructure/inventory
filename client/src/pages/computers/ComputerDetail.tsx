@@ -38,9 +38,7 @@ export default function ComputerDetail() {
   const { id } = useParams();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [dirty, setDirty] = useState(false);
   const [showCredentials, setShowCredentials] = useState(false);
 
   const [form, setForm] = useState<FormState>({
@@ -95,7 +93,6 @@ export default function ComputerDetail() {
         };
         setForm(initial);
         savedForm.current = initial;
-        setDirty(false);
         setCustodianId(c.custodian?.id ?? null);
         setCustodianName(c.custodian?.displayName ?? null);
         setImageId(c.imageId ?? null);
@@ -114,11 +111,7 @@ export default function ComputerDetail() {
   }, [id]);
 
   function updateField<K extends keyof FormState>(key: K, value: FormState[K]) {
-    setForm((prev) => {
-      const next = { ...prev, [key]: value };
-      setDirty(JSON.stringify(next) !== JSON.stringify(savedForm.current));
-      return next;
-    });
+    setForm((prev) => ({ ...prev, [key]: value }));
   }
 
   async function saveField(field: string, value: string) {
@@ -161,7 +154,6 @@ export default function ComputerDetail() {
       };
       setForm(next);
       savedForm.current = next;
-      setDirty(false);
       setCustodianId(updated.custodian?.id ?? null);
       setCustodianName(updated.custodian?.displayName ?? null);
     } catch (e: any) {
@@ -199,45 +191,6 @@ export default function ComputerDetail() {
     (h) => h.computerId === null || h.computerId === parseInt(id!, 10)
   );
 
-  async function handleSave(e: React.FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    setSaveError(null);
-    try {
-      const body: Record<string, unknown> = {
-        serialNumber: form.serialNumber || null,
-        serviceTag: form.serviceTag || null,
-        model: form.model || null,
-        modelNumber: form.modelNumber || null,
-        adminUsername: form.adminUsername || null,
-        adminPassword: form.adminPassword || null,
-        studentUsername: form.studentUsername || null,
-        studentPassword: form.studentPassword || null,
-        disposition: form.disposition,
-        dateReceived: form.dateReceived || null,
-        notes: form.notes || null,
-        siteId: form.siteId || null,
-        kitId: form.kitId || null,
-        hostNameId: form.hostNameId || null,
-        categoryId: form.categoryId || null,
-      };
-      const res = await fetch(`/api/computers/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Failed to save');
-      }
-      savedForm.current = { ...form };
-      setDirty(false);
-    } catch (e: any) {
-      setSaveError(e.message);
-    }
-    setSaving(false);
-  }
-
   if (loading) return <p className="text-gray-500 text-sm">Loading...</p>;
   if (error) return <p className="text-red-600 text-sm">{error}</p>;
 
@@ -246,8 +199,6 @@ export default function ComputerDetail() {
   const displayName = hostNameStr || `Computer #${id}`;
 
   const hasCredentials = form.adminUsername || form.adminPassword || form.studentUsername || form.studentPassword;
-
-  const modelDisplay = [form.model, form.modelNumber].filter(Boolean).join(' ') || '';
 
   return (
     <div className="max-w-4xl">
