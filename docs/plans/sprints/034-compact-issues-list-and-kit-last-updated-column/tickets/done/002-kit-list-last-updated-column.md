@@ -1,13 +1,13 @@
 ---
-id: "001"
-title: "Compact Issues List with Search"
-status: todo
+id: '002'
+title: Kit List Last Updated Column
+status: done
 use-cases: []
 depends-on: []
 ---
 <!-- CLASI: Before changing code or making plans, review the SE process in CLAUDE.md -->
 
-# Compact Issues List with Search
+# Kit List Last Updated Column
 
 ## Description
 
