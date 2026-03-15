@@ -2,6 +2,8 @@
 status: pending
 ---
 
+AGENTS: DO NOT IMPLEMENT YET. If the user has you suck up all the to-dos into sprints, inform the user that this one has been requested not to be implemented. 
+
 # Gear Reservation System
 
 ## Idea

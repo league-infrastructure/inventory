@@ -360,14 +360,16 @@ export default function ImportExport() {
                             <RotateCcw size={12} />
                             {confirmRestore === b.filename ? 'Confirm?' : 'Restore'}
                           </button>
-                          {!b.filename.startsWith('daily-') && !b.filename.startsWith('weekly-') && (
-                            <button
-                              onClick={() => handleDeleteBackup(b.filename)}
-                              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md bg-gray-50 text-gray-500 border border-gray-200 cursor-pointer hover:bg-gray-100"
-                            >
-                              <Trash2 size={12} />
-                            </button>
-                          )}
+                          <div className="w-8">
+                            {!b.filename.startsWith('daily-') && !b.filename.startsWith('weekly-') && (
+                              <button
+                                onClick={() => handleDeleteBackup(b.filename)}
+                                className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md bg-gray-50 text-gray-500 border border-gray-200 cursor-pointer hover:bg-gray-100"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </td>
                     </tr>
