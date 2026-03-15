@@ -14,6 +14,7 @@ interface HostName { id: number; name: string; computerId: number | null; }
 
 import { DISPOSITIONS, dispositionClasses } from '../../lib/dispositions';
 
+interface OperatingSystem { id: number; name: string; }
 interface Category { id: number; name: string; }
 
 interface FormState {
@@ -21,6 +22,7 @@ interface FormState {
   serviceTag: string;
   model: string;
   modelNumber: string;
+  manufacturedYear: string;
   adminUsername: string;
   adminPassword: string;
   studentUsername: string;
@@ -31,6 +33,7 @@ interface FormState {
   siteId: number | '';
   kitId: number | '';
   hostNameId: number | '';
+  osId: number | '';
   categoryId: number | '';
 }
 
@@ -42,10 +45,10 @@ export default function ComputerDetail() {
   const [showCredentials, setShowCredentials] = useState(false);
 
   const [form, setForm] = useState<FormState>({
-    serialNumber: '', serviceTag: '', model: '', modelNumber: '', adminUsername: '',
+    serialNumber: '', serviceTag: '', model: '', modelNumber: '', manufacturedYear: '', adminUsername: '',
     adminPassword: '', studentUsername: '', studentPassword: '',
     disposition: 'ACTIVE', dateReceived: '',
-    notes: '', siteId: '', kitId: '', hostNameId: '', categoryId: '',
+    notes: '', siteId: '', kitId: '', hostNameId: '', osId: '', categoryId: '',
   });
   const savedForm = useRef<FormState>(form);
 
@@ -58,6 +61,7 @@ export default function ComputerDetail() {
   const [imageId, setImageId] = useState<number | null>(null);
   const [showTransfer, setShowTransfer] = useState(false);
   const [showIssueModal, setShowIssueModal] = useState(false);
+  const [operatingSystems, setOperatingSystems] = useState<OperatingSystem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
 
   function loadComputer() {
@@ -71,14 +75,16 @@ export default function ComputerDetail() {
       fetch('/api/kits').then((r) => r.json()),
       fetch('/api/hostnames').then((r) => r.json()),
       fetch('/api/categories').then((r) => r.json()),
+      fetch('/api/operating-systems').then((r) => r.json()),
       fetch('/api/auth/users').then((r) => r.ok ? r.json() : []),
     ])
-      .then(([c, s, k, h, cats, u]) => {
+      .then(([c, s, k, h, cats, osList, u]) => {
         const initial: FormState = {
           serialNumber: c.serialNumber || '',
           serviceTag: c.serviceTag || '',
           model: c.model || '',
           modelNumber: c.modelNumber || '',
+          manufacturedYear: c.manufacturedYear ? String(c.manufacturedYear) : '',
           adminUsername: c.adminUsername || '',
           adminPassword: c.adminPassword || '',
           studentUsername: c.studentUsername || '',
@@ -89,6 +95,7 @@ export default function ComputerDetail() {
           siteId: c.site?.id || '',
           kitId: c.kit?.id || '',
           hostNameId: c.hostName?.id || '',
+          osId: c.os?.id || '',
           categoryId: c.category?.id || '',
         };
         setForm(initial);
@@ -100,6 +107,7 @@ export default function ComputerDetail() {
         setKits(k);
         setHostNames(h);
         setCategories(cats);
+        setOperatingSystems(osList);
         setUsers(u);
       })
       .catch((e) => setError(e.message))
@@ -117,7 +125,7 @@ export default function ComputerDetail() {
   async function saveField(field: string, value: string) {
     setSaveError(null);
     const body: Record<string, unknown> = {};
-    if (field === 'siteId' || field === 'kitId' || field === 'hostNameId' || field === 'categoryId') {
+    if (field === 'siteId' || field === 'kitId' || field === 'hostNameId' || field === 'osId' || field === 'categoryId' || field === 'manufacturedYear') {
       body[field] = value ? parseInt(value, 10) : null;
     } else if (field === 'disposition') {
       body[field] = value;
@@ -140,6 +148,7 @@ export default function ComputerDetail() {
         serviceTag: updated.serviceTag || '',
         model: updated.model || '',
         modelNumber: updated.modelNumber || '',
+        manufacturedYear: updated.manufacturedYear ? String(updated.manufacturedYear) : '',
         adminUsername: updated.adminUsername || '',
         adminPassword: updated.adminPassword || '',
         studentUsername: updated.studentUsername || '',
@@ -150,6 +159,7 @@ export default function ComputerDetail() {
         siteId: updated.site?.id || '',
         kitId: updated.kit?.id || '',
         hostNameId: updated.hostName?.id || '',
+        osId: updated.os?.id || '',
         categoryId: updated.category?.id || '',
       };
       setForm(next);
@@ -217,14 +227,6 @@ export default function ComputerDetail() {
               options={[{ value: '', label: displayName }, ...availableHostNames.map((h) => ({ value: String(h.id), label: h.name }))]}
             />
           </h1>
-          <ModelEditor
-            model={form.model}
-            modelNumber={form.modelNumber}
-            onSave={(m, mn) => {
-              if (m !== form.model) saveField('model', m);
-              if (mn !== form.modelNumber) saveField('modelNumber', mn);
-            }}
-          />
           <EditableCell
             value={form.disposition}
             onSave={(v) => saveField('disposition', v)}
@@ -257,6 +259,35 @@ export default function ComputerDetail() {
         <div className="flex-1 min-w-0 space-y-4">
           {/* Identity fields */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-400 uppercase tracking-wider mb-1">Model</label>
+              <div className="text-lg text-gray-900">
+                <EditableCell value={form.model} onSave={(v) => saveField('model', v)} placeholder="add model" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-400 uppercase tracking-wider mb-1">Model Number</label>
+              <div className="text-lg text-gray-900">
+                <EditableCell value={form.modelNumber} onSave={(v) => saveField('modelNumber', v)} placeholder="add model #" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-400 uppercase tracking-wider mb-1">Operating System</label>
+              <div className="text-lg text-gray-900">
+                <EditableCell
+                  value={String(form.osId)}
+                  onSave={(v) => saveField('osId', v)}
+                  as="select"
+                  options={[{ value: '', label: 'None' }, ...operatingSystems.map((o) => ({ value: String(o.id), label: o.name }))]}
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-400 uppercase tracking-wider mb-1">Manufactured Year</label>
+              <div className="text-lg text-gray-900">
+                <EditableCell value={form.manufacturedYear} onSave={(v) => saveField('manufacturedYear', v)} placeholder="e.g. 2024" as="number" />
+              </div>
+            </div>
             <div>
               <label className="block text-sm font-semibold text-gray-400 uppercase tracking-wider mb-1">Serial Number</label>
               <div className="text-lg text-gray-900">
@@ -423,81 +454,3 @@ export default function ComputerDetail() {
   );
 }
 
-function ModelEditor({ model, modelNumber, onSave }: {
-  model: string;
-  modelNumber: string;
-  onSave: (model: string, modelNumber: string) => void;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [draftModel, setDraftModel] = useState(model);
-  const [draftNumber, setDraftNumber] = useState(modelNumber);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    setDraftModel(model);
-    setDraftNumber(modelNumber);
-  }, [model, modelNumber]);
-
-  function commit() {
-    setEditing(false);
-    const m = draftModel.trim();
-    const mn = draftNumber.trim();
-    if (m !== model || mn !== modelNumber) {
-      onSave(m, mn);
-    }
-  }
-
-  function handleBlur(e: React.FocusEvent) {
-    // Only commit if focus is leaving the container entirely
-    if (containerRef.current && !containerRef.current.contains(e.relatedTarget as Node)) {
-      commit();
-    }
-  }
-
-  function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      commit();
-    } else if (e.key === 'Escape') {
-      setDraftModel(model);
-      setDraftNumber(modelNumber);
-      setEditing(false);
-    }
-  }
-
-  const display = [model, modelNumber].filter(Boolean).join(' ');
-
-  if (!editing) {
-    return (
-      <span
-        className="text-base text-gray-500 cursor-pointer hover:bg-gray-100 rounded px-1 -mx-1"
-        onClick={() => setEditing(true)}
-        title="Click to edit model"
-      >
-        {display || <span className="text-gray-300 italic">add model</span>}
-      </span>
-    );
-  }
-
-  return (
-    <div ref={containerRef} className="inline-flex items-center gap-1.5">
-      <input
-        autoFocus
-        value={draftModel}
-        onChange={(e) => setDraftModel(e.target.value)}
-        onBlur={handleBlur}
-        onKeyDown={handleKeyDown}
-        placeholder="Model"
-        className="px-1 py-0 border border-primary rounded text-sm w-28"
-      />
-      <input
-        value={draftNumber}
-        onChange={(e) => setDraftNumber(e.target.value)}
-        onBlur={handleBlur}
-        onKeyDown={handleKeyDown}
-        placeholder="Model #"
-        className="px-1 py-0 border border-gray-300 rounded text-sm w-24"
-      />
-    </div>
-  );
-}

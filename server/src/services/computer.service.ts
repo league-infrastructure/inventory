@@ -102,6 +102,7 @@ export class ComputerService extends BaseService<ComputerRecord, CreateComputerI
         serviceTag: input.serviceTag || null,
         model: input.model || null,
         modelNumber: input.modelNumber || null,
+        manufacturedYear: input.manufacturedYear || null,
         adminUsername: input.adminUsername || null,
         adminPassword: input.adminPassword || null,
         studentUsername: input.studentUsername ?? 'student',
@@ -194,6 +195,7 @@ export class ComputerService extends BaseService<ComputerRecord, CreateComputerI
     if (input.serviceTag !== undefined) data.serviceTag = input.serviceTag || null;
     if (input.model !== undefined) data.model = input.model || null;
     if (input.modelNumber !== undefined) data.modelNumber = input.modelNumber || null;
+    if (input.manufacturedYear !== undefined) data.manufacturedYear = input.manufacturedYear || null;
     if (input.adminUsername !== undefined) data.adminUsername = input.adminUsername || null;
     if (input.adminPassword !== undefined) data.adminPassword = input.adminPassword || null;
     if (input.studentUsername !== undefined) data.studentUsername = input.studentUsername || null;

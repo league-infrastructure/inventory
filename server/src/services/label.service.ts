@@ -274,12 +274,27 @@ export class LabelService {
     });
   }
 
+  private drawTagIcon(doc: any, x: number, y: number, size: number = 6): void {
+    // Small tag/label icon for kit number
+    doc.save();
+    const s = size;
+    doc.moveTo(x, y + s * 0.15)
+       .lineTo(x + s * 0.55, y)
+       .lineTo(x + s, y + s * 0.45)
+       .lineTo(x + s * 0.45, y + s)
+       .closePath()
+       .fill('#666');
+    // Small circle (tag hole)
+    doc.circle(x + s * 0.62, y + s * 0.2, s * 0.08).fill('#fff');
+    doc.restore();
+  }
+
   private addCompactLabelContent(
     doc: any,
     qrBuffer: Buffer,
     machineName: string,
     credentials: string | null,
-    serialNumber: string | null,
+    infoLine: string | null,
   ): void {
     const m = COMPACT_MARGIN;
     const contentHeight = COMPACT_HEIGHT_PT - m * 2;
@@ -326,12 +341,20 @@ export class LabelService {
            width: rightWidth,
          });
     }
-    if (serialNumber) {
+    if (infoLine) {
       doc.fontSize(6).font('Helvetica')
-         .text(`SN: ${serialNumber}`, rightLeft, doc.y, {
+         .text(infoLine, rightLeft, doc.y, {
            width: rightWidth,
          });
     }
+  }
+
+  private buildInfoLine(kitNumber: number | null, osName: string | null, serialNumber: string | null): string | null {
+    const parts: string[] = [];
+    if (kitNumber != null) parts.push(`#${kitNumber}`);
+    if (osName) parts.push(osName);
+    if (serialNumber) parts.push(`SN: ${serialNumber}`);
+    return parts.length > 0 ? parts.join('  ') : null;
   }
 
   async generateComputerLabel89x28(computerId: number): Promise<Buffer> {
@@ -339,6 +362,8 @@ export class LabelService {
       where: { id: computerId },
       include: {
         hostName: { select: { name: true } },
+        kit: { select: { number: true } },
+        os: { select: { name: true } },
       },
     });
     if (!computer) throw new NotFoundError('Computer not found');
@@ -352,9 +377,13 @@ export class LabelService {
     const credentials = (computer.studentUsername || computer.studentPassword)
       ? `user: ${computer.studentUsername || '—'}  pass: ${computer.studentPassword || '—'}`
       : null;
-    const serialNumber = computer.serialNumber || null;
+    const infoLine = this.buildInfoLine(
+      computer.kit?.number ?? null,
+      computer.os?.name ?? null,
+      computer.serialNumber,
+    );
 
-    this.addCompactLabelContent(doc, qrBuffer, machineName, credentials, serialNumber);
+    this.addCompactLabelContent(doc, qrBuffer, machineName, credentials, infoLine);
 
     doc.end();
     return new Promise((resolve) => {
@@ -373,7 +402,11 @@ export class LabelService {
       const computerId = computerIds[i];
       const computer = await this.prisma.computer.findUnique({
         where: { id: computerId },
-        include: { hostName: { select: { name: true } } },
+        include: {
+          hostName: { select: { name: true } },
+          kit: { select: { number: true } },
+          os: { select: { name: true } },
+        },
       });
       if (!computer) throw new NotFoundError(`Computer ${computerId} not found`);
 
@@ -389,9 +422,13 @@ export class LabelService {
       const credentials = (computer.studentUsername || computer.studentPassword)
         ? `user: ${computer.studentUsername || '—'}  pass: ${computer.studentPassword || '—'}`
         : null;
-      const serialNumber = computer.serialNumber || null;
+      const infoLine = this.buildInfoLine(
+        computer.kit?.number ?? null,
+        computer.os?.name ?? null,
+        computer.serialNumber,
+      );
 
-      this.addCompactLabelContent(doc, qrBuffer, machineName, credentials, serialNumber);
+      this.addCompactLabelContent(doc, qrBuffer, machineName, credentials, infoLine);
     }
 
     doc.end();

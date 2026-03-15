@@ -19,18 +19,23 @@ interface Computer {
 import { DISPOSITIONS, dispositionClasses } from '../../lib/dispositions';
 
 function formatUpdatedAt(iso: string): string {
-  const date = new Date(iso);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMs / 3600000);
-  const diffDays = Math.floor(diffMs / 86400000);
+  try {
+    const date = new Date(iso);
+    if (isNaN(date.getTime())) return '—';
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
 
-  if (diffMins < 1) return 'just now';
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays < 7) return `${diffDays}d ago`;
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    if (diffMins < 1) return 'just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  } catch {
+    return '—';
+  }
 }
 
 export default function ComputerList() {
@@ -236,7 +241,7 @@ export default function ComputerList() {
                       </span>
                     ) : '—'}
                   </td>
-                  <td className="px-4 py-3 text-gray-500 text-xs hidden sm:table-cell" title={c.updatedAt ? new Date(c.updatedAt).toLocaleString() : ''}>
+                  <td className="px-4 py-3 text-gray-500 text-xs hidden sm:table-cell" title={c.updatedAt ? formatUpdatedAt(c.updatedAt) : ''}>
                     {c.updatedAt ? formatUpdatedAt(c.updatedAt) : '—'}
                   </td>
                   <td className="px-4 py-3 hidden sm:table-cell">
