@@ -54,5 +54,18 @@ export function importExportRouter(services: ServiceRegistry): Router {
     } catch (err) { next(err); }
   });
 
+  // CSV computer import
+  router.post('/import/computers-csv', requireAuth, upload.single('file'), async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: 'No file uploaded' });
+      }
+      const userId = (req.user as any).id;
+      const csvText = req.file.buffer.toString('utf-8');
+      const result = await services.imports.importComputersCsv(csvText, userId);
+      res.json(result);
+    } catch (err) { next(err); }
+  });
+
   return router;
 }

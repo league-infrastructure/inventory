@@ -35,6 +35,11 @@ export default function ImportExport() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // CSV computer import state
+  const [csvResult, setCsvResult] = useState<ImportResult | null>(null);
+  const [csvLoading, setCsvLoading] = useState(false);
+  const [csvError, setCsvError] = useState<string | null>(null);
+
   // Backup state
   const [backups, setBackups] = useState<BackupInfo[]>([]);
   const [backupLoading, setBackupLoading] = useState(false);
@@ -282,6 +287,66 @@ export default function ImportExport() {
                 <p className="text-sm font-medium text-red-700">Errors:</p>
                 <ul className="text-sm text-red-600 list-disc list-inside">
                   {result.errors.map((e, i) => <li key={i}>{e}</li>)}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* CSV Computer Import section */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <Upload className="text-primary" size={24} />
+          <h2 className="text-lg font-semibold">Import Computers from CSV</h2>
+        </div>
+        <p className="text-sm text-gray-600 mb-4">
+          Upload a CSV file with the same columns as the Computers sheet in the Excel export.
+          Rows with an ID column will update existing computers; rows without an ID will create new ones.
+        </p>
+
+        <input
+          type="file"
+          accept=".csv"
+          onChange={async (e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            setCsvError(null);
+            setCsvResult(null);
+            setCsvLoading(true);
+            const formData = new FormData();
+            formData.append('file', file);
+            try {
+              const res = await fetch('/api/import/computers-csv', { method: 'POST', body: formData });
+              if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || 'Import failed');
+              }
+              setCsvResult(await res.json());
+            } catch (err: any) {
+              setCsvError(err.message);
+            } finally {
+              setCsvLoading(false);
+              e.target.value = '';
+            }
+          }}
+          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-primary-hover"
+        />
+
+        {csvLoading && <p className="mt-4 text-sm text-gray-500">Importing...</p>}
+        {csvError && <p className="mt-4 text-sm text-red-600">{csvError}</p>}
+
+        {csvResult && (
+          <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+            <h3 className="text-sm font-semibold text-green-800 mb-2">Import Complete</h3>
+            <p className="text-sm text-green-700">
+              Created: {csvResult.created} | Updated: {csvResult.updated} | Skipped: {csvResult.skipped}
+            </p>
+            {csvResult.errors.length > 0 && (
+              <div className="mt-2">
+                <p className="text-sm font-medium text-red-700">Errors:</p>
+                <ul className="text-sm text-red-600 list-disc list-inside">
+                  {csvResult.errors.map((e, i) => <li key={i}>{e}</li>)}
                 </ul>
               </div>
             )}

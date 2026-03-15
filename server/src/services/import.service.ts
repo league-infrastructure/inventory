@@ -135,6 +135,179 @@ export class ImportService {
     return result;
   }
 
+  async importComputersCsv(csvText: string, userId: number): Promise<ImportResult> {
+    const result: ImportResult = { created: 0, updated: 0, skipped: 0, errors: [] };
+    const lines = csvText.split(/\r?\n/).filter(l => l.trim());
+    if (lines.length < 2) throw new ValidationError('CSV must have a header row and at least one data row');
+
+    const headers = this.parseCsvLine(lines[0]);
+
+    // Build lookup maps for resolving names to IDs
+    const [sites, kits, hostNames, osList, users, categories] = await Promise.all([
+      this.prisma.site.findMany({ select: { id: true, name: true } }),
+      this.prisma.kit.findMany({ select: { id: true, number: true, name: true } }),
+      this.prisma.hostName.findMany({ select: { id: true, name: true, computerId: true } }),
+      this.prisma.operatingSystem.findMany({ select: { id: true, name: true } }),
+      this.prisma.user.findMany({ select: { id: true, displayName: true } }),
+      this.prisma.category.findMany({ select: { id: true, name: true } }),
+    ]);
+
+    const siteByName = new Map(sites.map(s => [s.name.toLowerCase(), s.id]));
+    const kitByNumber = new Map(kits.map(k => [k.number, k.id]));
+    const hostNameByName = new Map(hostNames.map(h => [h.name.toLowerCase(), h]));
+    const osByName = new Map(osList.map(o => [o.name.toLowerCase(), o.id]));
+    const userByName = new Map(users.map(u => [u.displayName.toLowerCase(), u.id]));
+    const categoryByName = new Map(categories.map(c => [c.name.toLowerCase(), c.id]));
+
+    for (let i = 1; i < lines.length; i++) {
+      const values = this.parseCsvLine(lines[i]);
+      const row: Record<string, string> = {};
+      headers.forEach((h, idx) => { row[h.trim()] = (values[idx] || '').trim(); });
+
+      const rowLabel = row['Host Name'] || row['Serial Number'] || `row ${i + 1}`;
+
+      try {
+        const data: any = {};
+
+        // Direct string fields
+        if (row['Manufacturer']) data.manufacturer = row['Manufacturer'];
+        if (row['Model']) data.model = row['Model'];
+        if (row['Model Number']) data.modelNumber = row['Model Number'];
+        if (row['Serial Number']) data.serialNumber = row['Serial Number'];
+        if (row['Service Tag']) data.serviceTag = row['Service Tag'];
+        if (row['Disposition']) data.disposition = row['Disposition'];
+        if (row['Admin Username']) data.adminUsername = row['Admin Username'];
+        if (row['Admin Password']) data.adminPassword = row['Admin Password'];
+        if (row['Student Username']) data.studentUsername = row['Student Username'];
+        if (row['Student Password']) data.studentPassword = row['Student Password'];
+        if (row['Notes']) data.notes = row['Notes'];
+
+        // Integer fields
+        if (row['Manufactured Year']) {
+          const yr = parseInt(row['Manufactured Year'], 10);
+          if (!isNaN(yr)) data.manufacturedYear = yr;
+        }
+
+        // Date fields
+        if (row['Date Received']) data.dateReceived = new Date(row['Date Received']);
+        if (row['Last Inventoried']) data.lastInventoried = new Date(row['Last Inventoried']);
+
+        // Resolve names → IDs
+        if (row['Site']) {
+          const siteId = siteByName.get(row['Site'].toLowerCase());
+          if (siteId) data.siteId = siteId;
+          else result.errors.push(`${rowLabel}: unknown site "${row['Site']}"`);
+        }
+
+        if (row['Kit']) {
+          // Kit column is formatted as "#17 Kit Name" — extract the number
+          const kitMatch = row['Kit'].match(/^#?(\d+)/);
+          if (kitMatch) {
+            const kitId = kitByNumber.get(parseInt(kitMatch[1], 10));
+            if (kitId) data.kitId = kitId;
+            else result.errors.push(`${rowLabel}: unknown kit "${row['Kit']}"`);
+          }
+        }
+
+        if (row['Operating System']) {
+          const osId = osByName.get(row['Operating System'].toLowerCase());
+          if (osId) data.osId = osId;
+          else result.errors.push(`${rowLabel}: unknown OS "${row['Operating System']}"`);
+        }
+
+        if (row['Custodian']) {
+          const custId = userByName.get(row['Custodian'].toLowerCase());
+          if (custId) data.custodianId = custId;
+          else result.errors.push(`${rowLabel}: unknown custodian "${row['Custodian']}"`);
+        }
+
+        if (row['Category']) {
+          const catId = categoryByName.get(row['Category'].toLowerCase());
+          if (catId) data.categoryId = catId;
+          else result.errors.push(`${rowLabel}: unknown category "${row['Category']}"`);
+        }
+
+        // Host Name — resolve or create
+        if (row['Host Name']) {
+          const existing = hostNameByName.get(row['Host Name'].toLowerCase());
+          if (existing) {
+            data.hostNameId = existing.id;
+          } else {
+            const created = await this.prisma.hostName.create({ data: { name: row['Host Name'] } });
+            data.hostNameId = created.id;
+            hostNameByName.set(row['Host Name'].toLowerCase(), { ...created, computerId: null });
+          }
+        }
+
+        const existingId = row['ID'] ? parseInt(row['ID'], 10) : null;
+
+        if (existingId && !isNaN(existingId)) {
+          // Update existing computer
+          const existing = await this.prisma.computer.findUnique({ where: { id: existingId } });
+          if (!existing) {
+            result.errors.push(`${rowLabel}: computer ID ${existingId} not found, skipping`);
+            result.skipped++;
+            continue;
+          }
+          await this.prisma.computer.update({ where: { id: existingId }, data });
+          if (data.hostNameId) {
+            await this.prisma.hostName.update({ where: { id: data.hostNameId }, data: { computerId: existingId } });
+          }
+          await this.audit.write({
+            userId, objectType: 'Computer', objectId: existingId,
+            field: 'csv-import', oldValue: null, newValue: JSON.stringify(data),
+          });
+          result.updated++;
+        } else {
+          // Create new computer
+          const computer = await this.prisma.computer.create({ data });
+          if (data.hostNameId) {
+            await this.prisma.hostName.update({ where: { id: data.hostNameId }, data: { computerId: computer.id } });
+          }
+          await this.audit.write({
+            userId, objectType: 'Computer', objectId: computer.id,
+            field: 'csv-import', oldValue: null, newValue: JSON.stringify(data),
+          });
+          result.created++;
+        }
+      } catch (e: any) {
+        result.errors.push(`${rowLabel}: ${e.message}`);
+      }
+    }
+
+    return result;
+  }
+
+  private parseCsvLine(line: string): string[] {
+    const result: string[] = [];
+    let current = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (inQuotes) {
+        if (ch === '"' && line[i + 1] === '"') {
+          current += '"';
+          i++;
+        } else if (ch === '"') {
+          inQuotes = false;
+        } else {
+          current += ch;
+        }
+      } else {
+        if (ch === '"') {
+          inQuotes = true;
+        } else if (ch === ',') {
+          result.push(current);
+          current = '';
+        } else {
+          current += ch;
+        }
+      }
+    }
+    result.push(current);
+    return result;
+  }
+
   private getHeaders(sheet: ExcelJS.Worksheet): string[] {
     const headerRow = sheet.getRow(1);
     const headers: string[] = [];
