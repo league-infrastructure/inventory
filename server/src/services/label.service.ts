@@ -299,7 +299,7 @@ export class LabelService {
     }
     const headerTextLeft = rightLeft + flagSize + 3;
     const headerTextWidth = rightWidth - flagSize - 3;
-    doc.fontSize(7.9).font('Helvetica-Bold')
+    doc.fontSize(7.5).font('Helvetica-Bold')
        .text('The League Of Amazing Programmers', headerTextLeft, m + 1, {
          width: headerTextWidth,
        });
