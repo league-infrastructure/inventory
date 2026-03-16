@@ -808,12 +808,39 @@ export default function KitDetail() {
       <div className="mt-8">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900">Computers ({computers.length})</h2>
-          <button
-            className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-lg bg-primary text-white border-none cursor-pointer hover:bg-primary-hover"
-            onClick={() => { setShowComputerAdd(!showComputerAdd); fetchAvailableComputers(); }}
-          >
-            <Plus size={14} /> Add Computer
-          </button>
+          <div className="flex gap-2">
+            {computers.length > 0 && (
+              <button
+                className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-lg bg-blue-50 text-blue-700 border border-blue-200 cursor-pointer hover:bg-blue-100"
+                onClick={async () => {
+                  const ids = computers.map((c) => c.id);
+                  const pdfWindow = window.open('', '_blank');
+                  try {
+                    const res = await fetch('/api/labels/computers/batch', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ computerIds: ids }),
+                    });
+                    if (!res.ok) throw new Error('Failed to generate labels');
+                    const blob = await res.blob();
+                    const url = URL.createObjectURL(blob);
+                    if (pdfWindow) pdfWindow.location.href = url;
+                    else window.open(url, '_blank');
+                  } catch {
+                    if (pdfWindow) pdfWindow.close();
+                  }
+                }}
+              >
+                <Printer size={14} /> Print Labels
+              </button>
+            )}
+            <button
+              className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-lg bg-primary text-white border-none cursor-pointer hover:bg-primary-hover"
+              onClick={() => { setShowComputerAdd(!showComputerAdd); fetchAvailableComputers(); }}
+            >
+              <Plus size={14} /> Add Computer
+            </button>
+          </div>
         </div>
 
         {showComputerAdd && (
