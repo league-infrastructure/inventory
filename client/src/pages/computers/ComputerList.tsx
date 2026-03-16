@@ -7,7 +7,9 @@ import TransferModal from '../../components/TransferModal';
 
 interface Computer {
   id: number;
+  manufacturer: string | null;
   model: string | null;
+  manufacturedYear: number | null;
   disposition: string;
   updatedAt: string;
   hostName: { name: string } | null;
@@ -183,7 +185,9 @@ export default function ComputerList() {
                   />
                 </th>
                 <SortableHeader label="Host Name" sortKey="hostName.name" currentSort={sort} onSort={toggleSort} filterValue={filters['hostName.name']} onFilter={setFilter} />
+                <SortableHeader label="Manufacturer" sortKey="manufacturer" currentSort={sort} onSort={toggleSort} filterValue={filters['manufacturer']} onFilter={setFilter} className="hidden sm:table-cell" />
                 <SortableHeader label="Model" sortKey="model" currentSort={sort} onSort={toggleSort} filterValue={filters['model']} onFilter={setFilter} />
+                <SortableHeader label="Year" sortKey="manufacturedYear" currentSort={sort} onSort={toggleSort} className="hidden sm:table-cell" />
                 <SortableHeader label="Disposition" sortKey="disposition" currentSort={sort} onSort={toggleSort} filterValue={filters['disposition']} onFilter={setFilter} />
                 <SortableHeader label="Custodian" sortKey="_custodian" currentSort={sort} onSort={toggleSort} filterValue={filters['_custodian']} onFilter={setFilter} className="hidden sm:table-cell" />
                 <SortableHeader label="Location" sortKey="_location" currentSort={sort} onSort={toggleSort} filterValue={filters['_location']} onFilter={setFilter} className="hidden sm:table-cell" />
@@ -211,7 +215,9 @@ export default function ComputerList() {
                   <td className="px-4 py-3 font-medium text-gray-900">
                     {c.hostName?.name || `#${c.id}`}
                   </td>
+                  <td className="px-4 py-3 text-gray-600 hidden sm:table-cell">{c.manufacturer || '—'}</td>
                   <td className="px-4 py-3 text-gray-600">{c.model || '—'}</td>
+                  <td className="px-4 py-3 text-gray-500 text-xs hidden sm:table-cell">{c.manufacturedYear || '—'}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium ${dispositionClasses(c.disposition)}`}>
                       {c.disposition.replace(/_/g, ' ')}

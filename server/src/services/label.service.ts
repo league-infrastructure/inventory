@@ -109,6 +109,7 @@ export class LabelService {
     qrBuffer: Buffer,
     number: string,
     name: string,
+    description?: string | null,
   ): void {
     const contentTop = MARGIN + HEADER_HEIGHT;
     const contentLeft = MARGIN + LEFT_COL_WIDTH;
@@ -153,38 +154,55 @@ export class LabelService {
     const qrY = contentTop + (number.length <= 2 ? 40 : 34);
     doc.image(qrBuffer, qrX, qrY, { width: qrSize, height: qrSize });
 
-    // === CONTENT ROW — RIGHT COLUMN (name, auto-sized to fit) ===
+    // === CONTENT ROW — RIGHT COLUMN (name + optional description, auto-sized to fit) ===
     const contentHeight = LABEL_HEIGHT_PT - contentTop - MARGIN;
     const availWidth = rightColWidth - 33;
     const maxFontSize = 36;
     const minFontSize = 10;
+    const descFontSize = 8;
+    const descText = description?.trim() || '';
 
-    // Shrink font until text fits: each word must fit on one line,
-    // and total wrapped height must fit in the available space
+    // Measure description height (fixed font size)
+    let descHeight = 0;
+    if (descText) {
+      doc.fontSize(descFontSize).font('Helvetica');
+      descHeight = doc.heightOfString(descText, { width: availWidth }) + 2;
+    }
+
+    // Shrink name font until name + description fits
+    const spaceForName = contentHeight - descHeight;
     let nameFontSize = maxFontSize;
     const words = name.split(/\s+/);
     doc.font('Helvetica-Bold');
     while (nameFontSize > minFontSize) {
       doc.fontSize(nameFontSize);
-      // Check that no single word is wider than the column
       const longestWord = words.reduce((max, w) => {
         const ww = doc.widthOfString(w);
         return ww > max ? ww : max;
       }, 0);
       const h = doc.heightOfString(name, { width: availWidth });
-      if (longestWord <= availWidth && h <= contentHeight) break;
+      if (longestWord <= availWidth && h <= spaceForName) break;
       nameFontSize -= 1;
     }
 
-    // Vertically center
+    // Vertically center the name + description block
     doc.fontSize(nameFontSize).font('Helvetica-Bold');
     const nameHeight = doc.heightOfString(name, { width: availWidth });
-    const nameY = contentTop + (contentHeight - nameHeight) / 2;
+    const totalHeight = nameHeight + descHeight;
+    const blockY = contentTop + (contentHeight - totalHeight) / 2;
 
-    doc.text(name, contentLeft + 4, nameY, {
+    doc.text(name, contentLeft + 4, blockY, {
       width: availWidth,
       align: 'center',
     });
+
+    if (descText) {
+      doc.fontSize(descFontSize).font('Helvetica')
+         .text(descText, contentLeft + 4, doc.y + 2, {
+           width: availWidth,
+           align: 'center',
+         });
+    }
   }
 
   private async getPackSequence(packId: number, kitId: number): Promise<number> {
@@ -209,7 +227,7 @@ export class LabelService {
     const buffers: Buffer[] = [];
     doc.on('data', (chunk: Buffer) => buffers.push(chunk));
 
-    this.addLabelContent(doc, qrBuffer, String(kit.number), kit.name);
+    this.addLabelContent(doc, qrBuffer, String(kit.number), kit.name, kit.description);
 
     doc.end();
     return new Promise((resolve) => {
@@ -455,7 +473,7 @@ export class LabelService {
 
     if (includeKit) {
       const kitQr = await this.generateQrBuffer(`/qr/k/${kitId}`);
-      this.addLabelContent(doc, kitQr, String(kit.number), kit.name);
+      this.addLabelContent(doc, kitQr, String(kit.number), kit.name, kit.description);
       firstPage = false;
     }
 
