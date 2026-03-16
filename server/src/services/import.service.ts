@@ -18,6 +18,23 @@ export interface ImportResult {
   errors: string[];
 }
 
+export interface ComputerCsvDiffField {
+  field: string;
+  dbValue: string;
+  csvValue: string;
+  changed: boolean;
+}
+
+export interface ComputerCsvDiffRow {
+  csvRowIndex: number;
+  matchedId: number | null;
+  hostName: string;
+  serialNumber: string;
+  action: 'create' | 'update' | 'skip';
+  fields: ComputerCsvDiffField[];
+  error?: string;
+}
+
 export class ImportService {
   constructor(private prisma: PrismaClient, private audit: AuditService) {}
 
@@ -135,36 +152,188 @@ export class ImportService {
     return result;
   }
 
-  async importComputersCsv(csvText: string, userId: number): Promise<ImportResult> {
-    const result: ImportResult = { created: 0, updated: 0, skipped: 0, errors: [] };
+  private static readonly REQUIRED_HEADERS = ['Host Name', 'Serial Number', 'Disposition'];
+
+  private parseCsvRows(csvText: string): { headers: string[]; rows: Record<string, string>[] } {
     const lines = csvText.split(/\r?\n/).filter(l => l.trim());
     if (lines.length < 2) throw new ValidationError('CSV must have a header row and at least one data row');
 
-    const headers = this.parseCsvLine(lines[0]);
+    // Find the header row — scan for a line containing known column names
+    let headerIdx = -1;
+    for (let i = 0; i < lines.length; i++) {
+      const cells = this.parseCsvLine(lines[i]).map(c => c.trim());
+      if (ImportService.REQUIRED_HEADERS.every(h => cells.includes(h))) {
+        headerIdx = i;
+        break;
+      }
+    }
+    if (headerIdx === -1) {
+      throw new ValidationError(
+        'Could not find header row. CSV must contain columns: ' +
+        ImportService.REQUIRED_HEADERS.join(', ')
+      );
+    }
 
-    // Build lookup maps for resolving names to IDs
-    const [sites, kits, hostNames, osList, users, categories] = await Promise.all([
+    const headers = this.parseCsvLine(lines[headerIdx]).map(h => h.trim());
+    const rows: Record<string, string>[] = [];
+
+    // Parse all non-header lines (before and after the header row)
+    for (let i = 0; i < lines.length; i++) {
+      if (i === headerIdx) continue;
+      const values = this.parseCsvLine(lines[i]);
+      const row: Record<string, string> = {};
+      headers.forEach((h, idx) => { row[h] = (values[idx] || '').trim(); });
+      // Skip rows that look empty (no host name and no serial number)
+      if (!row['Host Name'] && !row['Serial Number'] && !row['ID']) continue;
+      rows.push(row);
+    }
+    return { headers, rows };
+  }
+
+  private async buildLookupMaps() {
+    const [sites, kits, osList, users, categories] = await Promise.all([
       this.prisma.site.findMany({ select: { id: true, name: true } }),
       this.prisma.kit.findMany({ select: { id: true, number: true, name: true } }),
-      this.prisma.hostName.findMany({ select: { id: true, name: true, computerId: true } }),
       this.prisma.operatingSystem.findMany({ select: { id: true, name: true } }),
       this.prisma.user.findMany({ select: { id: true, displayName: true } }),
       this.prisma.category.findMany({ select: { id: true, name: true } }),
     ]);
+    return {
+      siteByName: new Map(sites.map(s => [s.name.toLowerCase(), s.id])),
+      siteById: new Map(sites.map(s => [s.id, s.name])),
+      kitByNumber: new Map(kits.map(k => [k.number, k])),
+      kitById: new Map(kits.map(k => [k.id, k])),
+      osByName: new Map(osList.map(o => [o.name.toLowerCase(), o.id])),
+      osById: new Map(osList.map(o => [o.id, o.name])),
+      userByName: new Map(users.map(u => [u.displayName.toLowerCase(), u.id])),
+      userById: new Map(users.map(u => [u.id, u.displayName])),
+      categoryByName: new Map(categories.map(c => [c.name.toLowerCase(), c.id])),
+      categoryById: new Map(categories.map(c => [c.id, c.name])),
+    };
+  }
 
-    const siteByName = new Map(sites.map(s => [s.name.toLowerCase(), s.id]));
-    const kitByNumber = new Map(kits.map(k => [k.number, k.id]));
+  // Display fields shown in the diff (CSV column name → how to read from DB record)
+  private static readonly DISPLAY_FIELDS: { csvCol: string; dbKey: string }[] = [
+    { csvCol: 'Manufacturer', dbKey: 'manufacturer' },
+    { csvCol: 'Model', dbKey: 'model' },
+    { csvCol: 'Model Number', dbKey: 'modelNumber' },
+    { csvCol: 'Operating System', dbKey: '_os' },
+    { csvCol: 'Manufactured Year', dbKey: 'manufacturedYear' },
+    { csvCol: 'Serial Number', dbKey: 'serialNumber' },
+    { csvCol: 'Service Tag', dbKey: 'serviceTag' },
+    { csvCol: 'Disposition', dbKey: 'disposition' },
+    { csvCol: 'Site', dbKey: '_site' },
+    { csvCol: 'Kit', dbKey: '_kit' },
+    { csvCol: 'Custodian', dbKey: '_custodian' },
+    { csvCol: 'Category', dbKey: '_category' },
+    { csvCol: 'Admin Username', dbKey: 'adminUsername' },
+    { csvCol: 'Admin Password', dbKey: 'adminPassword' },
+    { csvCol: 'Student Username', dbKey: 'studentUsername' },
+    { csvCol: 'Student Password', dbKey: 'studentPassword' },
+    { csvCol: 'Date Received', dbKey: 'dateReceived' },
+    { csvCol: 'Notes', dbKey: 'notes' },
+  ];
+
+  async previewComputersCsv(csvText: string, matchBy: 'hostName' | 'serialNumber'): Promise<ComputerCsvDiffRow[]> {
+    const { rows } = this.parseCsvRows(csvText);
+    const lookups = await this.buildLookupMaps();
+
+    // Load all computers with relations for display
+    const allComputers = await this.prisma.computer.findMany({
+      include: {
+        hostName: { select: { name: true } },
+        site: { select: { id: true, name: true } },
+        kit: { select: { id: true, number: true, name: true } },
+        os: { select: { id: true, name: true } },
+        custodian: { select: { id: true, displayName: true } },
+        category: { select: { id: true, name: true } },
+      },
+    });
+
+    const computerByHostName = new Map(
+      allComputers.filter(c => c.hostName?.name).map(c => [c.hostName!.name.toLowerCase(), c])
+    );
+    const computerBySerial = new Map(
+      allComputers.filter(c => c.serialNumber).map(c => [c.serialNumber!.toLowerCase(), c])
+    );
+
+    const diffs: ComputerCsvDiffRow[] = [];
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const csvHostName = row['Host Name'] || '';
+      const csvSerial = row['Serial Number'] || '';
+
+      // Find matching DB record
+      let matched: typeof allComputers[0] | undefined;
+      if (matchBy === 'hostName' && csvHostName) {
+        matched = computerByHostName.get(csvHostName.toLowerCase());
+      } else if (matchBy === 'serialNumber' && csvSerial) {
+        matched = computerBySerial.get(csvSerial.toLowerCase());
+      }
+
+      const diff: ComputerCsvDiffRow = {
+        csvRowIndex: i,
+        matchedId: matched?.id ?? null,
+        hostName: csvHostName,
+        serialNumber: csvSerial,
+        action: matched ? 'update' : 'create',
+        fields: [],
+      };
+
+      // Build field-by-field diff
+      for (const { csvCol, dbKey } of ImportService.DISPLAY_FIELDS) {
+        const csvVal = row[csvCol] || '';
+        let dbVal = '';
+        if (matched) {
+          if (dbKey === '_site') dbVal = matched.site?.name || '';
+          else if (dbKey === '_kit') dbVal = matched.kit ? `#${matched.kit.number} ${matched.kit.name}` : '';
+          else if (dbKey === '_os') dbVal = matched.os?.name || '';
+          else if (dbKey === '_custodian') dbVal = matched.custodian?.displayName || '';
+          else if (dbKey === '_category') dbVal = matched.category?.name || '';
+          else if (dbKey === 'dateReceived') dbVal = matched.dateReceived ? matched.dateReceived.toISOString().split('T')[0] : '';
+          else if (dbKey === 'manufacturedYear') dbVal = matched.manufacturedYear != null ? String(matched.manufacturedYear) : '';
+          else dbVal = (matched as any)[dbKey] || '';
+        }
+        diff.fields.push({
+          field: csvCol,
+          dbValue: dbVal,
+          csvValue: csvVal,
+          changed: csvVal !== '' && csvVal !== dbVal,
+        });
+      }
+
+      diffs.push(diff);
+    }
+
+    return diffs;
+  }
+
+  async applyComputersCsv(csvText: string, matchBy: 'hostName' | 'serialNumber', userId: number): Promise<ImportResult> {
+    const result: ImportResult = { created: 0, updated: 0, skipped: 0, errors: [] };
+    const { rows } = this.parseCsvRows(csvText);
+    const lookups = await this.buildLookupMaps();
+
+    const hostNames = await this.prisma.hostName.findMany({ select: { id: true, name: true, computerId: true } });
     const hostNameByName = new Map(hostNames.map(h => [h.name.toLowerCase(), h]));
-    const osByName = new Map(osList.map(o => [o.name.toLowerCase(), o.id]));
-    const userByName = new Map(users.map(u => [u.displayName.toLowerCase(), u.id]));
-    const categoryByName = new Map(categories.map(c => [c.name.toLowerCase(), c.id]));
 
-    for (let i = 1; i < lines.length; i++) {
-      const values = this.parseCsvLine(lines[i]);
-      const row: Record<string, string> = {};
-      headers.forEach((h, idx) => { row[h.trim()] = (values[idx] || '').trim(); });
+    const allComputers = await this.prisma.computer.findMany({
+      include: {
+        hostName: { select: { name: true } },
+      },
+    });
+    const computerByHostName = new Map(
+      allComputers.filter(c => c.hostName?.name).map(c => [c.hostName!.name.toLowerCase(), c])
+    );
+    const computerBySerial = new Map(
+      allComputers.filter(c => c.serialNumber).map(c => [c.serialNumber!.toLowerCase(), c])
+    );
 
-      const rowLabel = row['Host Name'] || row['Serial Number'] || `row ${i + 1}`;
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const csvHostName = row['Host Name'] || '';
+      const csvSerial = row['Serial Number'] || '';
+      const rowLabel = csvHostName || csvSerial || `row ${i + 2}`;
 
       try {
         const data: any = {};
@@ -182,52 +351,42 @@ export class ImportService {
         if (row['Student Password']) data.studentPassword = row['Student Password'];
         if (row['Notes']) data.notes = row['Notes'];
 
-        // Integer fields
         if (row['Manufactured Year']) {
           const yr = parseInt(row['Manufactured Year'], 10);
           if (!isNaN(yr)) data.manufacturedYear = yr;
         }
-
-        // Date fields
         if (row['Date Received']) data.dateReceived = new Date(row['Date Received']);
         if (row['Last Inventoried']) data.lastInventoried = new Date(row['Last Inventoried']);
 
         // Resolve names → IDs
         if (row['Site']) {
-          const siteId = siteByName.get(row['Site'].toLowerCase());
+          const siteId = lookups.siteByName.get(row['Site'].toLowerCase());
           if (siteId) data.siteId = siteId;
           else result.errors.push(`${rowLabel}: unknown site "${row['Site']}"`);
         }
-
         if (row['Kit']) {
-          // Kit column is formatted as "#17 Kit Name" — extract the number
           const kitMatch = row['Kit'].match(/^#?(\d+)/);
           if (kitMatch) {
-            const kitId = kitByNumber.get(parseInt(kitMatch[1], 10));
-            if (kitId) data.kitId = kitId;
+            const kit = lookups.kitByNumber.get(parseInt(kitMatch[1], 10));
+            if (kit) data.kitId = kit.id;
             else result.errors.push(`${rowLabel}: unknown kit "${row['Kit']}"`);
           }
         }
-
         if (row['Operating System']) {
-          const osId = osByName.get(row['Operating System'].toLowerCase());
+          const osId = lookups.osByName.get(row['Operating System'].toLowerCase());
           if (osId) data.osId = osId;
           else result.errors.push(`${rowLabel}: unknown OS "${row['Operating System']}"`);
         }
-
         if (row['Custodian']) {
-          const custId = userByName.get(row['Custodian'].toLowerCase());
+          const custId = lookups.userByName.get(row['Custodian'].toLowerCase());
           if (custId) data.custodianId = custId;
           else result.errors.push(`${rowLabel}: unknown custodian "${row['Custodian']}"`);
         }
-
         if (row['Category']) {
-          const catId = categoryByName.get(row['Category'].toLowerCase());
+          const catId = lookups.categoryByName.get(row['Category'].toLowerCase());
           if (catId) data.categoryId = catId;
           else result.errors.push(`${rowLabel}: unknown category "${row['Category']}"`);
         }
-
-        // Host Name — resolve or create
         if (row['Host Name']) {
           const existing = hostNameByName.get(row['Host Name'].toLowerCase());
           if (existing) {
@@ -239,16 +398,16 @@ export class ImportService {
           }
         }
 
-        const existingId = row['ID'] ? parseInt(row['ID'], 10) : null;
+        // Match existing computer
+        let matched: typeof allComputers[0] | undefined;
+        if (matchBy === 'hostName' && csvHostName) {
+          matched = computerByHostName.get(csvHostName.toLowerCase());
+        } else if (matchBy === 'serialNumber' && csvSerial) {
+          matched = computerBySerial.get(csvSerial.toLowerCase());
+        }
 
-        if (existingId && !isNaN(existingId)) {
-          // Update existing computer — convert raw FK fields to relation syntax
-          const existing = await this.prisma.computer.findUnique({ where: { id: existingId } });
-          if (!existing) {
-            result.errors.push(`${rowLabel}: computer ID ${existingId} not found, skipping`);
-            result.skipped++;
-            continue;
-          }
+        if (matched) {
+          // Update — convert FK fields to relation syntax
           const updateData: any = { ...data };
           const fkToRelation: Record<string, string> = {
             siteId: 'site', kitId: 'kit', osId: 'os',
@@ -258,25 +417,30 @@ export class ImportService {
             if (fk in updateData) {
               const val = updateData[fk];
               delete updateData[fk];
-              if (val != null) {
-                updateData[rel] = { connect: { id: val } };
-              } else {
-                updateData[rel] = { disconnect: true };
-              }
+              updateData[rel] = val != null ? { connect: { id: val } } : { disconnect: true };
             }
           }
-          await this.prisma.computer.update({ where: { id: existingId }, data: updateData });
+          await this.prisma.computer.update({ where: { id: matched.id }, data: updateData });
           await this.audit.write({
-            userId, objectType: 'Computer', objectId: existingId,
+            userId, objectType: 'Computer', objectId: matched.id,
             field: 'csv-import', oldValue: null, newValue: JSON.stringify(data),
           });
           result.updated++;
         } else {
-          // Create new computer
-          const computer = await this.prisma.computer.create({ data });
-          if (data.hostNameId) {
-            await this.prisma.hostName.update({ where: { id: data.hostNameId }, data: { computerId: computer.id } });
+          // Create — convert FK fields to relation syntax
+          const createData: any = { ...data };
+          const fkToRelation: Record<string, string> = {
+            siteId: 'site', kitId: 'kit', osId: 'os',
+            custodianId: 'custodian', categoryId: 'category', hostNameId: 'hostName',
+          };
+          for (const [fk, rel] of Object.entries(fkToRelation)) {
+            if (fk in createData) {
+              const val = createData[fk];
+              delete createData[fk];
+              if (val != null) createData[rel] = { connect: { id: val } };
+            }
           }
+          const computer = await this.prisma.computer.create({ data: createData });
           await this.audit.write({
             userId, objectType: 'Computer', objectId: computer.id,
             field: 'csv-import', oldValue: null, newValue: JSON.stringify(data),

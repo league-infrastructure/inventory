@@ -36,6 +36,9 @@ export default function ImportExport() {
   const [error, setError] = useState<string | null>(null);
 
   // CSV computer import state
+  const [csvMatchBy, setCsvMatchBy] = useState<'hostName' | 'serialNumber'>('hostName');
+  const [csvDiffs, setCsvDiffs] = useState<any[] | null>(null);
+  const [csvPayload, setCsvPayload] = useState<{ csvText: string; matchBy: string } | null>(null);
   const [csvResult, setCsvResult] = useState<ImportResult | null>(null);
   const [csvLoading, setCsvLoading] = useState(false);
   const [csvError, setCsvError] = useState<string | null>(null);
@@ -302,39 +305,141 @@ export default function ImportExport() {
         </div>
         <p className="text-sm text-gray-600 mb-4">
           Upload a CSV file with the same columns as the Computers sheet in the Excel export.
-          Rows with an ID column will update existing computers; rows without an ID will create new ones.
         </p>
 
-        <input
-          type="file"
-          accept=".csv"
-          onChange={async (e) => {
-            const file = e.target.files?.[0];
-            if (!file) return;
-            setCsvError(null);
-            setCsvResult(null);
-            setCsvLoading(true);
-            const formData = new FormData();
-            formData.append('file', file);
-            try {
-              const res = await fetch('/api/import/computers-csv', { method: 'POST', body: formData });
-              if (!res.ok) {
-                const data = await res.json();
-                throw new Error(data.error || 'Import failed');
+        <div className="flex flex-wrap items-end gap-4 mb-4">
+          <label className="block">
+            <span className="text-sm font-medium text-gray-700">Match by</span>
+            <select
+              value={csvMatchBy}
+              onChange={(e) => setCsvMatchBy(e.target.value as 'hostName' | 'serialNumber')}
+              className="mt-1 block px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+            >
+              <option value="hostName">Host Name</option>
+              <option value="serialNumber">Serial Number</option>
+            </select>
+          </label>
+          <input
+            type="file"
+            accept=".csv"
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              setCsvError(null);
+              setCsvResult(null);
+              setCsvDiffs(null);
+              setCsvPayload(null);
+              setCsvLoading(true);
+              const formData = new FormData();
+              formData.append('file', file);
+              formData.append('matchBy', csvMatchBy);
+              try {
+                const res = await fetch('/api/import/computers-csv/preview', { method: 'POST', body: formData });
+                if (!res.ok) {
+                  const data = await res.json();
+                  throw new Error(data.error || 'Preview failed');
+                }
+                const { diffs, csvText, matchBy } = await res.json();
+                setCsvDiffs(diffs);
+                setCsvPayload({ csvText, matchBy });
+              } catch (err: any) {
+                setCsvError(err.message);
+              } finally {
+                setCsvLoading(false);
+                e.target.value = '';
               }
-              setCsvResult(await res.json());
-            } catch (err: any) {
-              setCsvError(err.message);
-            } finally {
-              setCsvLoading(false);
-              e.target.value = '';
-            }
-          }}
-          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-primary-hover"
-        />
+            }}
+            className="block text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-primary-hover"
+          />
+        </div>
 
-        {csvLoading && <p className="mt-4 text-sm text-gray-500">Importing...</p>}
+        {csvLoading && <p className="mt-4 text-sm text-gray-500">Processing...</p>}
         {csvError && <p className="mt-4 text-sm text-red-600">{csvError}</p>}
+
+        {csvDiffs && csvDiffs.length > 0 && (
+          <div className="mt-4">
+            <h3 className="text-sm font-semibold mb-3">
+              Preview — {csvDiffs.filter((d: any) => d.action === 'update').length} updates,{' '}
+              {csvDiffs.filter((d: any) => d.action === 'create').length} new
+            </h3>
+            <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+              {csvDiffs.map((d: any, i: number) => (
+                <div key={i} className="border border-gray-200 rounded-lg overflow-hidden">
+                  <div className={`px-3 py-2 text-sm font-medium flex items-center justify-between ${
+                    d.action === 'create' ? 'bg-green-50 text-green-800' : 'bg-gray-50 text-gray-800'
+                  }`}>
+                    <span>{d.hostName || d.serialNumber || `Row ${d.csvRowIndex + 2}`}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+                      d.action === 'create' ? 'bg-green-200 text-green-800' : 'bg-blue-200 text-blue-800'
+                    }`}>
+                      {d.action === 'create' ? 'NEW' : 'UPDATE'}
+                    </span>
+                  </div>
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b bg-gray-50">
+                        <th className="text-left px-3 py-1 text-gray-500 w-36">Field</th>
+                        <th className="text-left px-3 py-1 text-gray-500">Database</th>
+                        <th className="text-left px-3 py-1 text-gray-500">CSV</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {d.fields.filter((f: any) => f.dbValue || f.csvValue).map((f: any, j: number) => (
+                        <tr key={j} className={f.changed ? 'bg-blue-50' : ''}>
+                          <td className="px-3 py-1 font-medium text-gray-600">{f.field}</td>
+                          <td className="px-3 py-1 text-gray-500">{f.dbValue || <span className="text-gray-300">—</span>}</td>
+                          <td className={`px-3 py-1 ${f.changed ? 'text-blue-700 font-medium' : 'text-gray-500'}`}>
+                            {f.csvValue || <span className="text-gray-300">—</span>}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 flex gap-3">
+              <button
+                onClick={async () => {
+                  if (!csvPayload) return;
+                  setCsvLoading(true);
+                  setCsvError(null);
+                  try {
+                    const res = await fetch('/api/import/computers-csv/apply', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify(csvPayload),
+                    });
+                    if (!res.ok) throw new Error('Import failed');
+                    setCsvResult(await res.json());
+                    setCsvDiffs(null);
+                    setCsvPayload(null);
+                  } catch (err: any) {
+                    setCsvError(err.message);
+                  } finally {
+                    setCsvLoading(false);
+                  }
+                }}
+                disabled={csvLoading}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+              >
+                <Check size={16} />
+                Apply Changes
+              </button>
+              <button
+                onClick={() => { setCsvDiffs(null); setCsvPayload(null); }}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+              >
+                <X size={16} />
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {csvDiffs && csvDiffs.length === 0 && (
+          <p className="mt-4 text-sm text-gray-500">No matching rows found in the CSV.</p>
+        )}
 
         {csvResult && (
           <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">

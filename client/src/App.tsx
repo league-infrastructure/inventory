@@ -86,6 +86,7 @@ function App() {
             <Route path="/admin/sessions" element={<SessionViewer />} />
             <Route path="/admin/permissions" element={<PermissionsPanel />} />
             <Route path="/admin/tokens" element={<AdminTokens />} />
+            <Route path="/admin/sites" element={<SiteList />} />
             <Route path="/admin/categories" element={<CategoriesPanel />} />
             <Route path="/admin/import-export" element={<ImportExport />} />
             <Route path="/admin/users" element={<UsersPanel />} />
