@@ -13,7 +13,7 @@ export class KitService extends BaseService<KitRecord, CreateKitInput, UpdateKit
   }
 
   async list(statusFilter?: string): Promise<KitRecord[]> {
-    const where: any = {};
+    const where: any = { deletedAt: null };
     if (statusFilter && Object.values(KitStatus).includes(statusFilter as KitStatus)) {
       where.status = statusFilter;
     }

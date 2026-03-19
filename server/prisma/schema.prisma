@@ -105,6 +105,7 @@ model Kit {
   categoryId    Int?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
+  deletedAt     DateTime?
 
   site      Site?      @relation(fields: [siteId], references: [id])
   custodian User?      @relation("KitCustodian", fields: [custodianId], references: [id])
@@ -206,6 +207,7 @@ model Computer {
   categoryId      Int?
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
+  deletedAt       DateTime?
 
   site      Site?             @relation(fields: [siteId], references: [id])
   kit       Kit?              @relation(fields: [kitId], references: [id])
