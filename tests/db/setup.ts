@@ -9,7 +9,7 @@ import { Client } from 'pg';
 import { execSync } from 'child_process';
 
 const TEST_DB = 'app_test';
-const BASE_URL = process.env.DATABASE_URL || 'postgresql://app:devpassword@localhost:5433/app';
+const BASE_URL = process.env.DATABASE_URL || 'postgresql://app:devpassword@localhost:5434/app';
 
 export default async function setup() {
   // Connect to the default database to create the test database

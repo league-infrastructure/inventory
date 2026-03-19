@@ -11,7 +11,7 @@
 
 process.env.NODE_ENV = 'test';
 if (!process.env.DATABASE_URL) {
-  process.env.DATABASE_URL = 'postgresql://app:devpassword@localhost:5433/app';
+  process.env.DATABASE_URL = 'postgresql://app:devpassword@localhost:5434/app';
 }
 
 import * as fs from 'fs';

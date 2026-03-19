@@ -114,7 +114,7 @@ PostgreSQL.
 ### 4.1 Test Database
 
 Database tests use a separate `app_test` database on the same Postgres
-instance as development (port 5433). This isolates test data from
+instance as development (port 5434). This isolates test data from
 development data.
 
 The test setup script (`tests/db/setup.ts`) automatically:

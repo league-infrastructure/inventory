@@ -103,7 +103,7 @@ npm run dev
 |----------|-----|------------|
 | Frontend | http://localhost:5173 | Yes (Vite HMR) |
 | Backend  | http://localhost:3000/api | Yes (ts-node-dev) |
-| Database | localhost:5433 (or 5432 in Codespaces) | N/A |
+| Database | localhost:5434 (or 5432 in Codespaces) | N/A |
 
 ### Docker Development
 

@@ -312,7 +312,7 @@ third-party API keys, etc.).
 
 ```bash
 npm run dev
-# Starts: Postgres container (port 5433) + Express (port 3000) + Vite (port 5173)
+# Starts: Postgres container (port 5434) + Express (port 3000) + Vite (port 5173)
 # Frontend: http://localhost:5173
 # Backend:  http://localhost:3000/api
 ```

@@ -60,7 +60,7 @@ export class SearchService {
             { hostName: { name: { contains: query, mode: 'insensitive' } } },
           ],
         },
-        select: { id: true, model: true, serialNumber: true, hostName: { select: { name: true } } },
+        select: { id: true, model: true, serialNumber: true, hostName: { select: { name: true } }, kit: { select: { id: true, number: true, name: true } } },
         take: limit,
       }),
       this.prisma.site.findMany({
@@ -97,6 +97,9 @@ export class SearchService {
         url: `/packs`,
       });
     }
+    // Track kit IDs already in results to avoid duplicates
+    const kitIdsInResults = new Set(kits.map(k => k.id));
+
     for (const c of computers) {
       results.push({
         type: 'computer',
@@ -105,6 +108,17 @@ export class SearchService {
         subtitle: c.serialNumber,
         url: `/computers/${c.id}`,
       });
+      // Also surface the parent kit if this computer is in one
+      if (c.kit && !kitIdsInResults.has(c.kit.id)) {
+        kitIdsInResults.add(c.kit.id);
+        results.push({
+          type: 'kit',
+          id: c.kit.id,
+          title: `#${c.kit.number}: ${c.kit.name}`,
+          subtitle: `contains ${c.hostName?.name || c.model || 'matched computer'}`,
+          url: `/kits/${c.kit.id}`,
+        });
+      }
     }
     for (const s of sites) {
       results.push({

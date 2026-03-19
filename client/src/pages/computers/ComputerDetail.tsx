@@ -434,7 +434,13 @@ export default function ComputerDetail() {
                   />
                 </div>
                 <div className="text-base flex items-center gap-2">
-                  <Archive size={16} className="shrink-0 text-gray-400" />
+                  {form.kitId ? (
+                    <Link to={`/kits/${form.kitId}`} className="shrink-0 text-primary hover:text-primary-hover" title="Go to kit">
+                      <Archive size={16} />
+                    </Link>
+                  ) : (
+                    <Archive size={16} className="shrink-0 text-gray-400" />
+                  )}
                   <EditableCell
                     value={String(form.kitId)}
                     onSave={(v) => saveField('kitId', v)}

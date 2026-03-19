@@ -15,7 +15,7 @@ process.env.NODE_ENV = 'test';
 // Set DATABASE_URL for tests that hit Prisma-backed routes.
 // Falls back to the standard dev database if not already set.
 if (!process.env.DATABASE_URL) {
-  process.env.DATABASE_URL = 'postgresql://app:devpassword@localhost:5433/app';
+  process.env.DATABASE_URL = 'postgresql://app:devpassword@localhost:5434/app';
 }
 
 import app from '../../../server/src/app';
