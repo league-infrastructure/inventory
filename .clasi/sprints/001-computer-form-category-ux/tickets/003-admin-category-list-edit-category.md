@@ -1,9 +1,9 @@
 ---
 id: '003'
 title: 'Admin category list: edit category'
-status: open
+status: in-progress
 use-cases:
-  - SUC-003
+- SUC-003
 depends-on: []
 github-issue: ''
 issue: edit-category-from-admin-category-list.md
@@ -32,19 +32,19 @@ the fetch call accordingly.
 
 ## Acceptance Criteria
 
-- [ ] Category names in the admin Categories tab are rendered as clickable
+- [x] Category names in the admin Categories tab are rendered as clickable
       elements (button or link styling — not plain text).
-- [ ] Clicking a category name puts that row into edit mode: the name appears
+- [x] Clicking a category name puts that row into edit mode: the name appears
       in a text input pre-filled with the current value.
-- [ ] While in edit mode, a Save button and a Cancel button are shown.
-- [ ] Clicking Save issues `PUT /api/categories/:id` with the new name and
+- [x] While in edit mode, a Save button and a Cancel button are shown.
+- [x] Clicking Save issues `PUT /api/categories/:id` with the new name and
       updates the list on success.
-- [ ] Clicking Cancel discards the change and returns the row to read mode.
-- [ ] Server validation errors (e.g., duplicate name, empty name) are surfaced
+- [x] Clicking Cancel discards the change and returns the row to read mode.
+- [x] Server validation errors (e.g., duplicate name, empty name) are surfaced
       to the user inline.
-- [ ] Only one row can be in edit mode at a time (entering edit mode on a second
+- [x] Only one row can be in edit mode at a time (entering edit mode on a second
       row closes the first without saving).
-- [ ] The other three tabs (Operating Systems, Container Types, Dispositions) are
+- [x] The other three tabs (Operating Systems, Container Types, Dispositions) are
       unaffected.
 
 ## Implementation Plan
