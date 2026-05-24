@@ -1,9 +1,9 @@
 ---
 id: '001'
 title: 'New computer form: manufacturer + identity fields'
-status: open
+status: in-progress
 use-cases:
-  - SUC-001
+- SUC-001
 depends-on: []
 github-issue: ''
 issue: add-missing-identity-fields-to-the-new-computer-form.md
@@ -29,20 +29,20 @@ renders and edits all five fields.
 
 ## Acceptance Criteria
 
-- [ ] `ComputerForm.tsx` renders a Manufacturer select with options: (blank), Dell,
+- [x] `ComputerForm.tsx` renders a Manufacturer select with options: (blank), Dell,
       Lenovo, Apple, HP, Other — matching the hardcoded list in ComputerDetail.tsx.
-- [ ] `ComputerForm.tsx` renders a Model Number text input.
-- [ ] `ComputerForm.tsx` renders a Manufactured Year number input.
-- [ ] `ComputerForm.tsx` renders an Operating System select populated from
+- [x] `ComputerForm.tsx` renders a Model Number text input.
+- [x] `ComputerForm.tsx` renders a Manufactured Year number input.
+- [x] `ComputerForm.tsx` renders an Operating System select populated from
       `GET /api/operating-systems`, with a "None" option.
-- [ ] `ComputerForm.tsx` renders a Category select populated from
+- [x] `ComputerForm.tsx` renders a Category select populated from
       `GET /api/categories`, with a "None" option.
-- [ ] All five values are included in the `POST /api/computers` request body on
+- [x] All five values are included in the `POST /api/computers` request body on
       create.
-- [ ] All five values are included in the `PUT /api/computers/:id` request body on
+- [x] All five values are included in the `PUT /api/computers/:id` request body on
       edit.
-- [ ] In edit mode, all five fields hydrate from the existing computer record.
-- [ ] Submitting the edit form without changing these fields preserves their values.
+- [x] In edit mode, all five fields hydrate from the existing computer record.
+- [x] Submitting the edit form without changing these fields preserves their values.
 - [ ] Dev server shows no Prisma errors or 500s on POST/PUT `/api/computers`.
 
 ## Implementation Plan
