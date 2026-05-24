@@ -16,6 +16,7 @@ interface Computer {
   site: { id: number; name: string } | null;
   kit: { id: number; name: string } | null;
   custodian: { id: number; displayName: string } | null;
+  category: { id: number; name: string } | null;
 }
 
 import { DISPOSITIONS, dispositionClasses } from '../../lib/dispositions';
@@ -46,6 +47,8 @@ export default function ComputerList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dispositionFilter, setDispositionFilter] = useState('ACTIVE');
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [allCategories, setAllCategories] = useState<{ id: number; name: string }[]>([]);
   const [transferComputerId, setTransferComputerId] = useState<number | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
@@ -54,9 +57,14 @@ export default function ComputerList() {
     _custodian: c.custodian?.displayName ?? '',
     _location: c.site?.name ?? '',
     _kit: c.kit?.name ?? '',
+    _category: c.category?.name ?? '',
   })), [computers]);
 
   const { processed: sorted, sort, toggleSort, filters, setFilter } = useTableSort(enriched, { key: 'hostName.name', direction: 'asc' });
+
+  const displayed = categoryFilter
+    ? sorted.filter((c) => c._category === categoryFilter)
+    : sorted;
 
   function loadComputers() {
     setLoading(true);
@@ -73,6 +81,13 @@ export default function ComputerList() {
 
   useEffect(() => { loadComputers(); setSelectedIds(new Set()); }, [dispositionFilter]);
 
+  useEffect(() => {
+    fetch('/api/categories')
+      .then((r) => r.ok ? r.json() : Promise.reject('Failed to load categories'))
+      .then(setAllCategories)
+      .catch(() => {/* non-fatal: filter dropdown just stays empty */});
+  }, []);
+
   function toggleSelect(id: number) {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -84,8 +99,8 @@ export default function ComputerList() {
 
   function toggleSelectAll() {
     setSelectedIds((prev) => {
-      if (prev.size === sorted.length) return new Set();
-      return new Set(sorted.map((c) => c.id));
+      if (prev.size === displayed.length) return new Set();
+      return new Set(displayed.map((c) => c.id));
     });
   }
 
@@ -147,7 +162,7 @@ export default function ComputerList() {
         </div>
       </div>
 
-      <div className="mb-4">
+      <div className="mb-4 flex flex-wrap gap-4">
         <label className="text-sm text-gray-600">
           Disposition:{' '}
           <select
@@ -158,6 +173,19 @@ export default function ComputerList() {
             <option value="">All</option>
             {DISPOSITIONS.map((d) => (
               <option key={d} value={d}>{d.replace(/_/g, ' ')}</option>
+            ))}
+          </select>
+        </label>
+        <label className="text-sm text-gray-600">
+          Category:{' '}
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className="ml-1 px-2 py-1.5 border border-gray-300 rounded-md text-sm bg-white"
+          >
+            <option value="">All</option>
+            {allCategories.map((cat) => (
+              <option key={cat.id} value={cat.name}>{cat.name}</option>
             ))}
           </select>
         </label>
@@ -178,7 +206,7 @@ export default function ComputerList() {
                 <th className="px-2 py-3 w-8">
                   <input
                     type="checkbox"
-                    checked={sorted.length > 0 && selectedIds.size === sorted.length}
+                    checked={displayed.length > 0 && selectedIds.size === displayed.length}
                     onChange={toggleSelectAll}
                     className="cursor-pointer"
                     onClick={(e) => e.stopPropagation()}
@@ -188,6 +216,7 @@ export default function ComputerList() {
                 <SortableHeader label="Manufacturer" sortKey="manufacturer" currentSort={sort} onSort={toggleSort} filterValue={filters['manufacturer']} onFilter={setFilter} className="hidden sm:table-cell" />
                 <SortableHeader label="Model" sortKey="model" currentSort={sort} onSort={toggleSort} filterValue={filters['model']} onFilter={setFilter} />
                 <SortableHeader label="Year" sortKey="manufacturedYear" currentSort={sort} onSort={toggleSort} className="hidden sm:table-cell" />
+                <SortableHeader label="Category" sortKey="_category" currentSort={sort} onSort={toggleSort} filterValue={filters['_category']} onFilter={setFilter} className="hidden sm:table-cell" />
                 <SortableHeader label="Disposition" sortKey="disposition" currentSort={sort} onSort={toggleSort} filterValue={filters['disposition']} onFilter={setFilter} />
                 <SortableHeader label="Custodian" sortKey="_custodian" currentSort={sort} onSort={toggleSort} filterValue={filters['_custodian']} onFilter={setFilter} className="hidden sm:table-cell" />
                 <SortableHeader label="Location" sortKey="_location" currentSort={sort} onSort={toggleSort} filterValue={filters['_location']} onFilter={setFilter} className="hidden sm:table-cell" />
@@ -197,7 +226,7 @@ export default function ComputerList() {
               </tr>
             </thead>
             <tbody>
-              {sorted.map((c) => (
+              {displayed.map((c) => (
                 <tr
                   key={c.id}
                   className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
@@ -218,6 +247,7 @@ export default function ComputerList() {
                   <td className="px-4 py-3 text-gray-600 hidden sm:table-cell">{c.manufacturer || '—'}</td>
                   <td className="px-4 py-3 text-gray-600">{c.model || '—'}</td>
                   <td className="px-4 py-3 text-gray-500 text-xs hidden sm:table-cell">{c.manufacturedYear || '—'}</td>
+                  <td className="px-4 py-3 text-gray-600 hidden sm:table-cell">{c.category?.name || '—'}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium ${dispositionClasses(c.disposition)}`}>
                       {c.disposition.replace(/_/g, ' ')}

@@ -1,11 +1,11 @@
 ---
 id: '002'
 title: 'Computer list: category column + filter'
-status: open
+status: in-progress
 use-cases:
-  - SUC-002
+- SUC-002
 depends-on:
-  - '001'
+- '001'
 github-issue: ''
 issue: add-3d-printer-category-and-computer-list-category-filter.md
 completes_issue: true
@@ -33,19 +33,19 @@ list-page column and filter.
 
 ## Acceptance Criteria
 
-- [ ] The computer list table has a Category column. It is hidden on narrow
+- [x] The computer list table has a Category column. It is hidden on narrow
       viewports (same `hidden sm:table-cell` pattern as Manufacturer, Year, etc.).
-- [ ] The Category column shows the category name for computers that have one,
+- [x] The Category column shows the category name for computers that have one,
       or "—" for uncategorized computers.
-- [ ] A Category filter dropdown appears in the filter bar alongside the existing
+- [x] A Category filter dropdown appears in the filter bar alongside the existing
       Disposition filter. It is populated from `GET /api/categories`.
-- [ ] An "All" option (value = empty string) at the top of the Category dropdown
+- [x] An "All" option (value = empty string) at the top of the Category dropdown
       clears the category filter and shows all computers.
-- [ ] Selecting a category in the dropdown filters the displayed rows to only
+- [x] Selecting a category in the dropdown filters the displayed rows to only
       computers in that category (client-side, applied to the already-fetched set).
-- [ ] Changing the Disposition filter while a Category filter is active applies
+- [x] Changing the Disposition filter while a Category filter is active applies
       both filters simultaneously.
-- [ ] The Category column is sortable via the existing `SortableHeader` component
+- [x] The Category column is sortable via the existing `SortableHeader` component
       (sort key: `_category` derived from `category?.name`).
 
 ## Implementation Plan
