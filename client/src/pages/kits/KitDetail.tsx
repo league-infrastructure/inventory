@@ -10,6 +10,7 @@ import NotesSection from '../../components/NotesSection';
 import IssuesSection from '../../components/IssuesSection';
 import type { ContainerType } from '../../lib/containers';
 import { CONTAINER_TYPE_LABELS } from '../../lib/containers';
+import { useAuth } from '../../components/AppLayout';
 
 interface Item {
   id: number;
@@ -65,6 +66,8 @@ interface FormState {
 export default function KitDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -201,6 +204,12 @@ export default function KitDetail() {
       const updated = await res.json();
       setStatus(updated.status);
     }
+  }
+
+  async function handleDelete() {
+    if (!confirm('Move this kit to trash? It can be restored from Admin > Trash.')) return;
+    const res = await fetch(`/api/kits/${id}`, { method: 'DELETE' });
+    if (res.ok) navigate('/kits');
   }
 
   async function fetchTransferHistory() {
@@ -472,6 +481,14 @@ export default function KitDetail() {
             >
               Retire
             </button>
+            {isAdmin && (
+              <button
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-red-800 text-white border-none cursor-pointer hover:bg-red-900"
+                onClick={handleDelete}
+              >
+                <Trash2 size={14} /> Delete
+              </button>
+            )}
           </div>
         )}
       </div>

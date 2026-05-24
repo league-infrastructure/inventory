@@ -1,0 +1,1 @@
+/Volumes/Proj/proj/league-projects/infrastructure/inventory/.agents/skills/project-knowledge/SKILL.md

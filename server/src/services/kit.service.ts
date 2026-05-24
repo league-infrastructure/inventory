@@ -246,4 +246,44 @@ export class KitService extends BaseService<KitRecord, CreateKitInput, UpdateKit
     });
     return result as unknown as KitDetailRecord;
   }
+
+  async softDelete(id: number, userId: number): Promise<void> {
+    const kit = await this.prisma.kit.findUnique({ where: { id } });
+    if (!kit) throw new NotFoundError('Kit not found');
+    if (kit.deletedAt) throw new ValidationError('Kit is already deleted');
+    await this.prisma.kit.update({ where: { id }, data: { deletedAt: new Date() } });
+    await this.audit.write({ userId, objectType: 'Kit', objectId: id, field: 'deletedAt', oldValue: null, newValue: new Date().toISOString() });
+  }
+
+  async restore(id: number, userId: number): Promise<void> {
+    const kit = await this.prisma.kit.findUnique({ where: { id } });
+    if (!kit) throw new NotFoundError('Kit not found');
+    if (!kit.deletedAt) throw new ValidationError('Kit is not deleted');
+    await this.prisma.kit.update({ where: { id }, data: { deletedAt: null } });
+    await this.audit.write({ userId, objectType: 'Kit', objectId: id, field: 'deletedAt', oldValue: kit.deletedAt.toISOString(), newValue: null });
+  }
+
+  async listDeleted(): Promise<KitRecord[]> {
+    const kits = await this.prisma.kit.findMany({
+      where: { deletedAt: { not: null } },
+      include: {
+        site: { select: { id: true, name: true } },
+        custodian: { select: { id: true, displayName: true } },
+        category: { select: { id: true, name: true } },
+        inventoryChecks: { select: { createdAt: true }, orderBy: { createdAt: 'desc' }, take: 1 },
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+    return kits.map((kit) => {
+      const { inventoryChecks, ...rest } = kit;
+      return { ...rest, lastInventoried: inventoryChecks[0]?.createdAt?.toISOString() ?? null } as unknown as KitRecord;
+    });
+  }
+
+  async permanentDelete(id: number): Promise<void> {
+    const kit = await this.prisma.kit.findUnique({ where: { id } });
+    if (!kit) throw new NotFoundError('Kit not found');
+    if (!kit.deletedAt) throw new ValidationError('Kit must be soft-deleted before permanent deletion');
+    await this.prisma.kit.delete({ where: { id } });
+  }
 }

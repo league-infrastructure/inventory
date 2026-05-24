@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { to: '/admin/tokens', label: 'API Tokens' },
   { to: '/admin/sites', label: 'Sites' },
   { to: '/admin/categories', label: 'Categories & Types' },
+  { to: '/admin/trash', label: 'Trash' },
   { to: '/admin/import-export', label: 'Import / Export' },
   { to: '/admin/users', label: 'Users' },
   { to: '/admin/scheduled-jobs', label: 'Scheduled Jobs' },

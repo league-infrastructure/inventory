@@ -1,0 +1,1 @@
+/Volumes/Proj/proj/league-projects/infrastructure/inventory/.agents/skills/auto-approve/SKILL.md

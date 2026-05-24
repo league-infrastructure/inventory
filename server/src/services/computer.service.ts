@@ -32,7 +32,7 @@ export class ComputerService extends BaseService<ComputerRecord, CreateComputerI
   }
 
   async list(filters: ListComputersFilters = {}): Promise<ComputerRecord[]> {
-    const where: any = {};
+    const where: any = { deletedAt: null };
 
     if (filters.disposition && Object.values(ComputerDisposition).includes(filters.disposition as ComputerDisposition)) {
       where.disposition = filters.disposition;
@@ -291,5 +291,40 @@ export class ComputerService extends BaseService<ComputerRecord, CreateComputerI
 
     await this.writeAudit(this.createAuditEntry(userId, id, 'disposition', existing.disposition, disposition));
     return updated as unknown as ComputerRecord;
+  }
+
+  async softDelete(id: number, userId: number): Promise<void> {
+    const computer = await this.prisma.computer.findUnique({ where: { id } });
+    if (!computer) throw new NotFoundError('Computer not found');
+    if (computer.deletedAt) throw new ValidationError('Computer is already deleted');
+    await this.prisma.computer.update({ where: { id }, data: { deletedAt: new Date() } });
+    await this.writeAudit(this.createAuditEntry(userId, id, 'deletedAt', null, new Date().toISOString()));
+  }
+
+  async restore(id: number, userId: number): Promise<void> {
+    const computer = await this.prisma.computer.findUnique({ where: { id } });
+    if (!computer) throw new NotFoundError('Computer not found');
+    if (!computer.deletedAt) throw new ValidationError('Computer is not deleted');
+    await this.prisma.computer.update({ where: { id }, data: { deletedAt: null } });
+    await this.writeAudit(this.createAuditEntry(userId, id, 'deletedAt', computer.deletedAt.toISOString(), null));
+  }
+
+  async listDeleted(): Promise<ComputerRecord[]> {
+    const computers = await this.prisma.computer.findMany({
+      where: { deletedAt: { not: null } },
+      include: COMPUTER_INCLUDES,
+      orderBy: { updatedAt: 'desc' },
+    });
+    return computers as unknown as ComputerRecord[];
+  }
+
+  async permanentDelete(id: number): Promise<void> {
+    const computer = await this.prisma.computer.findUnique({ where: { id }, include: { hostName: true } });
+    if (!computer) throw new NotFoundError('Computer not found');
+    if (!computer.deletedAt) throw new ValidationError('Computer must be soft-deleted before permanent deletion');
+    if (computer.hostName) {
+      await this.prisma.hostName.update({ where: { id: computer.hostName.id }, data: { computerId: null } });
+    }
+    await this.prisma.computer.delete({ where: { id } });
   }
 }

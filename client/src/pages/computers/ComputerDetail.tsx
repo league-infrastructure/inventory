@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { User, Building2, Archive, AlertTriangle, Printer, Eye, EyeOff } from 'lucide-react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { User, Building2, Archive, AlertTriangle, Printer, Eye, EyeOff, Trash2 } from 'lucide-react';
+import { useAuth } from '../../components/AppLayout';
 import TransferModal from '../../components/TransferModal';
 import PhotoUpload from '../../components/PhotoUpload';
 import NotesSection from '../../components/NotesSection';
@@ -40,6 +41,9 @@ interface FormState {
 
 export default function ComputerDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const { user: authUser } = useAuth();
+  const isAdmin = authUser?.role === 'ADMIN';
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -200,6 +204,12 @@ export default function ComputerDetail() {
     }
   }
 
+  async function handleDelete() {
+    if (!confirm('Move this computer to trash? It can be restored from Admin > Trash.')) return;
+    const res = await fetch(`/api/computers/${id}`, { method: 'DELETE' });
+    if (res.ok) navigate('/computers');
+  }
+
   const availableHostNames = hostNames.filter(
     (h) => h.computerId === null || h.computerId === parseInt(id!, 10)
   );
@@ -251,6 +261,14 @@ export default function ComputerDetail() {
           >
             <Printer size={14} /> Print Label
           </button>
+          {isAdmin && (
+            <button
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-red-800 text-white border-none cursor-pointer hover:bg-red-900"
+              onClick={handleDelete}
+            >
+              <Trash2 size={14} /> Delete
+            </button>
+          )}
         </div>
       </div>
 

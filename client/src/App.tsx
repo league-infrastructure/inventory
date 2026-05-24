@@ -33,6 +33,7 @@ import AdminTokens from './pages/admin/AdminTokens';
 import ImportExport from './pages/admin/ImportExport';
 import UsersPanel from './pages/admin/UsersPanel';
 import CategoriesPanel from './pages/admin/CategoriesPanel';
+import TrashPanel from './pages/admin/TrashPanel';
 import ScheduledJobsPanel from './pages/admin/ScheduledJobsPanel';
 import AuditLogViewer from './pages/reports/AuditLogViewer';
 import InventoryAgeReport from './pages/reports/InventoryAgeReport';
@@ -88,6 +89,7 @@ function App() {
             <Route path="/admin/tokens" element={<AdminTokens />} />
             <Route path="/admin/sites" element={<SiteList />} />
             <Route path="/admin/categories" element={<CategoriesPanel />} />
+            <Route path="/admin/trash" element={<TrashPanel />} />
             <Route path="/admin/import-export" element={<ImportExport />} />
             <Route path="/admin/users" element={<UsersPanel />} />
             <Route path="/admin/scheduled-jobs" element={<ScheduledJobsPanel />} />

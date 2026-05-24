@@ -45,3 +45,6 @@ data/~$League of Amazing Programmers Inventory.xlsx
 # Claude Code worktrees
 .claude/worktrees/
 .env.old
+# dotconfig — assembled env files contain decrypted secrets
+.env.*
+!.env.example
