@@ -1,7 +1,7 @@
 ---
 id: '002'
 title: 'Computer list: category column + filter'
-status: in-progress
+status: done
 use-cases:
 - SUC-002
 depends-on:

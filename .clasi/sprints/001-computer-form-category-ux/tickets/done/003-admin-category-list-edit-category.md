@@ -1,7 +1,7 @@
 ---
 id: '003'
 title: 'Admin category list: edit category'
-status: in-progress
+status: done
 use-cases:
 - SUC-003
 depends-on: []
