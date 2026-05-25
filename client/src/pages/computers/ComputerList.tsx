@@ -48,6 +48,7 @@ export default function ComputerList() {
   const [error, setError] = useState<string | null>(null);
   const [dispositionFilter, setDispositionFilter] = useState('ACTIVE');
   const [categoryFilter, setCategoryFilter] = useState('');
+  const [globalSearch, setGlobalSearch] = useState('');
   const [allCategories, setAllCategories] = useState<{ id: number; name: string }[]>([]);
   const [transferComputerId, setTransferComputerId] = useState<number | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -63,9 +64,25 @@ export default function ComputerList() {
 
   const { processed: sorted, sort, toggleSort, filters, setFilter } = useTableSort(enriched, { key: 'hostName.name', direction: 'asc' });
 
-  const displayed = categoryFilter
+  const search = globalSearch.trim().toLowerCase();
+  const displayed = (categoryFilter
     ? sorted.filter((c) => c._category === categoryFilter)
-    : sorted;
+    : sorted
+  ).filter((c) => {
+    if (!search) return true;
+    const haystack = [
+      c.hostName?.name,
+      c.manufacturer?.name,
+      c.model,
+      c.category?.name,
+      c.custodian?.displayName,
+      c.site?.name,
+      c.kit?.name,
+      c.manufacturedYear,
+      c.disposition,
+    ].filter((v) => v != null).join(' ').toLowerCase();
+    return haystack.includes(search);
+  });
 
   function loadComputers() {
     setLoading(true);
@@ -163,7 +180,17 @@ export default function ComputerList() {
         </div>
       </div>
 
-      <div className="mb-4 flex flex-wrap gap-4">
+      <div className="mb-4 flex flex-wrap items-center gap-4">
+        <label className="text-sm text-gray-600">
+          Search:{' '}
+          <input
+            type="text"
+            value={globalSearch}
+            onChange={(e) => setGlobalSearch(e.target.value)}
+            placeholder="any field…"
+            className="ml-1 px-2 py-1.5 border border-gray-300 rounded-md text-sm bg-white w-64"
+          />
+        </label>
         <label className="text-sm text-gray-600">
           Disposition:{' '}
           <select
