@@ -1,7 +1,7 @@
 ---
 id: '003'
 title: Transfer service auto-LOANED disposition
-status: in-progress
+status: done
 use-cases:
 - SUC-002
 depends-on:
