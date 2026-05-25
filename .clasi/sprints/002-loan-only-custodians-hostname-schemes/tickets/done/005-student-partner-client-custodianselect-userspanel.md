@@ -1,7 +1,7 @@
 ---
 id: '005'
 title: "Student/Partner client \u2014 CustodianSelect & UsersPanel"
-status: in-progress
+status: done
 use-cases:
 - SUC-001
 - SUC-002
