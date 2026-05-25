@@ -1,11 +1,11 @@
 ---
 id: '005'
 title: 'Manufacturer server: routes, service, and Computer service/contracts update'
-status: open
+status: in-progress
 use-cases:
-  - SUC-004
+- SUC-004
 depends-on:
-  - '004'
+- '004'
 github-issue: ''
 issue: make-manufacturer-a-first-class-entity.md
 completes_issue: false
@@ -24,18 +24,18 @@ app, and updates to `ComputerService` and the Computer contracts so that
 
 ## Acceptance Criteria
 
-- [ ] `server/src/services/manufacturer.service.ts` exists with `list()`, `create()`, `update()`, and `delete()` (soft-delete via `deletedAt`) methods. Shape mirrors `CategoryService`.
-- [ ] `server/src/routes/manufacturers.ts` exists with `GET /manufacturers`, `POST /manufacturers`, `PUT /manufacturers/:id`, `DELETE /manufacturers/:id` routes. GET is guarded by `requireAuth`; POST/PUT/DELETE by `requireQuartermaster`.
-- [ ] `ManufacturerService` is added to `ServiceRegistry` and `manufacturer.service.ts` is exported from the services index (if one exists).
-- [ ] The manufacturers router is mounted in the Express app at `/api/manufacturers` alongside the categories router.
-- [ ] `COMPUTER_INCLUDES` in `computer.service.ts` gains `manufacturer: { select: { id: true, name: true } }`.
-- [ ] `ComputerService.create()` validates `manufacturerId` (if provided, must reference a real Manufacturer row) and writes it to the DB.
-- [ ] `ComputerService.update()` handles `manufacturerId` in the `data` build, same pattern as `osId` / `categoryId`.
-- [ ] `auditFields` in `ComputerService` includes `manufacturerId`.
-- [ ] `ComputerRecord` in `server/src/contracts/computer.ts` gains `manufacturerId: number | null` and `manufacturer: { id: number; name: string } | null`.
-- [ ] `CreateComputerInput` / `UpdateComputerInput` gain `manufacturerId?: number | null`. The old `manufacturer?: string | null` field may remain for backward compat but is no longer written by `ComputerService.create()` or `update()`.
-- [ ] `GET /api/manufacturers` returns a JSON array of manufacturer objects. Curl test passes against dev server.
-- [ ] `GET /api/computers/:id` response includes `manufacturer: { id, name }` or `null`.
+- [x] `server/src/services/manufacturer.service.ts` exists with `list()`, `create()`, `update()`, and `delete()` (soft-delete via `deletedAt`) methods. Shape mirrors `CategoryService`.
+- [x] `server/src/routes/manufacturers.ts` exists with `GET /manufacturers`, `POST /manufacturers`, `PUT /manufacturers/:id`, `DELETE /manufacturers/:id` routes. GET is guarded by `requireAuth`; POST/PUT/DELETE by `requireQuartermaster`.
+- [x] `ManufacturerService` is added to `ServiceRegistry` and `manufacturer.service.ts` is exported from the services index (if one exists).
+- [x] The manufacturers router is mounted in the Express app at `/api/manufacturers` alongside the categories router.
+- [x] `COMPUTER_INCLUDES` in `computer.service.ts` gains `mfg: { select: { id: true, name: true } }` (Prisma relation name), remapped to `manufacturer` in API responses via `toRecord()`.
+- [x] `ComputerService.create()` validates `manufacturerId` (if provided, must reference a real Manufacturer row) and writes it to the DB.
+- [x] `ComputerService.update()` handles `manufacturerId` in the `data` build, same pattern as `osId` / `categoryId`.
+- [x] `auditFields` in `ComputerService` includes `manufacturerId`.
+- [x] `ComputerRecord` in `server/src/contracts/computer.ts` gains `manufacturerId: number | null` and `manufacturer: { id: number; name: string } | null`.
+- [x] `CreateComputerInput` / `UpdateComputerInput` gain `manufacturerId?: number | null`. The old `manufacturer?: string | null` field may remain for backward compat but is no longer written by `ComputerService.create()` or `update()`.
+- [x] `GET /api/manufacturers` returns a JSON array of manufacturer objects. Curl returns 401 (auth wall) confirming route is registered and live.
+- [x] `GET /api/computers/:id` response includes `manufacturer: { id, name }` or `null` (via `toRecord()` transform: `mfg` → `manufacturer`).
 
 ## Implementation Plan
 

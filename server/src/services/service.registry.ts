@@ -20,6 +20,7 @@ import { ReportService } from './report.service';
 import { OsService } from './os.service';
 import { ImageService } from './image.service';
 import { CategoryService } from './category.service';
+import { ManufacturerService } from './manufacturer.service';
 import { NoteService } from './note.service';
 
 export class ServiceRegistry {
@@ -44,6 +45,7 @@ export class ServiceRegistry {
   readonly os: OsService;
   readonly images: ImageService;
   readonly categories: CategoryService;
+  readonly manufacturers: ManufacturerService;
   readonly notes: NoteService;
 
   private constructor(prisma: PrismaClient, source: AuditSource = 'UI') {
@@ -68,6 +70,7 @@ export class ServiceRegistry {
     this.os = new OsService(prisma, this.audit);
     this.images = new ImageService(prisma);
     this.categories = new CategoryService(prisma, this.audit);
+    this.manufacturers = new ManufacturerService(prisma, this.audit);
     this.notes = new NoteService(prisma);
   }
 

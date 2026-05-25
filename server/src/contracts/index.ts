@@ -10,4 +10,5 @@ export * from './issue';
 export * from './user';
 export * from './operatingSystem';
 export * from './category';
+export * from './manufacturer';
 export * from './note';

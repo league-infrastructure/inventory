@@ -18,17 +18,28 @@ const COMPUTER_INCLUDES = {
   os: { select: { id: true, name: true } },
   custodian: { select: { id: true, displayName: true } },
   category: { select: { id: true, name: true } },
+  mfg: { select: { id: true, name: true } },
 };
 
 export class ComputerService extends BaseService<ComputerRecord, CreateComputerInput, UpdateComputerInput> {
   protected readonly entityName = 'Computer';
   protected readonly auditFields = [
     'serialNumber', 'serviceTag', 'model', 'adminUsername', 'adminPassword', 'studentUsername', 'studentPassword',
-    'disposition', 'dateReceived', 'lastInventoried', 'notes', 'siteId', 'kitId', 'osId', 'qrCode',
+    'disposition', 'dateReceived', 'lastInventoried', 'notes', 'siteId', 'kitId', 'osId', 'qrCode', 'manufacturerId',
   ];
 
   constructor(prisma: PrismaClient, audit: AuditService) {
     super(prisma, audit);
+  }
+
+  /** Rename the Prisma relation field `mfg` → `manufacturer` for API consumers. */
+  private toRecord(raw: any): ComputerRecord {
+    const { mfg, ...rest } = raw;
+    return { ...rest, manufacturer: mfg ?? null } as ComputerRecord;
+  }
+
+  private toRecords(raws: any[]): ComputerRecord[] {
+    return raws.map((r) => this.toRecord(r));
   }
 
   async list(filters: ListComputersFilters = {}): Promise<ComputerRecord[]> {
@@ -49,7 +60,7 @@ export class ComputerService extends BaseService<ComputerRecord, CreateComputerI
       include: COMPUTER_INCLUDES,
       orderBy: { id: 'asc' },
     });
-    return computers as unknown as ComputerRecord[];
+    return this.toRecords(computers);
   }
 
   async get(id: number): Promise<ComputerRecord> {
@@ -58,7 +69,7 @@ export class ComputerService extends BaseService<ComputerRecord, CreateComputerI
       include: COMPUTER_INCLUDES,
     });
     if (!computer) throw new NotFoundError('Computer not found');
-    return computer as unknown as ComputerRecord;
+    return this.toRecord(computer);
   }
 
   async create(input: CreateComputerInput, userId: number): Promise<ComputerRecord> {
@@ -92,6 +103,12 @@ export class ComputerService extends BaseService<ComputerRecord, CreateComputerI
       if (!os) throw new ValidationError('Operating system not found');
     }
 
+    if (input.manufacturerId != null) {
+      if (typeof input.manufacturerId !== 'number') throw new ValidationError('manufacturerId must be a number');
+      const mfg = await this.prisma.manufacturer.findUnique({ where: { id: input.manufacturerId } });
+      if (!mfg) throw new ValidationError('Manufacturer not found');
+    }
+
     // When assigned to a kit, inherit the kit's siteId and custodianId
     const effectiveSiteId = input.kitId != null ? kitSiteId : (input.siteId || null);
     const effectiveCustodianId = input.kitId != null ? kitCustodianId : (input.custodianId || null);
@@ -117,6 +134,7 @@ export class ComputerService extends BaseService<ComputerRecord, CreateComputerI
         custodianId: effectiveCustodianId,
         osId: input.osId || null,
         categoryId: input.categoryId || null,
+        manufacturerId: input.manufacturerId || null,
       },
     });
 
@@ -157,7 +175,7 @@ export class ComputerService extends BaseService<ComputerRecord, CreateComputerI
       where: { id: computer.id },
       include: COMPUTER_INCLUDES,
     });
-    return result as unknown as ComputerRecord;
+    return this.toRecord(result);
   }
 
   async update(id: number, input: UpdateComputerInput, userId: number): Promise<ComputerRecord> {
@@ -191,6 +209,12 @@ export class ComputerService extends BaseService<ComputerRecord, CreateComputerI
       if (!os) throw new ValidationError('Operating system not found');
     }
 
+    if (input.manufacturerId != null) {
+      if (typeof input.manufacturerId !== 'number') throw new ValidationError('manufacturerId must be a number');
+      const mfg = await this.prisma.manufacturer.findUnique({ where: { id: input.manufacturerId } });
+      if (!mfg) throw new ValidationError('Manufacturer not found');
+    }
+
     const data: any = {};
     if (input.serialNumber !== undefined) data.serialNumber = input.serialNumber || null;
     if (input.serviceTag !== undefined) data.serviceTag = input.serviceTag || null;
@@ -209,6 +233,7 @@ export class ComputerService extends BaseService<ComputerRecord, CreateComputerI
     if (input.kitId !== undefined) data.kitId = input.kitId;
     if (input.osId !== undefined) data.osId = input.osId;
     if (input.categoryId !== undefined) data.categoryId = input.categoryId;
+    if (input.manufacturerId !== undefined) data.manufacturerId = input.manufacturerId;
 
     // When assigning to a kit, sync siteId and custodianId from the kit
     if (assignedKit) {
@@ -272,7 +297,7 @@ export class ComputerService extends BaseService<ComputerRecord, CreateComputerI
       where: { id },
       include: COMPUTER_INCLUDES,
     });
-    return result as unknown as ComputerRecord;
+    return this.toRecord(result);
   }
 
   async changeDisposition(id: number, disposition: string, userId: number): Promise<ComputerRecord> {
@@ -290,7 +315,7 @@ export class ComputerService extends BaseService<ComputerRecord, CreateComputerI
     });
 
     await this.writeAudit(this.createAuditEntry(userId, id, 'disposition', existing.disposition, disposition));
-    return updated as unknown as ComputerRecord;
+    return this.toRecord(updated);
   }
 
   async softDelete(id: number, userId: number): Promise<void> {
@@ -315,7 +340,7 @@ export class ComputerService extends BaseService<ComputerRecord, CreateComputerI
       include: COMPUTER_INCLUDES,
       orderBy: { updatedAt: 'desc' },
     });
-    return computers as unknown as ComputerRecord[];
+    return this.toRecords(computers);
   }
 
   async permanentDelete(id: number): Promise<void> {
