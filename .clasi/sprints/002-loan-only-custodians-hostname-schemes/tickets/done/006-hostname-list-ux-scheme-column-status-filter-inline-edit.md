@@ -1,7 +1,7 @@
 ---
 id: '006'
 title: "HostName list UX \u2014 scheme column, status filter, inline edit"
-status: in-progress
+status: done
 use-cases:
 - SUC-006
 - SUC-007
