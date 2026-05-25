@@ -7,7 +7,7 @@ import TransferModal from '../../components/TransferModal';
 
 interface Computer {
   id: number;
-  manufacturer: string | null;
+  manufacturer: { id: number; name: string } | null;
   model: string | null;
   manufacturedYear: number | null;
   disposition: string;
@@ -58,6 +58,7 @@ export default function ComputerList() {
     _location: c.site?.name ?? '',
     _kit: c.kit?.name ?? '',
     _category: c.category?.name ?? '',
+    _manufacturer: c.manufacturer?.name ?? '',
   })), [computers]);
 
   const { processed: sorted, sort, toggleSort, filters, setFilter } = useTableSort(enriched, { key: 'hostName.name', direction: 'asc' });
@@ -213,7 +214,7 @@ export default function ComputerList() {
                   />
                 </th>
                 <SortableHeader label="Host Name" sortKey="hostName.name" currentSort={sort} onSort={toggleSort} filterValue={filters['hostName.name']} onFilter={setFilter} />
-                <SortableHeader label="Manufacturer" sortKey="manufacturer" currentSort={sort} onSort={toggleSort} filterValue={filters['manufacturer']} onFilter={setFilter} className="hidden sm:table-cell" />
+                <SortableHeader label="Manufacturer" sortKey="_manufacturer" currentSort={sort} onSort={toggleSort} filterValue={filters['_manufacturer']} onFilter={setFilter} className="hidden sm:table-cell" />
                 <SortableHeader label="Model" sortKey="model" currentSort={sort} onSort={toggleSort} filterValue={filters['model']} onFilter={setFilter} />
                 <SortableHeader label="Year" sortKey="manufacturedYear" currentSort={sort} onSort={toggleSort} className="hidden sm:table-cell" />
                 <SortableHeader label="Category" sortKey="_category" currentSort={sort} onSort={toggleSort} filterValue={filters['_category']} onFilter={setFilter} className="hidden sm:table-cell" />
@@ -244,7 +245,7 @@ export default function ComputerList() {
                   <td className="px-4 py-3 font-medium text-gray-900">
                     {c.hostName?.name || `#${c.id}`}
                   </td>
-                  <td className="px-4 py-3 text-gray-600 hidden sm:table-cell">{c.manufacturer || '—'}</td>
+                  <td className="px-4 py-3 text-gray-600 hidden sm:table-cell">{c.manufacturer?.name || '—'}</td>
                   <td className="px-4 py-3 text-gray-600">{c.model || '—'}</td>
                   <td className="px-4 py-3 text-gray-500 text-xs hidden sm:table-cell">{c.manufacturedYear || '—'}</td>
                   <td className="px-4 py-3 text-gray-600 hidden sm:table-cell">{c.category?.name || '—'}</td>
