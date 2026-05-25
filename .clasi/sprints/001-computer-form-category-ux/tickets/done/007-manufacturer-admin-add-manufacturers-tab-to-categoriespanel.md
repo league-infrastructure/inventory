@@ -1,7 +1,7 @@
 ---
 id: '007'
 title: 'Manufacturer admin: add Manufacturers tab to CategoriesPanel'
-status: in-progress
+status: done
 use-cases:
 - SUC-004
 depends-on:
