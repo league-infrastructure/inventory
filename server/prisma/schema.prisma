@@ -182,11 +182,24 @@ model OperatingSystem {
   computers Computer[]
 }
 
+model Manufacturer {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  computers Computer[]
+}
+
 model Computer {
   id              Int                 @id @default(autoincrement())
   serialNumber    String?
   serviceTag      String?
+  // @deprecated — pending cleanup migration (drop after manufacturerId backfill validated)
   manufacturer    String?
+  manufacturerId  Int?
+  mfg             Manufacturer? @relation(fields: [manufacturerId], references: [id])
   model           String?
   modelNumber     String?
   manufacturedYear Int?
@@ -224,6 +237,7 @@ model Computer {
   @@index([custodianId])
   @@index([imageId])
   @@index([categoryId])
+  @@index([manufacturerId])
 }
 
 model HostName {

@@ -1,16 +1,17 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Pencil, Check, X } from 'lucide-react';
 
 interface NamedRecord {
   id: number;
   name: string;
 }
 
-type Tab = 'categories' | 'operatingSystems' | 'containerTypes' | 'dispositions';
+type Tab = 'categories' | 'operatingSystems' | 'manufacturers' | 'containerTypes' | 'dispositions';
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'categories', label: 'Categories' },
   { key: 'operatingSystems', label: 'Operating Systems' },
+  { key: 'manufacturers', label: 'Manufacturers' },
   { key: 'containerTypes', label: 'Container Types' },
   { key: 'dispositions', label: 'Dispositions' },
 ];
@@ -25,6 +26,9 @@ function EditableList({ endpoint, label }: { endpoint: string; label: string }) 
   const [error, setError] = useState<string | null>(null);
   const [newName, setNewName] = useState('');
   const [actionError, setActionError] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [draftName, setDraftName] = useState('');
+  const [editError, setEditError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch(endpoint)
@@ -66,6 +70,37 @@ function EditableList({ endpoint, label }: { endpoint: string; label: string }) 
     setItems((prev) => prev.filter((c) => c.id !== id));
   }
 
+  function handleEditStart(item: NamedRecord) {
+    setEditingId(item.id);
+    setDraftName(item.name);
+    setEditError(null);
+  }
+
+  function handleEditCancel() {
+    setEditingId(null);
+    setDraftName('');
+    setEditError(null);
+  }
+
+  async function handleEditSave(id: number) {
+    setEditError(null);
+    const res = await fetch(`${endpoint}/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: draftName.trim() }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setEditError(data.error || 'Failed to save');
+      return;
+    }
+    const updated = await res.json();
+    setItems((prev) =>
+      prev.map((c) => (c.id === id ? updated : c)).sort((a, b) => a.name.localeCompare(b.name))
+    );
+    setEditingId(null);
+  }
+
   return (
     <div>
       <form onSubmit={handleAdd} className="flex gap-2 mb-2">
@@ -99,21 +134,79 @@ function EditableList({ endpoint, label }: { endpoint: string; label: string }) 
             <thead>
               <tr className="border-b border-gray-200">
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Name</th>
-                <th className="px-4 py-3 w-12"></th>
+                <th className="px-4 py-3 w-24"></th>
               </tr>
             </thead>
             <tbody>
               {items.map((c) => (
                 <tr key={c.id} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium text-gray-900">{c.name}</td>
-                  <td className="px-4 py-3">
-                    <button
-                      className="text-red-500 hover:text-red-700 bg-transparent border-none cursor-pointer p-1"
-                      onClick={() => handleDelete(c.id)}
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </td>
+                  {editingId === c.id ? (
+                    <>
+                      <td className="px-4 py-2">
+                        <input
+                          value={draftName}
+                          onChange={(e) => setDraftName(e.target.value)}
+                          className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleEditSave(c.id);
+                            if (e.key === 'Escape') handleEditCancel();
+                          }}
+                        />
+                        {editError && (
+                          <p className="text-red-600 text-xs mt-1">{editError}</p>
+                        )}
+                      </td>
+                      <td className="px-4 py-2">
+                        <div className="flex items-center gap-1">
+                          <button
+                            className="text-green-600 hover:text-green-800 bg-transparent border-none cursor-pointer p-1"
+                            onClick={() => handleEditSave(c.id)}
+                            title="Save"
+                          >
+                            <Check size={14} />
+                          </button>
+                          <button
+                            className="text-gray-500 hover:text-gray-700 bg-transparent border-none cursor-pointer p-1"
+                            onClick={handleEditCancel}
+                            title="Cancel"
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td className="px-4 py-3">
+                        <button
+                          className="font-medium text-gray-900 bg-transparent border-none cursor-pointer p-0 hover:text-primary text-left w-full"
+                          onClick={() => handleEditStart(c)}
+                          title="Click to edit"
+                        >
+                          {c.name}
+                        </button>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1">
+                          <button
+                            className="text-gray-400 hover:text-gray-600 bg-transparent border-none cursor-pointer p-1"
+                            onClick={() => handleEditStart(c)}
+                            title="Edit"
+                          >
+                            <Pencil size={14} />
+                          </button>
+                          <button
+                            className="text-red-500 hover:text-red-700 bg-transparent border-none cursor-pointer p-1"
+                            onClick={() => handleDelete(c.id)}
+                            title="Delete"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -178,6 +271,9 @@ export default function CategoriesPanel() {
       )}
       {tab === 'operatingSystems' && (
         <EditableList endpoint="/api/operating-systems" label="Operating Systems" />
+      )}
+      {tab === 'manufacturers' && (
+        <EditableList endpoint="/api/manufacturers" label="Manufacturers" />
       )}
       {tab === 'containerTypes' && (
         <ReadOnlyEnumList values={CONTAINER_TYPES} label="Container types" />

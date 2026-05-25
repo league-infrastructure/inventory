@@ -1,5 +1,8 @@
 ---
-status: pending
+status: done
+sprint: '001'
+tickets:
+- 001-003
 ---
 
 # Edit category from admin category list

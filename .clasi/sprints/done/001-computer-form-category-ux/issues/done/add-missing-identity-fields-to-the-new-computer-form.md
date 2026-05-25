@@ -1,5 +1,8 @@
 ---
-status: pending
+status: done
+sprint: '001'
+tickets:
+- 001-001
 ---
 
 # Add missing identity fields to the New Computer form

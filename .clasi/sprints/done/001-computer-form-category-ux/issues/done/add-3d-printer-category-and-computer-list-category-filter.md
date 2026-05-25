@@ -1,5 +1,8 @@
 ---
-status: pending
+status: done
+sprint: '001'
+tickets:
+- 001-002
 ---
 
 # Add 3D printer category and computer list category filter

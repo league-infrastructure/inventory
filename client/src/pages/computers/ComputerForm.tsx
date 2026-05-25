@@ -4,6 +4,9 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 interface Site { id: number; name: string; }
 interface Kit { id: number; name: string; }
 interface HostName { id: number; name: string; computerId: number | null; }
+interface OperatingSystem { id: number; name: string; }
+interface Category { id: number; name: string; }
+interface Manufacturer { id: number; name: string; }
 
 import { DISPOSITIONS } from '../../lib/dispositions';
 
@@ -23,10 +26,18 @@ export default function ComputerForm() {
   const [siteId, setSiteId] = useState<number | ''>('');
   const [kitId, setKitId] = useState<number | ''>('');
   const [hostNameId, setHostNameId] = useState<number | ''>('');
+  const [manufacturerId, setManufacturerId] = useState<number | ''>('');
+  const [modelNumber, setModelNumber] = useState('');
+  const [manufacturedYear, setManufacturedYear] = useState<number | ''>('');
+  const [osId, setOsId] = useState<number | ''>('');
+  const [categoryId, setCategoryId] = useState<number | ''>('');
 
   const [sites, setSites] = useState<Site[]>([]);
   const [kits, setKits] = useState<Kit[]>([]);
   const [hostNames, setHostNames] = useState<HostName[]>([]);
+  const [operatingSystems, setOperatingSystems] = useState<OperatingSystem[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [manufacturers, setManufacturers] = useState<Manufacturer[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -35,8 +46,11 @@ export default function ComputerForm() {
       fetch('/api/sites').then((r) => r.json()),
       fetch('/api/kits').then((r) => r.json()),
       fetch('/api/hostnames').then((r) => r.json()),
+      fetch('/api/operating-systems').then((r) => r.json()),
+      fetch('/api/categories').then((r) => r.json()),
+      fetch('/api/manufacturers').then((r) => r.json()),
     ])
-      .then(([s, k, h]) => { setSites(s); setKits(k); setHostNames(h); })
+      .then(([s, k, h, osList, cats, mfgList]) => { setSites(s); setKits(k); setHostNames(h); setOperatingSystems(osList); setCategories(cats); setManufacturers(mfgList); })
       .catch(() => {});
   }, []);
 
@@ -56,6 +70,11 @@ export default function ComputerForm() {
           setSiteId(c.site?.id || '');
           setKitId(c.kit?.id || '');
           setHostNameId(c.hostName?.id || '');
+          setManufacturerId(c.manufacturer?.id || '');
+          setModelNumber(c.modelNumber || '');
+          setManufacturedYear(c.manufacturedYear ?? '');
+          setOsId(c.os?.id || c.osId || '');
+          setCategoryId(c.category?.id || c.categoryId || '');
         })
         .catch(() => setError('Computer not found'));
     }
@@ -82,6 +101,11 @@ export default function ComputerForm() {
       siteId: siteId || null,
       kitId: kitId || null,
       hostNameId: hostNameId || null,
+      manufacturerId: manufacturerId || null,
+      modelNumber: modelNumber || null,
+      manufacturedYear: manufacturedYear === '' ? null : Number(manufacturedYear),
+      osId: osId || null,
+      categoryId: categoryId || null,
     };
 
     try {
@@ -119,6 +143,22 @@ export default function ComputerForm() {
       {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <label className="block">
+            <span className="text-sm font-medium text-gray-700">Manufacturer</span>
+            <select value={manufacturerId} onChange={(e) => setManufacturerId(e.target.value ? parseInt(e.target.value, 10) : '')} className={inputClass}>
+              <option value=""></option>
+              {manufacturers.map((m) => (
+                <option key={m.id} value={m.id}>{m.name}</option>
+              ))}
+            </select>
+          </label>
+          <label className="block">
+            <span className="text-sm font-medium text-gray-700">Model Number</span>
+            <input value={modelNumber} onChange={(e) => setModelNumber(e.target.value)} className={inputClass} />
+          </label>
+        </div>
+
         <label className="block">
           <span className="text-sm font-medium text-gray-700">Model</span>
           <input value={model} onChange={(e) => setModel(e.target.value)} className={inputClass} />
@@ -132,6 +172,37 @@ export default function ComputerForm() {
           <label className="block">
             <span className="text-sm font-medium text-gray-700">Service Tag</span>
             <input value={serviceTag} onChange={(e) => setServiceTag(e.target.value)} className={inputClass} />
+          </label>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <label className="block">
+            <span className="text-sm font-medium text-gray-700">Manufactured Year</span>
+            <input
+              type="number"
+              value={manufacturedYear}
+              onChange={(e) => setManufacturedYear(e.target.value ? parseInt(e.target.value, 10) : '')}
+              className={inputClass}
+              placeholder="e.g. 2024"
+            />
+          </label>
+          <label className="block">
+            <span className="text-sm font-medium text-gray-700">Operating System</span>
+            <select value={osId} onChange={(e) => setOsId(e.target.value ? parseInt(e.target.value, 10) : '')} className={inputClass}>
+              <option value="">None</option>
+              {operatingSystems.map((o) => (
+                <option key={o.id} value={o.id}>{o.name}</option>
+              ))}
+            </select>
+          </label>
+          <label className="block">
+            <span className="text-sm font-medium text-gray-700">Category</span>
+            <select value={categoryId} onChange={(e) => setCategoryId(e.target.value ? parseInt(e.target.value, 10) : '')} className={inputClass}>
+              <option value="">None</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
           </label>
         </div>
 
