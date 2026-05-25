@@ -1,7 +1,7 @@
 ---
 id: '001'
 title: Student/Partner schema & server foundation
-status: in-progress
+status: done
 use-cases:
 - SUC-001
 - SUC-003
