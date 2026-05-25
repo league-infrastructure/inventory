@@ -1,11 +1,11 @@
 ---
 id: '007'
 title: 'Manufacturer admin: add Manufacturers tab to CategoriesPanel'
-status: open
+status: in-progress
 use-cases:
-  - SUC-004
+- SUC-004
 depends-on:
-  - '005'
+- '005'
 github-issue: ''
 issue: make-manufacturer-a-first-class-entity.md
 completes_issue: true
@@ -28,14 +28,14 @@ route from ticket 005.
 
 ## Acceptance Criteria
 
-- [ ] `CategoriesPanel.tsx` has a `manufacturers` key in the `Tab` union type.
-- [ ] A `{ key: 'manufacturers', label: 'Manufacturers' }` entry exists in the `TABS` array.
-- [ ] The panel renders `<EditableList endpoint="/api/manufacturers" label="Manufacturers" />` when the manufacturers tab is active.
-- [ ] A Quartermaster or Admin can add a new manufacturer name via the panel.
-- [ ] An existing manufacturer name can be renamed inline (click to edit, enter to save, escape to cancel — same as Categories and Operating Systems).
-- [ ] A manufacturer can be deleted from the panel (soft-deletes on the server via `DELETE /api/manufacturers/:id`).
-- [ ] The new tab appears in the tab bar alongside Categories, Operating Systems, Container Types, and Dispositions.
-- [ ] Switching to the Manufacturers tab and back to another tab works without error.
+- [x] `CategoriesPanel.tsx` has a `manufacturers` key in the `Tab` union type.
+- [x] A `{ key: 'manufacturers', label: 'Manufacturers' }` entry exists in the `TABS` array.
+- [x] The panel renders `<EditableList endpoint="/api/manufacturers" label="Manufacturers" />` when the manufacturers tab is active.
+- [x] A Quartermaster or Admin can add a new manufacturer name via the panel.
+- [x] An existing manufacturer name can be renamed inline (click to edit, enter to save, escape to cancel — same as Categories and Operating Systems).
+- [x] A manufacturer can be deleted from the panel (soft-deletes on the server via `DELETE /api/manufacturers/:id`).
+- [x] The new tab appears in the tab bar alongside Categories, Operating Systems, Container Types, and Dispositions.
+- [x] Switching to the Manufacturers tab and back to another tab works without error.
 
 ## Implementation Plan
 

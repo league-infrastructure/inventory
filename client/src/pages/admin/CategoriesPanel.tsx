@@ -6,11 +6,12 @@ interface NamedRecord {
   name: string;
 }
 
-type Tab = 'categories' | 'operatingSystems' | 'containerTypes' | 'dispositions';
+type Tab = 'categories' | 'operatingSystems' | 'manufacturers' | 'containerTypes' | 'dispositions';
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'categories', label: 'Categories' },
   { key: 'operatingSystems', label: 'Operating Systems' },
+  { key: 'manufacturers', label: 'Manufacturers' },
   { key: 'containerTypes', label: 'Container Types' },
   { key: 'dispositions', label: 'Dispositions' },
 ];
@@ -270,6 +271,9 @@ export default function CategoriesPanel() {
       )}
       {tab === 'operatingSystems' && (
         <EditableList endpoint="/api/operating-systems" label="Operating Systems" />
+      )}
+      {tab === 'manufacturers' && (
+        <EditableList endpoint="/api/manufacturers" label="Manufacturers" />
       )}
       {tab === 'containerTypes' && (
         <ReadOnlyEnumList values={CONTAINER_TYPES} label="Container types" />
