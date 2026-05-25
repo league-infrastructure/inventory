@@ -109,7 +109,7 @@ export default function Account() {
           <dt className="text-gray-500">Name</dt>
           <dd className="text-gray-900">{user.displayName}</dd>
           <dt className="text-gray-500">Email</dt>
-          <dd className="text-gray-900">{user.email}</dd>
+          <dd className="text-gray-900">{user.email ?? '—'}</dd>
           <dt className="text-gray-500">Role</dt>
           <dd className="text-gray-900">{ROLE_LABELS[user.role as keyof typeof ROLE_LABELS] || user.role}</dd>
         </dl>

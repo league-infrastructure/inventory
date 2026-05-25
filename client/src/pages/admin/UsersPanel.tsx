@@ -295,7 +295,7 @@ export default function UsersPanel() {
                   ) : (
                     <>
                       <td className="py-2">{u.displayName}</td>
-                      <td className="py-2 text-gray-600 text-xs">{u.email}</td>
+                      <td className="py-2 text-gray-600 text-xs">{u.email ?? '—'}</td>
                       <td className="py-2">
                         <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${roleBadge(u.role)}`}>
                           {u.role}

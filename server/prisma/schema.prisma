@@ -40,14 +40,17 @@ enum UserRole {
   INSTRUCTOR
   QUARTERMASTER
   ADMIN
+  STUDENT
+  PARTNER
 }
 
 model User {
   id          Int      @id @default(autoincrement())
   googleId    String?  @unique
-  email       String   @unique
+  email       String?  @unique
   displayName String
   avatar      String?
+  notes       String?
   role        UserRole @default(INSTRUCTOR)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -60,7 +63,7 @@ model User {
   inventoryChecks    InventoryCheck[]
   auditLogs          AuditLog[]
   apiTokens          ApiToken[]
-  notes              Note[]
+  authoredNotes      Note[]
 }
 
 model Site {

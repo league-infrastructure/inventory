@@ -86,6 +86,10 @@ export function oauthRouter(tokenService: TokenService, prisma: PrismaClient): R
 
     // User is logged in — generate authorization code
     const user = req.user as User;
+    // Invariant: OAuth-authorized users must have an email (STUDENT/PARTNER are rejected at login).
+    if (!user.email) {
+      throw new Error('OAuth user missing email — loan-only accounts cannot use OAuth');
+    }
     const code = generateAuthCode();
     authCodes.set(code, {
       userId: user.id,
@@ -232,6 +236,10 @@ export function oauthRouter(tokenService: TokenService, prisma: PrismaClient): R
           });
         }
 
+        // Invariant: token-authenticated users must have an email (STUDENT/PARTNER cannot hold API tokens).
+        if (!user.email) {
+          throw new Error('OAuth token user missing email — loan-only accounts cannot use client credentials');
+        }
         const expectedClientId = emailToClientId(user.email);
         if (clientId !== expectedClientId) {
           return res.status(401).json({

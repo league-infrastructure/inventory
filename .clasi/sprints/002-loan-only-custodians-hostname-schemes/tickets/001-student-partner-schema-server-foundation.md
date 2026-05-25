@@ -1,11 +1,11 @@
 ---
 id: '001'
 title: Student/Partner schema & server foundation
-status: open
+status: in-progress
 use-cases:
-  - SUC-001
-  - SUC-003
-  - SUC-004
+- SUC-001
+- SUC-003
+- SUC-004
 depends-on: []
 github-issue: ''
 issue: add-student-and-partner-user-roles-for-loan-only-custodians.md
@@ -27,40 +27,42 @@ build on. Neither can be executed until this ticket is done.
 
 ## Acceptance Criteria
 
-- [ ] `UserRole` enum in `schema.prisma` contains `STUDENT` and `PARTNER`.
-- [ ] `User.email` is `String? @unique` (nullable).
-- [ ] `User.notes String?` column exists on the User model.
-- [ ] Prisma migration runs cleanly against the dev DB (`npx prisma migrate dev`).
-- [ ] `server/src/contracts/user.ts`: `USER_ROLES` includes `'STUDENT'` and
+- [x] `UserRole` enum in `schema.prisma` contains `STUDENT` and `PARTNER`.
+- [x] `User.email` is `String? @unique` (nullable).
+- [x] `User.notes String?` column exists on the User model.
+- [x] Prisma migration runs cleanly against the dev DB (`npx prisma migrate dev`).
+- [x] `server/src/contracts/user.ts`: `USER_ROLES` includes `'STUDENT'` and
       `'PARTNER'`; `UserRecord.email` is `string | null`; `UserRecord` gains
       `notes: string | null`.
-- [ ] `POST /api/admin/users` and `PUT /api/admin/users/:id` are guarded by
-      `requireAdmin` (was previously missing from this route).
-- [ ] Admin create/update accept `role: 'STUDENT' | 'PARTNER'`, null/empty
+- [x] `POST /api/admin/users` and `PUT /api/admin/users/:id` are guarded by
+      `requireAdmin` (was previously missing from this route). Note: confirmed
+      already applied at the `/admin` prefix in `admin/index.ts` line 19.
+- [x] Admin create/update accept `role: 'STUDENT' | 'PARTNER'`, null/empty
       email, and optional `notes`.
-- [ ] Admin create skips the email-required and email-uniqueness checks when
+- [x] Admin create skips the email-required and email-uniqueness checks when
       role is STUDENT or PARTNER and email is null/empty.
-- [ ] OAuth callback (`auth.ts`) rejects any user whose role is STUDENT or
+- [x] OAuth callback (`auth.ts`) rejects any user whose role is STUDENT or
       PARTNER — destroys session and redirects to the existing access-denied URL
       without creating a session.
-- [ ] `requireAuth` middleware rejects sessions where `user.role` is STUDENT or
+- [x] `requireAuth` middleware rejects sessions where `user.role` is STUDENT or
       PARTNER (returns 401 or 403).
-- [ ] `oauth.ts:92,235` — invariant assertion added at the OAuth-authorize entry
+- [x] `oauth.ts:92,235` — invariant assertion added at the OAuth-authorize entry
       so `emailToClientId(user.email)` is never called with null; no `!` casts
       scattered at the call sites.
-- [ ] `GET /auth/users` response includes `role` on each user object; users are
+- [x] `GET /auth/users` response includes `role` on each user object; users are
       sorted staff roles (CUSTODIAN, INSTRUCTOR, QUARTERMASTER, ADMIN)
       alphabetically first, then STUDENT and PARTNER alphabetically last.
-- [ ] Nullable-email display sites guarded with `?? '—'` fallback:
+- [x] Nullable-email display sites guarded with `?? '—'` fallback:
       - `server/src/routes/auth.ts` — `/auth/me` response (line ~156)
       - `server/src/services/token.service.ts` (line ~72)
       - `client/src/components/AppLayout.tsx` (line ~372)
       - `client/src/pages/account/Account.tsx` (line ~112)
       - `client/src/pages/admin/UsersPanel.tsx` (line ~298)
-      - `client/src/pages/admin/AdminTokens.tsx` (line ~109)
-- [ ] `npx tsc --noEmit` clean in both `server/` and `client/`.
-- [ ] `npm run test:server` passes (or reports only pre-existing "no test files"
-      result).
+      - `client/src/pages/admin/AdminTokens.tsx` (line ~109) — already had `?? ''`; server now guarantees non-null
+- [x] `npx tsc --noEmit` clean in both `server/` and `client/`.
+- [x] `npm run test:server` passes (or reports only pre-existing "no test files"
+      result). Pre-existing failures only: DB auth errors and GitHub/Pike13
+      route mismatches; unrelated to this ticket.
 
 ## Implementation Plan
 

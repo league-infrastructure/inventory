@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import passport from 'passport';
 import { prisma } from '../services/prisma';
+import { LOANEE_ROLES, STAFF_ROLES } from '../contracts';
 
 export const authRouter = Router();
 
@@ -84,6 +85,11 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
           }
         }
 
+        // Reject loan-only roles — they cannot authenticate via Google OAuth
+        if (LOANEE_ROLES.has(user.role)) {
+          return done(null, false, { message: 'Loan-only accounts cannot log in via Google' });
+        }
+
         done(null, user);
       } catch (err) {
         done(err);
@@ -153,7 +159,7 @@ authRouter.get('/auth/me', (req: Request, res: Response) => {
   const user = req.user as any;
   res.json({
     id: user.id,
-    email: user.email,
+    email: user.email ?? '—',
     displayName: user.displayName,
     avatar: user.avatar,
     role: user.role,
@@ -161,13 +167,23 @@ authRouter.get('/auth/me', (req: Request, res: Response) => {
 });
 
 // List all users (for transfer modal custodian selection)
+// Staff roles (CUSTODIAN, INSTRUCTOR, QUARTERMASTER, ADMIN) sort first (alphabetical),
+// then loan-only roles (STUDENT, PARTNER) alphabetical last.
 authRouter.get('/auth/users', async (req: Request, res: Response) => {
   if (!req.user) return res.status(401).json({ error: 'Not authenticated' });
   const users = await prisma.user.findMany({
-    select: { id: true, displayName: true },
+    select: { id: true, displayName: true, role: true },
     orderBy: { displayName: 'asc' },
   });
-  res.json(users);
+
+  const sorted = users.sort((a, b) => {
+    const aIsStaff = STAFF_ROLES.has(a.role) ? 0 : 1;
+    const bIsStaff = STAFF_ROLES.has(b.role) ? 0 : 1;
+    if (aIsStaff !== bIsStaff) return aIsStaff - bIsStaff;
+    return a.displayName.localeCompare(b.displayName);
+  });
+
+  res.json(sorted);
 });
 
 // Logout
