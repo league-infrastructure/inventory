@@ -1,7 +1,7 @@
 ---
 id: '002'
 title: HostName scheme schema, server & MCP foundation
-status: in-progress
+status: done
 use-cases:
 - SUC-005
 depends-on: []
