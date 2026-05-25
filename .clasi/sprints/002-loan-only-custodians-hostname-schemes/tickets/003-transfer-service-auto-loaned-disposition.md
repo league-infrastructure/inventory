@@ -1,11 +1,11 @@
 ---
 id: '003'
 title: Transfer service auto-LOANED disposition
-status: open
+status: in-progress
 use-cases:
-  - SUC-002
+- SUC-002
 depends-on:
-  - '001'
+- '001'
 github-issue: ''
 issue: add-student-and-partner-user-roles-for-loan-only-custodians.md
 completes_issue: false
@@ -29,19 +29,19 @@ computer-only.
 
 ## Acceptance Criteria
 
-- [ ] `TransferService.transferComputer()` checks the incoming custodian's role
+- [x] `TransferService.transferComputer()` checks the incoming custodian's role
       after the custodian lookup.
-- [ ] If the custodian's role is `STUDENT` or `PARTNER`, the Prisma
+- [x] If the custodian's role is `STUDENT` or `PARTNER`, the Prisma
       `computer.update()` call includes `disposition: 'LOANED'` in its `data`.
-- [ ] If the custodian's role is any other value (or custodianId is null — i.e.
+- [x] If the custodian's role is any other value (or custodianId is null — i.e.
       clearing the custodian), disposition is not touched.
-- [ ] Kit transfer path (`transferKit()`) is not modified.
-- [ ] After transferring a computer to a STUDENT user: `Computer.disposition`
+- [x] Kit transfer path (`transferKit()`) is not modified.
+- [x] After transferring a computer to a STUDENT user: `Computer.disposition`
       is `LOANED` in the database.
-- [ ] After transferring a computer to an ADMIN user: `Computer.disposition` is
+- [x] After transferring a computer to an ADMIN user: `Computer.disposition` is
       unchanged.
-- [ ] `npx tsc --noEmit` clean in `server/`.
-- [ ] `npm run test:server` passes.
+- [x] `npx tsc --noEmit` clean in `server/`.
+- [x] `npm run test:server` passes.
 
 ## Implementation Plan
 

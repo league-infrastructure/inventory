@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { AuditService } from './audit.service';
 import { NotFoundError, ValidationError } from './errors';
-import { TransferRecord, CreateTransferInput } from '../contracts';
+import { TransferRecord, CreateTransferInput, LOANEE_ROLES } from '../contracts';
 
 const TRANSFER_INCLUDES = {
   user: { select: { id: true, displayName: true } },
@@ -129,10 +129,12 @@ export class TransferService {
 
     // Resolve new custodian
     let newCustodianName: string | null = null;
+    let isLoanOnly = false;
     if (input.custodianId != null) {
       const custodian = await this.prisma.user.findUnique({ where: { id: input.custodianId } });
       if (!custodian) throw new ValidationError('Custodian user not found');
       newCustodianName = custodian.displayName;
+      isLoanOnly = LOANEE_ROLES.has(custodian.role);
     }
 
     // Resolve new site
@@ -147,12 +149,13 @@ export class TransferService {
     const toSiteId = input.siteId !== undefined ? input.siteId : computer.siteId;
     const toCustodianId = input.custodianId !== undefined ? input.custodianId : computer.custodianId;
 
-    // Update computer
+    // Update computer; auto-set disposition to LOANED when transferring to a loan-only custodian
     await this.prisma.computer.update({
       where: { id: input.objectId },
       data: {
         custodianId: toCustodianId,
         siteId: toSiteId,
+        ...(isLoanOnly ? { disposition: 'LOANED' } : {}),
       },
     });
 
