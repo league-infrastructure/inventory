@@ -1,9 +1,9 @@
 ---
 id: '004'
 title: 'Manufacturer entity: Prisma model, migration, and backfill script'
-status: open
+status: in-progress
 use-cases:
-  - SUC-004
+- SUC-004
 depends-on: []
 github-issue: ''
 issue: make-manufacturer-a-first-class-entity.md
@@ -28,19 +28,19 @@ for the two-migration rationale.
 
 ## Acceptance Criteria
 
-- [ ] A `Manufacturer` model exists in `schema.prisma` with fields: `id` (autoincrement PK), `name` (String, unique), `createdAt`, `updatedAt`, `deletedAt` (nullable — soft delete). Shape matches Category.
-- [ ] The `Computer` model has a new `manufacturerId Int?` field with a Prisma relation to `Manufacturer`, and a `@@index([manufacturerId])`.
-- [ ] The existing `manufacturer String?` field on `Computer` is still present and unchanged — no drop in this migration.
-- [ ] `prisma migrate dev` runs cleanly and produces a migration file under `server/prisma/migrations/`.
-- [ ] A backfill script exists at `server/prisma/seed-manufacturer-backfill.ts` that:
+- [x] A `Manufacturer` model exists in `schema.prisma` with fields: `id` (autoincrement PK), `name` (String, unique), `createdAt`, `updatedAt`, `deletedAt` (nullable — soft delete). Shape matches Category.
+- [x] The `Computer` model has a new `manufacturerId Int?` field with a Prisma relation to `Manufacturer`, and a `@@index([manufacturerId])`.
+- [x] The existing `manufacturer String?` field on `Computer` is still present and unchanged — no drop in this migration.
+- [x] `prisma migrate dev` runs cleanly and produces a migration file under `server/prisma/migrations/`.
+- [x] A backfill script exists at `server/prisma/seed-manufacturer-backfill.ts` that:
   - Selects all distinct non-null, non-empty `manufacturer` string values from Computer rows (trimmed).
   - Normalizes each to title-case before upserting (e.g. `"dell"` → `"Dell"`).
   - Upserts a `Manufacturer` row for each distinct normalized value.
   - Updates every Computer row that has a non-null, non-empty manufacturer string to set `manufacturerId` to the matching Manufacturer id.
   - Leaves `manufacturerId = NULL` on rows where `manufacturer IS NULL` or is empty/whitespace after trimming — no error thrown.
   - Is idempotent — safe to run multiple times without creating duplicates.
-- [ ] Running the backfill against a dev database with existing Computer rows produces correct Manufacturer rows and correct `manufacturerId` values.
-- [ ] The `manufacturer String?` column on Computer has a `// @deprecated — pending cleanup migration` comment in schema.prisma.
+- [x] Running the backfill against a dev database with existing Computer rows produces correct Manufacturer rows and correct `manufacturerId` values.
+- [x] The `manufacturer String?` column on Computer has a `// @deprecated — pending cleanup migration` comment in schema.prisma.
 
 ## Implementation Plan
 
