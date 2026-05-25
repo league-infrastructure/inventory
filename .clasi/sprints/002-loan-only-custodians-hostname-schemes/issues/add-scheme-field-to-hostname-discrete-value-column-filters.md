@@ -1,5 +1,8 @@
 ---
-status: pending
+status: in-progress
+sprint: '002'
+tickets:
+- 002-002
 ---
 
 # Add `scheme` field to HostName + discrete-value column filters
