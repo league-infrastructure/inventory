@@ -2,11 +2,11 @@ import { PrismaClient } from '@prisma/client';
 import { AuditService } from './audit.service';
 import { BaseService } from './base.service';
 import { NotFoundError, ValidationError, ConflictError } from './errors';
-import { HostNameRecord, CreateHostNameInput } from '../contracts';
+import { HostNameRecord, CreateHostNameInput, UpdateHostNameInput } from '../contracts';
 
 export class HostNameService extends BaseService<HostNameRecord, CreateHostNameInput, never> {
   protected readonly entityName = 'HostName';
-  protected readonly auditFields = ['name'];
+  protected readonly auditFields = ['name', 'scheme'];
 
   constructor(prisma: PrismaClient, audit: AuditService) {
     super(prisma, audit);
@@ -51,31 +51,44 @@ export class HostNameService extends BaseService<HostNameRecord, CreateHostNameI
     }
 
     const hostname = await this.prisma.hostName.create({
-      data: { name: trimmedName },
+      data: {
+        name: trimmedName,
+        ...(input.scheme !== undefined ? { scheme: input.scheme } : {}),
+      },
     });
 
     return hostname as unknown as HostNameRecord;
   }
 
-  async update(id: number, input: { name?: string }, _userId: number): Promise<HostNameRecord> {
+  async update(id: number, input: UpdateHostNameInput, _userId: number): Promise<HostNameRecord> {
     const existing = await this.prisma.hostName.findUnique({ where: { id } });
     if (!existing) throw new NotFoundError('Host name not found');
 
-    if (!input.name || typeof input.name !== 'string' || input.name.trim().length === 0) {
-      throw new ValidationError('Name is required');
+    const data: { name?: string; scheme?: string | null } = {};
+
+    if (input.name !== undefined) {
+      if (typeof input.name !== 'string' || input.name.trim().length === 0) {
+        throw new ValidationError('Name must be a non-empty string');
+      }
+      const trimmedName = input.name.trim();
+      if (trimmedName !== existing.name) {
+        const dup = await this.prisma.hostName.findFirst({ where: { name: trimmedName } });
+        if (dup) throw new ConflictError('Host name already exists');
+        data.name = trimmedName;
+      }
     }
 
-    const trimmedName = input.name.trim();
-    if (trimmedName === existing.name) {
+    if (input.scheme !== undefined) {
+      data.scheme = input.scheme;
+    }
+
+    if (Object.keys(data).length === 0) {
       return existing as unknown as HostNameRecord;
     }
 
-    const dup = await this.prisma.hostName.findFirst({ where: { name: trimmedName } });
-    if (dup) throw new ConflictError('Host name already exists');
-
     const updated = await this.prisma.hostName.update({
       where: { id },
-      data: { name: trimmedName },
+      data,
     });
     return updated as unknown as HostNameRecord;
   }

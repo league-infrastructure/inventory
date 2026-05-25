@@ -246,6 +246,7 @@ model Computer {
 model HostName {
   id         Int      @id @default(autoincrement())
   name       String   @unique
+  scheme     String?
   computerId Int?     @unique
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt

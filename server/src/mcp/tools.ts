@@ -474,22 +474,27 @@ export function registerTools(server: McpServer): void {
 
   server.tool('create_hostname', 'Create a new host name', {
     name: z.string(),
-  }, async ({ name }) => {
+    scheme: z.string().optional().describe('Optional grouping scheme for the host name'),
+  }, async ({ name, scheme }) => {
     return safeCall(async () => {
       requireQM();
       const { services, user } = getContext();
-      return ok(await services.hostNames.create({ name }, user.id));
+      return ok(await services.hostNames.create({ name, scheme }, user.id));
     });
   });
 
-  server.tool('update_hostname', 'Rename a host name', {
+  server.tool('update_hostname', 'Update a host name (rename or change scheme)', {
     id: z.number(),
-    name: z.string(),
-  }, async ({ id, name }) => {
+    name: z.string().optional().describe('New name for the host name record'),
+    scheme: z.string().nullable().optional().describe('Grouping scheme; pass null to clear'),
+  }, async ({ id, name, scheme }) => {
     return safeCall(async () => {
+      if (name === undefined && scheme === undefined) {
+        throw new Error('At least one of name or scheme is required');
+      }
       requireQM();
       const { services, user } = getContext();
-      return ok(await services.hostNames.update(id, { name }, user.id));
+      return ok(await services.hostNames.update(id, { name, scheme }, user.id));
     });
   });
 
