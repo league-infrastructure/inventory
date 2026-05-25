@@ -103,5 +103,13 @@ Before tickets can be created, all of the following must be true:
 | 001 | New computer form: manufacturer + identity fields | — |
 | 002 | Computer list: category column + filter | 001 |
 | 003 | Admin category list: edit category | — |
+| 004 | Manufacturer entity: Prisma model, migration, and backfill script | — |
+| 005 | Manufacturer server: routes, service, and Computer service/contracts update | 004 |
+| 006 | Manufacturer client: ComputerForm and ComputerDetail API-driven selects | 005 |
+| 007 | Manufacturer admin: add Manufacturers tab to CategoriesPanel | 005 |
 
-Tickets execute serially in the order listed.
+Tickets 001–003 are done. Tickets 004–007 address issue
+`make-manufacturer-a-first-class-entity.md`. Tickets 006 and 007 both depend
+on 005 and can execute in parallel if desired; in serial order run 007 before
+006 (admin panel is simpler and a good smoke-test of the server route).
+Tickets execute in the order listed otherwise.
