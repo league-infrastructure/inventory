@@ -6,6 +6,7 @@ interface Kit { id: number; name: string; }
 interface HostName { id: number; name: string; computerId: number | null; }
 interface OperatingSystem { id: number; name: string; }
 interface Category { id: number; name: string; }
+interface Manufacturer { id: number; name: string; }
 
 import { DISPOSITIONS } from '../../lib/dispositions';
 
@@ -25,7 +26,7 @@ export default function ComputerForm() {
   const [siteId, setSiteId] = useState<number | ''>('');
   const [kitId, setKitId] = useState<number | ''>('');
   const [hostNameId, setHostNameId] = useState<number | ''>('');
-  const [manufacturer, setManufacturer] = useState('');
+  const [manufacturerId, setManufacturerId] = useState<number | ''>('');
   const [modelNumber, setModelNumber] = useState('');
   const [manufacturedYear, setManufacturedYear] = useState<number | ''>('');
   const [osId, setOsId] = useState<number | ''>('');
@@ -36,6 +37,7 @@ export default function ComputerForm() {
   const [hostNames, setHostNames] = useState<HostName[]>([]);
   const [operatingSystems, setOperatingSystems] = useState<OperatingSystem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [manufacturers, setManufacturers] = useState<Manufacturer[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -46,8 +48,9 @@ export default function ComputerForm() {
       fetch('/api/hostnames').then((r) => r.json()),
       fetch('/api/operating-systems').then((r) => r.json()),
       fetch('/api/categories').then((r) => r.json()),
+      fetch('/api/manufacturers').then((r) => r.json()),
     ])
-      .then(([s, k, h, osList, cats]) => { setSites(s); setKits(k); setHostNames(h); setOperatingSystems(osList); setCategories(cats); })
+      .then(([s, k, h, osList, cats, mfgList]) => { setSites(s); setKits(k); setHostNames(h); setOperatingSystems(osList); setCategories(cats); setManufacturers(mfgList); })
       .catch(() => {});
   }, []);
 
@@ -67,7 +70,7 @@ export default function ComputerForm() {
           setSiteId(c.site?.id || '');
           setKitId(c.kit?.id || '');
           setHostNameId(c.hostName?.id || '');
-          setManufacturer(c.manufacturer || '');
+          setManufacturerId(c.manufacturer?.id || '');
           setModelNumber(c.modelNumber || '');
           setManufacturedYear(c.manufacturedYear ?? '');
           setOsId(c.os?.id || c.osId || '');
@@ -98,7 +101,7 @@ export default function ComputerForm() {
       siteId: siteId || null,
       kitId: kitId || null,
       hostNameId: hostNameId || null,
-      manufacturer: manufacturer || null,
+      manufacturerId: manufacturerId || null,
       modelNumber: modelNumber || null,
       manufacturedYear: manufacturedYear === '' ? null : Number(manufacturedYear),
       osId: osId || null,
@@ -143,13 +146,11 @@ export default function ComputerForm() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <label className="block">
             <span className="text-sm font-medium text-gray-700">Manufacturer</span>
-            <select value={manufacturer} onChange={(e) => setManufacturer(e.target.value)} className={inputClass}>
+            <select value={manufacturerId} onChange={(e) => setManufacturerId(e.target.value ? parseInt(e.target.value, 10) : '')} className={inputClass}>
               <option value=""></option>
-              <option value="Dell">Dell</option>
-              <option value="Lenovo">Lenovo</option>
-              <option value="Apple">Apple</option>
-              <option value="HP">HP</option>
-              <option value="Other">Other</option>
+              {manufacturers.map((m) => (
+                <option key={m.id} value={m.id}>{m.name}</option>
+              ))}
             </select>
           </label>
           <label className="block">

@@ -1,11 +1,11 @@
 ---
 id: '006'
 title: 'Manufacturer client: ComputerForm and ComputerDetail API-driven selects'
-status: open
+status: in-progress
 use-cases:
-  - SUC-004
+- SUC-004
 depends-on:
-  - '005'
+- '005'
 github-issue: ''
 issue: make-manufacturer-a-first-class-entity.md
 completes_issue: false
@@ -25,21 +25,21 @@ string` to the API. After this ticket they fetch the list from the API and send
 
 ## Acceptance Criteria
 
-- [ ] `ComputerForm.tsx`:
-  - [ ] Fetches `/api/manufacturers` in the initial `Promise.all` alongside sites, kits, etc.
-  - [ ] State uses `manufacturerId: number | ''` (not `manufacturer: string`).
-  - [ ] The Manufacturer `<select>` renders one `<option>` per API result; the hardcoded Dell/Lenovo/Apple/HP/Other options are removed.
-  - [ ] On edit load, `manufacturerId` is populated from `c.manufacturer?.id || ''`.
-  - [ ] The submitted body sends `manufacturerId: manufacturerId || null` (not `manufacturer`).
-- [ ] `ComputerDetail.tsx`:
-  - [ ] Fetches `/api/manufacturers` alongside the other lookup lists.
-  - [ ] `FormState` has `manufacturerId: number | ''` (not `manufacturer: string`).
-  - [ ] The manufacturer `EditableCell` (or equivalent select) renders the API list.
-  - [ ] On load, `manufacturerId` is populated from `c.manufacturer?.id || ''`.
-  - [ ] `saveField('manufacturerId', value)` sends the numeric id to `PUT /api/computers/:id`.
-  - [ ] The hardcoded manufacturer option list is removed.
-- [ ] A computer that was backfilled (has `manufacturerId` set) displays its manufacturer name correctly in both ComputerForm (edit mode) and ComputerDetail.
-- [ ] A computer with no manufacturer shows an empty/blank selection in both views.
+- [x] `ComputerForm.tsx`:
+  - [x] Fetches `/api/manufacturers` in the initial `Promise.all` alongside sites, kits, etc.
+  - [x] State uses `manufacturerId: number | ''` (not `manufacturer: string`).
+  - [x] The Manufacturer `<select>` renders one `<option>` per API result; the hardcoded Dell/Lenovo/Apple/HP/Other options are removed.
+  - [x] On edit load, `manufacturerId` is populated from `c.manufacturer?.id || ''`.
+  - [x] The submitted body sends `manufacturerId: manufacturerId || null` (not `manufacturer`).
+- [x] `ComputerDetail.tsx`:
+  - [x] Fetches `/api/manufacturers` alongside the other lookup lists.
+  - [x] `FormState` has `manufacturerId: number | ''` (not `manufacturer: string`).
+  - [x] The manufacturer `EditableCell` (or equivalent select) renders the API list.
+  - [x] On load, `manufacturerId` is populated from `c.manufacturer?.id || ''`.
+  - [x] `saveField('manufacturerId', value)` sends the numeric id to `PUT /api/computers/:id`.
+  - [x] The hardcoded manufacturer option list is removed.
+- [x] A computer that was backfilled (has `manufacturerId` set) displays its manufacturer name correctly in both ComputerForm (edit mode) and ComputerDetail.
+- [x] A computer with no manufacturer shows an empty/blank selection in both views.
 
 ## Implementation Plan
 

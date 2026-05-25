@@ -17,11 +17,12 @@ import { DISPOSITIONS, dispositionClasses } from '../../lib/dispositions';
 
 interface OperatingSystem { id: number; name: string; }
 interface Category { id: number; name: string; }
+interface Manufacturer { id: number; name: string; }
 
 interface FormState {
   serialNumber: string;
   serviceTag: string;
-  manufacturer: string;
+  manufacturerId: number | '';
   model: string;
   modelNumber: string;
   manufacturedYear: string;
@@ -50,7 +51,7 @@ export default function ComputerDetail() {
   const [showCredentials, setShowCredentials] = useState(false);
 
   const [form, setForm] = useState<FormState>({
-    serialNumber: '', serviceTag: '', manufacturer: '', model: '', modelNumber: '', manufacturedYear: '', adminUsername: '',
+    serialNumber: '', serviceTag: '', manufacturerId: '', model: '', modelNumber: '', manufacturedYear: '', adminUsername: '',
     adminPassword: '', studentUsername: '', studentPassword: '',
     disposition: 'ACTIVE', dateReceived: '',
     notes: '', siteId: '', kitId: '', hostNameId: '', osId: '', categoryId: '',
@@ -68,6 +69,7 @@ export default function ComputerDetail() {
   const [showIssueModal, setShowIssueModal] = useState(false);
   const [operatingSystems, setOperatingSystems] = useState<OperatingSystem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [manufacturers, setManufacturers] = useState<Manufacturer[]>([]);
 
   function loadComputer() {
     setLoading(true);
@@ -82,12 +84,13 @@ export default function ComputerDetail() {
       fetch('/api/categories').then((r) => r.json()),
       fetch('/api/operating-systems').then((r) => r.json()),
       fetch('/api/auth/users').then((r) => r.ok ? r.json() : []),
+      fetch('/api/manufacturers').then((r) => r.json()),
     ])
-      .then(([c, s, k, h, cats, osList, u]) => {
+      .then(([c, s, k, h, cats, osList, u, mfgList]) => {
         const initial: FormState = {
           serialNumber: c.serialNumber || '',
           serviceTag: c.serviceTag || '',
-          manufacturer: c.manufacturer || '',
+          manufacturerId: c.manufacturer?.id || '',
           model: c.model || '',
           modelNumber: c.modelNumber || '',
           manufacturedYear: c.manufacturedYear ? String(c.manufacturedYear) : '',
@@ -115,6 +118,7 @@ export default function ComputerDetail() {
         setCategories(cats);
         setOperatingSystems(osList);
         setUsers(u);
+        setManufacturers(mfgList);
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
@@ -131,7 +135,7 @@ export default function ComputerDetail() {
   async function saveField(field: string, value: string) {
     setSaveError(null);
     const body: Record<string, unknown> = {};
-    if (field === 'siteId' || field === 'kitId' || field === 'hostNameId' || field === 'osId' || field === 'categoryId' || field === 'manufacturedYear') {
+    if (field === 'siteId' || field === 'kitId' || field === 'hostNameId' || field === 'osId' || field === 'categoryId' || field === 'manufacturedYear' || field === 'manufacturerId') {
       body[field] = value ? parseInt(value, 10) : null;
     } else if (field === 'disposition') {
       body[field] = value;
@@ -152,7 +156,7 @@ export default function ComputerDetail() {
       const next: FormState = {
         serialNumber: updated.serialNumber || '',
         serviceTag: updated.serviceTag || '',
-        manufacturer: updated.manufacturer || '',
+        manufacturerId: updated.manufacturer?.id || '',
         model: updated.model || '',
         modelNumber: updated.modelNumber || '',
         manufacturedYear: updated.manufacturedYear ? String(updated.manufacturedYear) : '',
@@ -284,17 +288,10 @@ export default function ComputerDetail() {
               <label className="block text-sm font-semibold text-gray-400 uppercase tracking-wider mb-1">Manufacturer</label>
               <div className="text-lg text-gray-900">
                 <EditableCell
-                  value={form.manufacturer}
-                  onSave={(v) => saveField('manufacturer', v)}
+                  value={String(form.manufacturerId)}
+                  onSave={(v) => saveField('manufacturerId', v)}
                   as="select"
-                  options={[
-                    { value: '', label: 'None' },
-                    { value: 'Dell', label: 'Dell' },
-                    { value: 'Lenovo', label: 'Lenovo' },
-                    { value: 'Apple', label: 'Apple' },
-                    { value: 'HP', label: 'HP' },
-                    { value: 'Other', label: 'Other' },
-                  ]}
+                  options={[{ value: '', label: 'None' }, ...manufacturers.map((m) => ({ value: String(m.id), label: m.name }))]}
                 />
               </div>
             </div>
