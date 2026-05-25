@@ -1,7 +1,7 @@
 ---
 id: '005'
 title: 'Manufacturer server: routes, service, and Computer service/contracts update'
-status: in-progress
+status: done
 use-cases:
 - SUC-004
 depends-on:
