@@ -1,16 +1,16 @@
 ---
 id: '001'
 title: Computer form & category UX
-status: planning-docs
+status: done
 branch: sprint/001-computer-form-category-ux
 use-cases:
-  - SUC-001
-  - SUC-002
-  - SUC-003
+- SUC-001
+- SUC-002
+- SUC-003
 issues:
-  - add-missing-identity-fields-to-the-new-computer-form.md
-  - add-3d-printer-category-and-computer-list-category-filter.md
-  - edit-category-from-admin-category-list.md
+- add-missing-identity-fields-to-the-new-computer-form.md
+- add-3d-printer-category-and-computer-list-category-filter.md
+- edit-category-from-admin-category-list.md
 ---
 <!-- CLASI: Before changing code or making plans, review the SE process in CLAUDE.md -->
 
