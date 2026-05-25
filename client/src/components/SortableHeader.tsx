@@ -10,6 +10,8 @@ interface SortableHeaderProps {
   filterValue?: string;
   onFilter?: (key: string, value: string) => void;
   className?: string;
+  filterMode?: 'text' | 'discrete';
+  discreteOptions?: string[];
 }
 
 export default function SortableHeader({
@@ -20,6 +22,8 @@ export default function SortableHeader({
   filterValue = '',
   onFilter,
   className = '',
+  filterMode = 'text',
+  discreteOptions,
 }: SortableHeaderProps) {
   const [showSearch, setShowSearch] = useState(false);
   const isActive = currentSort.key === sortKey;
@@ -58,14 +62,28 @@ export default function SortableHeader({
         )}
       </div>
       {showSearch && onFilter && (
-        <input
-          type="text"
-          value={filterValue}
-          onChange={(e) => onFilter(sortKey, e.target.value)}
-          placeholder={`Filter ${label.toLowerCase()}...`}
-          className="mt-1 w-full px-2 py-1 text-xs border border-gray-300 rounded font-normal text-gray-700"
-          autoFocus
-        />
+        filterMode === 'discrete' ? (
+          <select
+            value={filterValue}
+            onChange={(e) => onFilter(sortKey, e.target.value)}
+            className="mt-1 w-full px-2 py-1 text-xs border border-gray-300 rounded font-normal text-gray-700"
+            autoFocus
+          >
+            <option value="">All</option>
+            {(discreteOptions ?? []).map((opt) => (
+              <option key={opt} value={opt}>{opt}</option>
+            ))}
+          </select>
+        ) : (
+          <input
+            type="text"
+            value={filterValue}
+            onChange={(e) => onFilter(sortKey, e.target.value)}
+            placeholder={`Filter ${label.toLowerCase()}...`}
+            className="mt-1 w-full px-2 py-1 text-xs border border-gray-300 rounded font-normal text-gray-700"
+            autoFocus
+          />
+        )
       )}
     </th>
   );
