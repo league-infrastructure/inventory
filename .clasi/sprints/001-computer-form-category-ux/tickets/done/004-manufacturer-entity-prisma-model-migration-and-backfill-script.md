@@ -1,7 +1,7 @@
 ---
 id: '004'
 title: 'Manufacturer entity: Prisma model, migration, and backfill script'
-status: in-progress
+status: done
 use-cases:
 - SUC-004
 depends-on: []
