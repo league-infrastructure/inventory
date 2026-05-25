@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Copy, Trash2, Plus, X, Printer, User, Building2, AlertTriangle } from 'lucide-react';
 import ReportIssueModal from '../../components/ReportIssueModal';
+import CustodianSelect from '../../components/CustodianSelect';
 import EditableCell from '../../components/EditableCell';
 import InventoryCheckSection from '../../components/InventoryCheckSection';
 import LabelPrintModal from '../../components/LabelPrintModal';
@@ -1002,7 +1003,7 @@ function TransferModal({ sites, loading, onConfirm, onClose }: {
   onConfirm: (custodianId: number | null, siteId: number | null, notes?: string) => void;
   onClose: () => void;
 }) {
-  const [users, setUsers] = useState<{ id: number; displayName: string }[]>([]);
+  const [users, setUsers] = useState<{ id: number; displayName: string; role: string }[]>([]);
   const [custodianId, setCustodianId] = useState<number | ''>('');
   const [siteId, setSiteId] = useState<number | ''>('');
   const [notes, setNotes] = useState('');
@@ -1021,16 +1022,13 @@ function TransferModal({ sites, loading, onConfirm, onClose }: {
         <div className="space-y-4">
           <label className="block">
             <span className="text-sm font-medium text-gray-700">New Custodian</span>
-            <select
-              value={custodianId}
-              onChange={(e) => setCustodianId(e.target.value ? parseInt(e.target.value, 10) : '')}
+            <CustodianSelect
+              users={users}
+              value={custodianId === '' ? null : custodianId}
+              onChange={(id) => setCustodianId(id === null ? '' : id)}
+              unassignedLabel="Admin (storeroom)"
               className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-            >
-              <option value="">Admin (storeroom)</option>
-              {users.map((u) => (
-                <option key={u.id} value={u.id}>{u.displayName}</option>
-              ))}
-            </select>
+            />
           </label>
 
           <label className="block">

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import CustodianSelect from './CustodianSelect';
 
 interface TransferModalProps {
   title?: string;
@@ -9,7 +10,7 @@ interface TransferModalProps {
 }
 
 export default function TransferModal({ title, objectType, objectId, onClose, onComplete }: TransferModalProps) {
-  const [users, setUsers] = useState<{ id: number; displayName: string }[]>([]);
+  const [users, setUsers] = useState<{ id: number; displayName: string; role: string }[]>([]);
   const [sites, setSites] = useState<{ id: number; name: string }[]>([]);
   const [custodianId, setCustodianId] = useState<number | ''>('');
   const [siteId, setSiteId] = useState<number | ''>('');
@@ -61,16 +62,13 @@ export default function TransferModal({ title, objectType, objectId, onClose, on
         <div className="space-y-4">
           <label className="block">
             <span className="text-sm font-medium text-gray-700">New Custodian</span>
-            <select
-              value={custodianId}
-              onChange={(e) => setCustodianId(e.target.value ? parseInt(e.target.value, 10) : '')}
+            <CustodianSelect
+              users={users}
+              value={custodianId === '' ? null : custodianId}
+              onChange={(id) => setCustodianId(id === null ? '' : id)}
+              unassignedLabel="Admin (storeroom)"
               className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-            >
-              <option value="">Admin (storeroom)</option>
-              {users.map((u) => (
-                <option key={u.id} value={u.id}>{u.displayName}</option>
-              ))}
-            </select>
+            />
           </label>
 
           <label className="block">

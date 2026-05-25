@@ -1,13 +1,13 @@
 ---
 id: '005'
-title: Student/Partner client — CustodianSelect & UsersPanel
-status: open
+title: "Student/Partner client \u2014 CustodianSelect & UsersPanel"
+status: in-progress
 use-cases:
-  - SUC-001
-  - SUC-002
+- SUC-001
+- SUC-002
 depends-on:
-  - '001'
-  - '003'
+- '001'
+- '003'
 github-issue: ''
 issue: add-student-and-partner-user-roles-for-loan-only-custodians.md
 completes_issue: true
@@ -31,9 +31,9 @@ ticket 001 is in place.
 
 ## Acceptance Criteria
 
-- [ ] `client/src/lib/roles.ts` includes `STUDENT` and `PARTNER` in
+- [x] `client/src/lib/roles.ts` includes `STUDENT` and `PARTNER` in
       `USER_ROLES`, `ROLE_LABELS`, and `ROLE_BADGE_STYLES`.
-- [ ] `client/src/components/CustodianSelect.tsx` exists and:
+- [x] `client/src/components/CustodianSelect.tsx` exists and:
       - Accepts props: `users: UserRecord[]`, `value: number | null`,
         `onChange: (id: number | null) => void`, and any needed `className` /
         `disabled` passthrough.
@@ -43,17 +43,17 @@ ticket 001 is in place.
       - Does not fetch users internally — caller provides the list.
       - Selecting a user calls `onChange(user.id)`; selecting the blank option
         calls `onChange(null)`.
-- [ ] `client/src/pages/computers/ComputerDetail.tsx` (lines 434–440): replaces
+- [x] `client/src/pages/computers/ComputerDetail.tsx` (lines 434–440): replaces
       the inline custodian `<select>` with `<CustodianSelect>`.
-- [ ] `client/src/components/TransferModal.tsx` (lines 64–73): replaces the
+- [x] `client/src/components/TransferModal.tsx` (lines 64–73): replaces the
       inline custodian `<select>` with `<CustodianSelect>`.
-- [ ] `client/src/pages/kits/KitDetail.tsx` (lines 1024–1033): replaces the
+- [x] `client/src/pages/kits/KitDetail.tsx` (lines 1024–1033): replaces the
       inline custodian `<select>` with `<CustodianSelect>`.
-- [ ] `client/src/pages/qr/actions/TransferAction.tsx` (lines 166–177): replaces
+- [x] `client/src/pages/qr/actions/TransferAction.tsx` (lines 166–177): replaces
       the inline custodian `<select>` with `<CustodianSelect>`.
-- [ ] All four picker locations render the staff/divider/loanees layout when
+- [x] All four picker locations render the staff/divider/loanees layout when
       STUDENT or PARTNER users exist.
-- [ ] `client/src/pages/admin/UsersPanel.tsx`:
+- [x] `client/src/pages/admin/UsersPanel.tsx`:
       - Role dropdown includes STUDENT and PARTNER.
       - Email field shows as optional when role is STUDENT or PARTNER (label
         change, no `required` attribute, no client-side validation error for
@@ -61,9 +61,9 @@ ticket 001 is in place.
       - Notes textarea is visible and editable for all users; prominently
         labeled for STUDENT/PARTNER (e.g. "Notes (contact info, partner org)").
       - Creating/editing a STUDENT with no email succeeds end-to-end.
-- [ ] `npx tsc --noEmit` clean in `client/`.
-- [ ] `npm run test:client` passes.
-- [ ] End-to-end verification (SUC-001, SUC-002): admin creates a STUDENT user
+- [x] `npx tsc --noEmit` clean in `client/`.
+- [x] `npm run test:client` passes (no test files — pre-existing).
+- [x] End-to-end verification (SUC-001, SUC-002): admin creates a STUDENT user
       with no email; STUDENT appears in all four pickers below the divider;
       assigning the computer to STUDENT sets `disposition = LOANED`.
 
