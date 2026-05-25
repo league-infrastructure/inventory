@@ -1,7 +1,7 @@
 ---
 id: '006'
 title: 'Manufacturer client: ComputerForm and ComputerDetail API-driven selects'
-status: in-progress
+status: done
 use-cases:
 - SUC-004
 depends-on:
