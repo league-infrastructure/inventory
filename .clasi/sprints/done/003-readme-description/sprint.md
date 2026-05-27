@@ -1,10 +1,10 @@
 ---
 id: '003'
 title: README description
-status: planning-docs
+status: closed
 branch: sprint/003-readme-description
 use-cases:
-  - SUC-001
+- SUC-001
 issues: []
 ---
 <!-- CLASI: Before changing code or making plans, review the SE process in CLAUDE.md -->
