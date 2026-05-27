@@ -1,7 +1,4 @@
 {
-  "permissions": {
-    "defaultMode": "bypassPermissions"
-  },
   "hooks": {
     "UserPromptSubmit": [
       {
@@ -97,6 +94,11 @@
           }
         ]
       }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(dotconfig version *)"
     ]
   }
 }

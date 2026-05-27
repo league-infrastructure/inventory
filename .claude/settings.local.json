@@ -1,12 +1,7 @@
 {
   "permissions": {
     "allow": [
-
-      "Bash(*)",
-      "WebFetch(*)",
-      "mcp__clasi__*",
-      "mcp__inventory__*",
-      "mcp__browsermcp__*"
+      "mcp__clasi__*"
     ]
   }
 }

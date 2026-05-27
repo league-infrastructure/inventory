@@ -1,5 +1,11 @@
 # Docker Node Application Template
 
+**League of Amazing Programmers — Inventory System** is a web application
+for tracking the computing equipment and teaching-material fleet used by LAP
+instructors across approximately 30 school and teaching sites. Instructors
+check Kits in and out via QR-code scanning; Quartermasters manage catalog
+records, site assignments, and audit history.
+
 A fully containerised, AI-first Node.js application stack for rapid
 production-ready app development. Clone, configure, and deploy.
 
