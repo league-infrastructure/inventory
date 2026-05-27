@@ -1,5 +1,7 @@
 # League of Amazing Programmers — Inventory System
 
+Track equipment and teaching materials across sites — check kits in and out from your phone.
+
 ## About
 
 **League of Amazing Programmers — Inventory System** is a web application for
