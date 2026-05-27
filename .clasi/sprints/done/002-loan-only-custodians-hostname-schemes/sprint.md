@@ -1,20 +1,20 @@
 ---
 id: '002'
 title: Loan-only custodians & hostname schemes
-status: planning-docs
+status: closed
 branch: sprint/002-loan-only-custodians-hostname-schemes
 use-cases:
-  - SUC-001
-  - SUC-002
-  - SUC-003
-  - SUC-004
-  - SUC-005
-  - SUC-006
-  - SUC-007
-  - SUC-008
+- SUC-001
+- SUC-002
+- SUC-003
+- SUC-004
+- SUC-005
+- SUC-006
+- SUC-007
+- SUC-008
 issues:
-  - add-student-and-partner-user-roles-for-loan-only-custodians.md
-  - add-scheme-field-to-hostname-discrete-value-column-filters.md
+- add-student-and-partner-user-roles-for-loan-only-custodians.md
+- add-scheme-field-to-hostname-discrete-value-column-filters.md
 ---
 <!-- CLASI: Before changing code or making plans, review the SE process in CLAUDE.md -->
 
