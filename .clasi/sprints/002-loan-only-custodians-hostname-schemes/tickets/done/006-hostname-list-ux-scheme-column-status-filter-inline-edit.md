@@ -1,14 +1,14 @@
 ---
 id: '006'
-title: HostName list UX — scheme column, status filter, inline edit
-status: open
+title: "HostName list UX \u2014 scheme column, status filter, inline edit"
+status: done
 use-cases:
-  - SUC-006
-  - SUC-007
-  - SUC-008
+- SUC-006
+- SUC-007
+- SUC-008
 depends-on:
-  - '002'
-  - '004'
+- '002'
+- '004'
 github-issue: ''
 issue: add-scheme-field-to-hostname-discrete-value-column-filters.md
 completes_issue: true
@@ -31,29 +31,29 @@ This ticket completes the hostname scheme issue.
 
 ## Acceptance Criteria
 
-- [ ] `HostNameList.tsx` — the local HostName interface has `scheme: string |
+- [x] `HostNameList.tsx` — the local HostName interface has `scheme: string |
       null` and an enriched `_status: 'Assigned' | 'Available'` field computed
       from whether `computerId` is set.
-- [ ] A `GET /api/hostnames/schemes` call is made on component mount; the result
+- [x] A `GET /api/hostnames/schemes` call is made on component mount; the result
       is stored in a `schemes: string[]` state variable.
-- [ ] **Scheme column**: present in the table; uses `<SortableHeader>` with
+- [x] **Scheme column**: present in the table; uses `<SortableHeader>` with
       `filterMode="discrete"` and `discreteOptions={schemes}`; sortable by
       scheme value.
-- [ ] **Status column**: uses `<SortableHeader>` with `filterMode="discrete"`
+- [x] **Status column**: uses `<SortableHeader>` with `filterMode="discrete"`
       and `discreteOptions={['Assigned', 'Available']}`; filtering by status
       narrows the list correctly using the `_status` field.
-- [ ] **Inline edit**: clicking a row enters edit mode showing a name `<input>`
+- [x] **Inline edit**: clicking a row enters edit mode showing a name `<input>`
       and a scheme `<input>`. The scheme input has a `<datalist>` element
       populated from the `schemes` state (same list used for the column filter).
-- [ ] Pressing Enter or clicking Save in edit mode calls
+- [x] Pressing Enter or clicking Save in edit mode calls
       `PUT /api/hostnames/:id` with the updated `name` and/or `scheme`.
-- [ ] The row exits edit mode and reflects the updated values after a successful
+- [x] The row exits edit mode and reflects the updated values after a successful
       save.
-- [ ] Pressing Escape in edit mode cancels and reverts to the original values.
-- [ ] Existing sort and filter behaviour on other columns is unchanged.
-- [ ] `npx tsc --noEmit` clean in `client/`.
-- [ ] `npm run test:client` passes.
-- [ ] End-to-end verification matches SUC-006, SUC-007, SUC-008 acceptance
+- [x] Pressing Escape in edit mode cancels and reverts to the original values.
+- [x] Existing sort and filter behaviour on other columns is unchanged.
+- [x] `npx tsc --noEmit` clean in `client/`.
+- [x] `npm run test:client` passes (no test files found — pre-existing condition).
+- [x] End-to-end verification matches SUC-006, SUC-007, SUC-008 acceptance
       criteria.
 
 ## Implementation Plan

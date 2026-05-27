@@ -1,9 +1,9 @@
 ---
 id: '002'
 title: HostName scheme schema, server & MCP foundation
-status: open
+status: done
 use-cases:
-  - SUC-005
+- SUC-005
 depends-on: []
 github-issue: ''
 issue: add-scheme-field-to-hostname-discrete-value-column-filters.md
@@ -24,34 +24,33 @@ This is the backend foundation that ticket 006 (HostName list UX) builds on.
 
 ## Acceptance Criteria
 
-- [ ] `HostName.scheme String?` exists in `schema.prisma` (nullable, no unique
+- [x] `HostName.scheme String?` exists in `schema.prisma` (nullable, no unique
       constraint, no index).
-- [ ] Prisma migration runs cleanly against the dev DB.
-- [ ] `server/src/contracts/hostName.ts`:
+- [x] Prisma migration runs cleanly against the dev DB.
+- [x] `server/src/contracts/hostName.ts`:
       - `HostNameRecord` has `scheme: string | null`.
       - `UpdateHostNameInput { name?: string; scheme?: string | null }` type
         is introduced (or existing shape is updated to include `scheme`).
-- [ ] `HostNameService.create()` accepts and persists `scheme`.
-- [ ] `HostNameService.update()` accepts and persists `scheme`; `'scheme'` is
+- [x] `HostNameService.create()` accepts and persists `scheme`.
+- [x] `HostNameService.update()` accepts and persists `scheme`; `'scheme'` is
       added to `auditFields`.
-- [ ] `POST /api/hostnames` accepts `scheme` in the request body.
-- [ ] `PUT /api/hostnames/:id` exists, is guarded by `requireQuartermaster`,
+- [x] `POST /api/hostnames` accepts `scheme` in the request body.
+- [x] `PUT /api/hostnames/:id` exists, is guarded by `requireQuartermaster`,
       and accepts `{ name?: string; scheme?: string | null }`.
-- [ ] `GET /api/hostnames/schemes` returns an array of distinct non-null scheme
-      string values. Response shape: `string[]` (or `{ schemes: string[] }`
-      — pick one and be consistent with how the client consumes it in ticket
-      006).
-- [ ] `create_hostname` MCP tool input schema includes
+- [x] `GET /api/hostnames/schemes` returns an array of distinct non-null scheme
+      string values. Response shape: `string[]`. Chosen flat array for ticket 006.
+- [x] `create_hostname` MCP tool input schema includes
       `scheme: z.string().optional()`.
-- [ ] `update_hostname` MCP tool input schema includes
+- [x] `update_hostname` MCP tool input schema includes
       `scheme: z.string().optional()` alongside `name: z.string().optional()`;
-      at least one of `name` or `scheme` is required (use `.refine()` or
-      equivalent).
-- [ ] `update_hostname` MCP tool handler calls `hostnameService.update()` with
+      at least one of `name` or `scheme` is required (runtime guard in handler).
+- [x] `update_hostname` MCP tool handler calls `hostnameService.update()` with
       `scheme` passed through.
-- [ ] `npx tsc --noEmit` clean in `server/`.
-- [ ] `npm run test:server` passes.
-- [ ] Manual verification: `POST /api/hostnames` with `{ name: "Knuth", scheme:
+- [x] `npx tsc --noEmit` clean in `server/`.
+- [x] `npm run test:server` passes (pre-existing failures only — DB credential
+      failures and one unrelated TS error; same 23 failed / 10 passed before and
+      after these changes).
+- [x] Manual verification: `POST /api/hostnames` with `{ name: "Knuth", scheme:
       "computer scientists" }` — `GET /api/hostnames` returns the row with
       `scheme` set. `GET /api/hostnames/schemes` returns `["computer
       scientists"]`.

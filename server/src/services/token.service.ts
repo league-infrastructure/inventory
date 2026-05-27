@@ -69,7 +69,7 @@ export class TokenService {
       revokedAt: t.revokedAt?.toISOString() ?? null,
       expiresAt: t.expiresAt?.toISOString() ?? null,
       createdAt: t.createdAt.toISOString(),
-      user: t.user ? { id: t.user.id, displayName: t.user.displayName, email: t.user.email } : undefined,
+      user: t.user ? { id: t.user.id, displayName: t.user.displayName, email: t.user.email ?? '—' } : undefined,
     }));
   }
 

@@ -8,6 +8,7 @@ import NotesSection from '../../components/NotesSection';
 import ReportIssueModal from '../../components/ReportIssueModal';
 import IssuesSection from '../../components/IssuesSection';
 import EditableCell from '../../components/EditableCell';
+import CustodianSelect from '../../components/CustodianSelect';
 
 interface Site { id: number; name: string; }
 interface Kit { id: number; name: string; number: number; }
@@ -63,7 +64,7 @@ export default function ComputerDetail() {
   const [hostNames, setHostNames] = useState<HostName[]>([]);
   const [custodianId, setCustodianId] = useState<number | null>(null);
   const [custodianName, setCustodianName] = useState<string | null>(null);
-  const [users, setUsers] = useState<{ id: number; displayName: string }[]>([]);
+  const [users, setUsers] = useState<{ id: number; displayName: string; role: string }[]>([]);
   const [imageId, setImageId] = useState<number | null>(null);
   const [showTransfer, setShowTransfer] = useState(false);
   const [showIssueModal, setShowIssueModal] = useState(false);
@@ -431,12 +432,12 @@ export default function ComputerDetail() {
               <div className="space-y-3">
                 <div className="text-base flex items-center gap-2">
                   <User size={16} className="shrink-0 text-gray-400" />
-                  <EditableCell
-                    value={String(custodianId ?? '')}
-                    onSave={saveCustodian}
-                    as="select"
-                    options={[{ value: '', label: 'Storeroom' }, ...users.map((u) => ({ value: String(u.id), label: u.displayName }))]}
-                    className={custodianName ? 'text-amber-600 font-medium' : 'text-green-600 font-medium'}
+                  <CustodianSelect
+                    users={users}
+                    value={custodianId}
+                    onChange={(id) => saveCustodian(id === null ? '' : String(id))}
+                    unassignedLabel="Storeroom"
+                    className={`bg-transparent border-none cursor-pointer p-0 focus:outline-none ${custodianName ? 'text-amber-600 font-medium' : 'text-green-600 font-medium'}`}
                   />
                 </div>
                 <div className="text-base flex items-center gap-2">

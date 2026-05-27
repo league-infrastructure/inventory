@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Plus, Pencil, Trash2, Save, X, UserPlus, Shield } from 'lucide-react';
-import { USER_ROLES, ROLE_BADGE_STYLES } from '../../lib/roles';
+import { USER_ROLES, ROLE_BADGE_STYLES, ROLE_LABELS, LOANEE_ROLES } from '../../lib/roles';
 
 interface User {
   id: number;
   googleId: string | null;
-  email: string;
+  email: string | null;
   displayName: string;
   role: string;
+  notes: string | null;
   createdAt: string;
   updatedAt: string;
   _count?: {
@@ -27,11 +28,11 @@ export default function UsersPanel() {
 
   // Editing state
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [editForm, setEditForm] = useState({ displayName: '', email: '', role: '' });
+  const [editForm, setEditForm] = useState({ displayName: '', email: '', role: '', notes: '' });
 
   // Create form state
   const [showCreate, setShowCreate] = useState(false);
-  const [createForm, setCreateForm] = useState({ email: '', displayName: '', role: 'INSTRUCTOR' });
+  const [createForm, setCreateForm] = useState({ email: '', displayName: '', role: 'INSTRUCTOR', notes: '' });
   const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -50,7 +51,7 @@ export default function UsersPanel() {
 
   function startEdit(user: User) {
     setEditingId(user.id);
-    setEditForm({ displayName: user.displayName, email: user.email, role: user.role });
+    setEditForm({ displayName: user.displayName, email: user.email ?? '', role: user.role, notes: user.notes ?? '' });
     setFormError('');
   }
 
@@ -96,7 +97,7 @@ export default function UsersPanel() {
         setFormError(data.error || 'Failed to create user');
       } else {
         setUsers((prev) => [...prev, data].sort((a, b) => a.displayName.localeCompare(b.displayName)));
-        setCreateForm({ email: '', displayName: '', role: 'INSTRUCTOR' });
+        setCreateForm({ email: '', displayName: '', role: 'INSTRUCTOR', notes: '' });
         setShowCreate(false);
       }
     } catch {
@@ -111,7 +112,7 @@ export default function UsersPanel() {
       const res = await fetch(`/api/admin/users/${user.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ displayName: user.displayName, email: user.email, role: newRole }),
+        body: JSON.stringify({ displayName: user.displayName, email: user.email, role: newRole, notes: user.notes }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -158,14 +159,16 @@ export default function UsersPanel() {
           <h3 className="text-sm font-semibold text-gray-700 mb-3">Create User</h3>
           <form onSubmit={handleCreate} className="flex flex-wrap gap-2 items-end">
             <label className="flex-1 min-w-[200px]">
-              <span className="text-xs text-gray-500">Email</span>
+              <span className="text-xs text-gray-500">
+                Email{LOANEE_ROLES.has(createForm.role) ? ' (optional)' : ''}
+              </span>
               <input
                 type="email"
                 value={createForm.email}
                 onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
-                placeholder="user@jointheleague.org"
+                placeholder={LOANEE_ROLES.has(createForm.role) ? 'Optional' : 'user@jointheleague.org'}
                 className="block w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md"
-                required
+                required={!LOANEE_ROLES.has(createForm.role)}
               />
             </label>
             <label className="flex-1 min-w-[150px]">
@@ -184,8 +187,20 @@ export default function UsersPanel() {
                 onChange={(e) => setCreateForm({ ...createForm, role: e.target.value })}
                 className="block px-3 py-1.5 text-sm border border-gray-300 rounded-md"
               >
-                {USER_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+                {USER_ROLES.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
               </select>
+            </label>
+            <label className="w-full">
+              <span className="text-xs text-gray-500">
+                {LOANEE_ROLES.has(createForm.role) ? 'Notes (contact info, partner org)' : 'Notes'}
+              </span>
+              <textarea
+                value={createForm.notes}
+                onChange={(e) => setCreateForm({ ...createForm, notes: e.target.value })}
+                placeholder={LOANEE_ROLES.has(createForm.role) ? 'Parent contact, partner org, etc.' : ''}
+                className="block w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md resize-y"
+                rows={2}
+              />
             </label>
             <div className="flex gap-1">
               <button
@@ -243,9 +258,17 @@ export default function UsersPanel() {
                           onChange={(e) => setEditForm({ ...editForm, displayName: e.target.value })}
                           className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
                         />
+                        <textarea
+                          value={editForm.notes}
+                          onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                          placeholder={LOANEE_ROLES.has(editForm.role) ? 'Parent contact, partner org, etc.' : 'Notes'}
+                          className="block w-full mt-1 px-2 py-1 text-xs border border-gray-300 rounded resize-y"
+                          rows={2}
+                        />
                       </td>
                       <td className="py-2 pr-2">
                         <input
+                          type="email"
                           value={editForm.email}
                           onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
                           className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
@@ -257,7 +280,7 @@ export default function UsersPanel() {
                           onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
                           className="px-2 py-1 text-sm border border-gray-300 rounded"
                         >
-                          {USER_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+                          {USER_ROLES.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
                         </select>
                       </td>
                       <td className="py-2 text-center">
@@ -294,8 +317,13 @@ export default function UsersPanel() {
                     </>
                   ) : (
                     <>
-                      <td className="py-2">{u.displayName}</td>
-                      <td className="py-2 text-gray-600 text-xs">{u.email}</td>
+                      <td className="py-2">
+                        <div>{u.displayName}</div>
+                        {u.notes && (
+                          <div className="text-xs text-gray-400 italic mt-0.5">{u.notes}</div>
+                        )}
+                      </td>
+                      <td className="py-2 text-gray-600 text-xs">{u.email ?? '—'}</td>
                       <td className="py-2">
                         <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${roleBadge(u.role)}`}>
                           {u.role}

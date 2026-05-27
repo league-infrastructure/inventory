@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { ArrowRightLeft } from 'lucide-react';
 import { findNearestSite } from '../../../lib/geo';
 import type { SiteWithCoords } from '../../../lib/geo';
+import CustodianSelect from '../../../components/CustodianSelect';
 
 interface Props {
   objectType: 'Kit' | 'Computer';
@@ -16,6 +17,7 @@ interface Props {
 interface UserOption {
   id: number;
   displayName: string;
+  role: string;
 }
 
 export default function TransferAction({
@@ -163,18 +165,13 @@ export default function TransferAction({
       <div className="pl-4 space-y-2">
         <label className="block">
           <span className="text-xs text-gray-500">New Custodian</span>
-          <select
-            value={custodianId}
-            onChange={(e) => handleCustodianChange(e.target.value)}
+          <CustodianSelect
+            users={users.map((u) => ({ ...u, displayName: u.displayName + (u.id === userId ? ' (me)' : '') }))}
+            value={custodianId === '' ? null : parseInt(custodianId, 10)}
+            onChange={(id) => handleCustodianChange(id === null ? '' : String(id))}
+            unassignedLabel="None (Admin)"
             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white"
-          >
-            <option value="">None (Admin)</option>
-            {users.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.displayName}{u.id === userId ? ' (me)' : ''}
-              </option>
-            ))}
-          </select>
+          />
         </label>
 
         <label className="block">

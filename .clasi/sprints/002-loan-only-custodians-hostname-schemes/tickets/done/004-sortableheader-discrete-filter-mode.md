@@ -1,10 +1,10 @@
 ---
 id: '004'
 title: SortableHeader discrete-filter mode
-status: open
+status: done
 use-cases:
-  - SUC-006
-  - SUC-007
+- SUC-006
+- SUC-007
 depends-on: []
 github-issue: ''
 issue: add-scheme-field-to-hostname-discrete-value-column-filters.md
@@ -28,22 +28,22 @@ can be executed in parallel with the scheme server ticket (002). Ticket 006
 
 ## Acceptance Criteria
 
-- [ ] `SortableHeader` accepts `filterMode?: 'text' | 'discrete'` prop;
+- [x] `SortableHeader` accepts `filterMode?: 'text' | 'discrete'` prop;
       default is `'text'` (existing behaviour unchanged when prop is omitted).
-- [ ] `SortableHeader` accepts `discreteOptions?: string[]` prop.
-- [ ] When `filterMode === 'discrete'`, clicking the search icon reveals a
+- [x] `SortableHeader` accepts `discreteOptions?: string[]` prop.
+- [x] When `filterMode === 'discrete'`, clicking the search icon reveals a
       `<select>` element containing the `discreteOptions` values.
-- [ ] A blank/default first option (e.g. `<option value="">All</option>`)
+- [x] A blank/default first option (e.g. `<option value="">All</option>`)
       allows clearing the filter.
-- [ ] Selecting an option calls `onFilter(key, selectedValue)`; selecting the
+- [x] Selecting an option calls `onFilter(key, selectedValue)`; selecting the
       blank option calls `onFilter(key, '')` (clears filter).
-- [ ] When `filterMode === 'text'` (default), all existing behaviour is
+- [x] When `filterMode === 'text'` (default), all existing behaviour is
       unchanged — no regressions on ComputerList or any other page using
       SortableHeader.
-- [ ] `discreteOptions` being undefined or empty renders a functional (if
+- [x] `discreteOptions` being undefined or empty renders a functional (if
       vacuous) select — no crash.
-- [ ] `npx tsc --noEmit` clean in `client/`.
-- [ ] `npm run test:client` passes.
+- [x] `npx tsc --noEmit` clean in `client/`.
+- [x] `npm run test:client` passes (no test files exist yet; baseline unchanged).
 
 ## Implementation Plan
 
