@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "mcp__clasi__*"
+      "mcp__clasi__*",
+      "Skill(sprint-review)"
     ]
   }
 }
