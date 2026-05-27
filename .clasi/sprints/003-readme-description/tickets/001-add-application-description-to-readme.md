@@ -1,9 +1,9 @@
 ---
 id: '001'
 title: Add application description to README
-status: open
+status: in-progress
 use-cases:
-  - SUC-001
+- SUC-001
 depends-on: []
 github-issue: ''
 issue: update-readme-with-application-description.md
@@ -22,11 +22,11 @@ application for the League of Amazing Programmers' equipment fleet.
 
 ## Acceptance Criteria
 
-- [ ] `README.md` has a brief description (1–3 sentences) added near the top.
-- [ ] The description identifies the project as an inventory-management
+- [x] `README.md` has a brief description (1–3 sentences) added near the top.
+- [x] The description identifies the project as an inventory-management
       application for the League of Amazing Programmers.
-- [ ] No other files are modified.
-- [ ] The rest of the README is not restructured or rewritten.
+- [x] No other files are modified.
+- [x] The rest of the README is not restructured or rewritten.
 
 ## Implementation Plan
 
