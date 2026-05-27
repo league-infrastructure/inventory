@@ -1,7 +1,7 @@
 ---
 id: '001'
 title: README Description Update
-status: planning-docs
+status: done
 branch: sprint/001-readme-description-update
 use-cases:
 - SUC-001
