@@ -1,7 +1,7 @@
 ---
 id: '001'
 title: Add application description to README
-status: in-progress
+status: done
 use-cases:
 - SUC-001
 depends-on: []
