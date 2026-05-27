@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "mcp__clasi__*",
-      "Skill(sprint-review)"
+      "Skill(sprint-review)",
+      "Skill(close-sprint)"
     ]
   }
 }

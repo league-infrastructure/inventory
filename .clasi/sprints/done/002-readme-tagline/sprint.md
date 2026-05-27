@@ -1,12 +1,12 @@
 ---
 id: '002'
 title: README Tagline
-status: planning-docs
+status: done
 branch: sprint/002-readme-tagline
 use-cases:
-  - SUC-001
+- SUC-001
 issues:
-  - update-readme-tagline
+- update-readme-tagline
 ---
 <!-- CLASI: Before changing code or making plans, review the SE process in CLAUDE.md -->
 
