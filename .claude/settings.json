@@ -95,10 +95,5 @@
         ]
       }
     ]
-  },
-  "permissions": {
-    "allow": [
-      "Bash(dotconfig version *)"
-    ]
   }
 }
