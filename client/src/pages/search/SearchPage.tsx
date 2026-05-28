@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Tags, Package, Box, Monitor, MapPin } from 'lucide-react';
+import { Search, Tags, Package, Box, Monitor, MapPin, Users, FolderTree, Factory } from 'lucide-react';
 
 interface SearchResult {
-  type: 'kit' | 'pack' | 'item' | 'computer' | 'site';
+  type: 'kit' | 'pack' | 'item' | 'computer' | 'site' | 'user' | 'hostname' | 'category' | 'manufacturer';
   id: number;
   title: string;
   subtitle: string | null;
@@ -16,6 +16,10 @@ const typeIcons: Record<string, any> = {
   item: Box,
   computer: Monitor,
   site: MapPin,
+  user: Users,
+  hostname: Monitor,
+  category: FolderTree,
+  manufacturer: Factory,
 };
 
 export default function SearchPage() {
@@ -56,7 +60,7 @@ export default function SearchPage() {
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search kits, packs, items, computers, sites..."
+          placeholder="Search kits, packs, items, computers, sites, users, hostnames..."
           className="w-full pl-10 pr-4 py-3 border rounded-lg text-lg focus:outline-none focus:ring-2 focus:ring-primary"
           autoFocus
         />

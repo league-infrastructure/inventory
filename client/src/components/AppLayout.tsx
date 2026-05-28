@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, createContext, useContext } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
-  Home, Monitor, Tags, PackageCheck, MapPin, Shield, Menu, X, LogOut, ChevronDown, UserCircle, AlertTriangle, Search, BarChart3, Package, Box, Plug,
+  Home, Monitor, Tags, PackageCheck, MapPin, Shield, Menu, X, LogOut, ChevronDown, UserCircle, AlertTriangle, Search, BarChart3, Package, Box, Plug, Users, FolderTree, Factory,
 } from 'lucide-react';
 import AiChat from './AiChat';
 import AboutModal from './AboutModal';
@@ -45,7 +45,7 @@ const navItems = [
 
 // Search result types
 interface SearchResult {
-  type: 'kit' | 'pack' | 'item' | 'computer' | 'site';
+  type: 'kit' | 'pack' | 'item' | 'computer' | 'site' | 'user' | 'hostname' | 'category' | 'manufacturer';
   id: number;
   title: string;
   subtitle: string | null;
@@ -58,6 +58,10 @@ const typeIcons: Record<string, any> = {
   item: Box,
   computer: Monitor,
   site: MapPin,
+  user: Users,
+  hostname: Monitor,
+  category: FolderTree,
+  manufacturer: Factory,
 };
 
 const typeColors: Record<string, string> = {
@@ -66,6 +70,10 @@ const typeColors: Record<string, string> = {
   item: 'bg-green-100 text-green-800',
   computer: 'bg-orange-100 text-orange-800',
   site: 'bg-gray-100 text-gray-800',
+  user: 'bg-cyan-100 text-cyan-800',
+  hostname: 'bg-indigo-100 text-indigo-800',
+  category: 'bg-amber-100 text-amber-800',
+  manufacturer: 'bg-rose-100 text-rose-800',
 };
 
 function SearchResults({ query, results, loading, onNavigate }: {
@@ -323,7 +331,7 @@ export default function AppLayout() {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search kits, packs, items, computers..."
+                  placeholder="Search kits, packs, items, computers, users, hostnames..."
                   className="w-full pl-9 pr-8 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-gray-50 focus:bg-white"
                 />
                 {searchQuery && (

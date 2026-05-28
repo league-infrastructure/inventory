@@ -179,6 +179,13 @@ Server dependencies aren't installed. Run `cd server && npm install`.
 creates it automatically during `migrate dev`. Any other error usually means
 `DATABASE_URL` points to the wrong host or port.
 
+**Restored production snapshot fails on manufacturer migration**
+Local startup now runs an automatic reconcile step before Prisma migrations.
+If a restored database already contains `Manufacturer` but migration
+`20260525150701_add_manufacturer_entity` is missing or unfinished in
+`_prisma_migrations`, startup repairs the expected relation pieces and marks
+that migration as applied before continuing.
+
 **Vite starts but the app can't reach the API**
 Check that the Vite proxy target in `client/vite.config.ts` matches the
 port the server is running on (default `http://localhost:3000`).
