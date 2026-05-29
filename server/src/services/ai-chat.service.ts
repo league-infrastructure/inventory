@@ -72,8 +72,8 @@ function getToolDefinitions(): ToolDef[] {
 
     // ─── Host Names ────────────────────────────────────
     { name: 'list_hostnames', description: 'List all host names', input_schema: { type: 'object', properties: {}, required: [] }, requiresQM: false },
-    { name: 'create_hostname', description: 'Create a new host name', input_schema: { type: 'object', properties: { name: { type: 'string' } }, required: ['name'] }, requiresQM: true },
-    { name: 'update_hostname', description: 'Rename a host name', input_schema: { type: 'object', properties: { id: { type: 'number' }, name: { type: 'string' } }, required: ['id', 'name'] }, requiresQM: true },
+    { name: 'create_hostname', description: 'Create a new host name', input_schema: { type: 'object', properties: { name: { type: 'string' }, scheme: { type: 'string', description: 'Optional grouping scheme for the host name' } }, required: ['name'] }, requiresQM: true },
+    { name: 'update_hostname', description: 'Update a host name (rename or change scheme). Pass scheme as null to clear.', input_schema: { type: 'object', properties: { id: { type: 'number' }, name: { type: 'string' }, scheme: { type: ['string', 'null'], description: 'Grouping scheme; pass null to clear' } }, required: ['id'] }, requiresQM: true },
     { name: 'delete_hostname', description: 'Delete an unassigned host name', input_schema: { type: 'object', properties: { id: { type: 'number' } }, required: ['id'] }, requiresQM: true },
 
     // ─── Transfers ────────────────────────────────────
@@ -199,8 +199,13 @@ async function executeTool(
 
       // Host Names
       case 'list_hostnames': return JSON.stringify(await services.hostNames.list(), null, 2);
-      case 'create_hostname': return JSON.stringify(await services.hostNames.create({ name: input.name as string }, userId), null, 2);
-      case 'update_hostname': return JSON.stringify(await services.hostNames.update(input.id as number, { name: input.name as string }, userId), null, 2);
+      case 'create_hostname': return JSON.stringify(await services.hostNames.create({ name: input.name as string, scheme: input.scheme as string | undefined }, userId), null, 2);
+      case 'update_hostname': {
+        const updateInput: { name?: string; scheme?: string | null } = {};
+        if (input.name !== undefined) updateInput.name = input.name as string;
+        if (input.scheme !== undefined) updateInput.scheme = input.scheme as string | null;
+        return JSON.stringify(await services.hostNames.update(input.id as number, updateInput, userId), null, 2);
+      }
       case 'delete_hostname': { await services.hostNames.delete(input.id as number); return JSON.stringify({ deleted: true }); }
 
       // Transfers
