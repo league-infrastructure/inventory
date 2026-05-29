@@ -63,7 +63,6 @@ export class SearchService {
           OR: [
             { model: { contains: query, mode: 'insensitive' } },
             { modelNumber: { contains: query, mode: 'insensitive' } },
-            { manufacturer: { contains: query, mode: 'insensitive' } },
             { mfg: { name: { contains: query, mode: 'insensitive' } } },
             { serialNumber: { contains: query, mode: 'insensitive' } },
             { serviceTag: { contains: query, mode: 'insensitive' } },
