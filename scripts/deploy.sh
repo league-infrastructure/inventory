@@ -129,6 +129,7 @@ DOCKER_CONTEXT="$PROD_DOCKER_CONTEXT" docker service create \
   --detach \
   --name inventory_migrate \
   --restart-condition=none \
+  --constraint 'node.hostname==swarm2' \
   --with-registry-auth \
   --network inventory_default \
   --secret database_url \

@@ -10,6 +10,18 @@ const SYSTEM_PROMPT_TEMPLATE = fs.readFileSync(
   'utf-8',
 );
 
+/**
+ * Anthropic model IDs, configurable via environment.
+ *
+ * AI_CHAT_MODEL      — the main conversational assistant (agentic tool loop + streaming).
+ * AI_SCREENING_MODEL — the cheap topic-guard that gates messages before the chat model runs.
+ *
+ * Defaults are current, non-dated aliases so a retired snapshot can't silently
+ * 404 the assistant (as claude-sonnet-4-20250514 did after its 2026-06-15 retirement).
+ */
+const CHAT_MODEL = process.env.AI_CHAT_MODEL || 'claude-sonnet-5';
+const SCREENING_MODEL = process.env.AI_SCREENING_MODEL || 'claude-haiku-4-5';
+
 /** Tool definition in Anthropic format */
 interface ToolDef {
   name: string;
@@ -269,7 +281,7 @@ export class AiChatService {
 
     try {
       const response = await this.client.messages.create({
-        model: 'claude-haiku-4-5-20251001',
+        model: SCREENING_MODEL,
         max_tokens: 100,
         system: `You are a topic guard for an inventory management system. Determine if the user's message is reasonably related to inventory management (equipment kits, computers, sites, transfers, items, packs, hostnames, reports, or general questions about the system). Allow greetings, clarifications, and follow-ups to previous inventory topics. Reply with ONLY "yes" or "no".`,
         messages: [{ role: 'user', content: screenPrompt }],
@@ -319,8 +331,12 @@ export class AiChatService {
     // Agentic loop: keep calling Claude until we get a final response
     while (true) {
       const stream = this.client.messages.stream({
-        model: 'claude-sonnet-4-20250514',
+        model: CHAT_MODEL,
         max_tokens: 4096,
+        // Sonnet 5 runs adaptive thinking by default; disable it to preserve the
+        // prior (Sonnet 4) no-thinking behavior and keep the full 4096-token
+        // budget for the reply rather than sharing it with thinking.
+        thinking: { type: 'disabled' },
         system: systemPrompt,
         tools,
         messages,
