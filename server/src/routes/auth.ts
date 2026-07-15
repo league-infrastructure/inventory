@@ -117,6 +117,7 @@ authRouter.get('/auth/google', (req: Request, res: Response, next) => {
   passport.authenticate('google', {
     scope: ['profile', 'email'],
     hd: 'jointheleague.org',
+    keepSessionInfo: true,
   } as any)(req, res, next);
 });
 
@@ -126,7 +127,7 @@ authRouter.get('/auth/google/callback',
     if (!(passport as any)._strategy('google')) {
       return res.status(501).json({ error: 'Google OAuth not configured' });
     }
-    passport.authenticate('google', { failureRedirect: '/?error=auth_failed' })(req, res, next);
+    passport.authenticate('google', { failureRedirect: '/?error=auth_failed', keepSessionInfo: true })(req, res, next);
   },
   (req: Request, res: Response) => {
     // If there's a pending OAuth authorization request, redirect back to /oauth/authorize
