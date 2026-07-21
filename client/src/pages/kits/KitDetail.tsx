@@ -26,6 +26,7 @@ interface Pack {
   description: string | null;
   qrCode: string | null;
   imageId: number | null;
+  displayNumber: number;
   items: Item[];
 }
 
@@ -416,6 +417,28 @@ export default function KitDetail() {
     }
   }
 
+  async function handleRenumberPack(packId: number, displayNumber: number) {
+    setSaveError(null);
+    try {
+      const res = await fetch(`/api/packs/${packId}/renumber`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ displayNumber }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to renumber pack');
+      }
+      // The endpoint returns the full renumbered pack list for the kit
+      // (more than one pack's number may shift), so replace the whole
+      // array rather than patching just the edited pack.
+      const updated = await res.json();
+      setPacks(updated);
+    } catch (e: any) {
+      setSaveError(e.message);
+    }
+  }
+
   async function handleUpdateItem(packId: number, itemId: number, field: string, value: string) {
     const body: any = { [field]: value };
     if (field === 'expectedQuantity') body[field] = value ? parseInt(value, 10) : null;
@@ -692,6 +715,15 @@ export default function KitDetail() {
           <div key={pack.id} className="bg-white border border-gray-200 rounded-lg p-4 mb-3">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-1 flex-wrap">
+                <span className="text-gray-500 text-sm font-medium whitespace-nowrap">
+                  Pack{' '}
+                  <EditableCell
+                    value={String(pack.displayNumber)}
+                    onSave={(v) => handleRenumberPack(pack.id, parseInt(v, 10))}
+                    as="number"
+                  />
+                </span>
+                <span className="text-gray-400 text-sm">—</span>
                 <strong className="text-gray-900">
                   <EditableCell value={pack.name} onSave={(v) => handleUpdatePack(pack.id, 'name', v)} />
                 </strong>
