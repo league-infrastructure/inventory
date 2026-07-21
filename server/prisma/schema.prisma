@@ -126,13 +126,14 @@ model Kit {
 }
 
 model Pack {
-  id          Int      @id @default(autoincrement())
-  name        String
-  description String?
-  qrCode      String?  @unique
-  kitId       Int
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            Int      @id @default(autoincrement())
+  name          String
+  description   String?
+  qrCode        String?  @unique
+  kitId         Int
+  displayNumber Int
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   imageId     Int?
 
@@ -144,6 +145,7 @@ model Pack {
 
   @@index([kitId])
   @@index([imageId])
+  @@unique([kitId, displayNumber])
 }
 
 enum ItemType {

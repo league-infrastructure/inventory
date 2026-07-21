@@ -1,7 +1,7 @@
 ---
 id: '003'
 title: Editable Pack Numbers on Kit Page
-status: planning-docs
+status: closed
 branch: sprint/003-editable-pack-numbers-on-kit-page
 worktree: false
 use-cases:
