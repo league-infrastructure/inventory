@@ -20,6 +20,17 @@ function getAppVersion(): string {
   return 'unknown';
 }
 
+function redactDatabaseUrl(raw: string | undefined): string {
+  if (!raw) return 'not set';
+  try {
+    const url = new URL(raw);
+    if (url.password) url.password = '****';
+    return url.toString();
+  } catch {
+    return raw.replace(/\/\/([^:@/]+):[^@/]+@/, '//$1:****@');
+  }
+}
+
 export const adminEnvRouter = Router();
 
 adminEnvRouter.get('/env', async (_req, res) => {
@@ -42,6 +53,7 @@ adminEnvRouter.get('/env', async (_req, res) => {
     },
     deployment: process.env.NODE_ENV || 'development',
     database: dbStatus,
+    databaseUrl: redactDatabaseUrl(process.env.DATABASE_URL),
     integrations: {
       github: {
         configured: !!(getConfig('GITHUB_CLIENT_ID') && getConfig('GITHUB_CLIENT_SECRET')),

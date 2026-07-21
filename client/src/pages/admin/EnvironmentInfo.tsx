@@ -7,6 +7,7 @@ interface EnvData {
   memory: { rss: number; heapUsed: number; heapTotal: number };
   deployment: string;
   database: string;
+  databaseUrl: string;
   integrations: Record<string, { configured: boolean }>;
 }
 
@@ -73,9 +74,16 @@ export default function EnvironmentInfo() {
 
       <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4">
         <h3 className="text-sm font-semibold text-gray-700 mb-3">Database</h3>
-        <span className={`text-sm font-semibold ${data.database === 'connected' ? 'text-green-600' : 'text-red-600'}`}>
-          {data.database === 'connected' ? 'Connected' : 'Disconnected'}
-        </span>
+        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+          <dt className="font-medium text-gray-500">Status</dt>
+          <dd>
+            <span className={`font-semibold ${data.database === 'connected' ? 'text-green-600' : 'text-red-600'}`}>
+              {data.database === 'connected' ? 'Connected' : 'Disconnected'}
+            </span>
+          </dd>
+          <dt className="font-medium text-gray-500">URL</dt>
+          <dd className="font-mono break-all">{data.databaseUrl}</dd>
+        </dl>
       </div>
 
       <div className="bg-white border border-gray-200 rounded-lg p-4">
