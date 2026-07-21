@@ -1,4 +1,4 @@
-import { PrismaClient, AuditSource } from '@prisma/client';
+import { PrismaClient, AuditSource, Prisma } from '@prisma/client';
 
 export interface AuditEntry {
   userId: number | null;
@@ -17,11 +17,20 @@ export class AuditService {
     this.defaultSource = defaultSource;
   }
 
-  async write(entries: AuditEntry | AuditEntry[]): Promise<void> {
+  /**
+   * Write audit rows. Pass a `tx` (from `prisma.$transaction(async (tx) => ...)`)
+   * to write inside a caller's own transaction, so the audit rows commit or
+   * roll back atomically with the mutation they describe. Defaults to the
+   * service's own PrismaClient when omitted.
+   */
+  async write(
+    entries: AuditEntry | AuditEntry[],
+    client: PrismaClient | Prisma.TransactionClient = this.prisma,
+  ): Promise<void> {
     const list = Array.isArray(entries) ? entries : [entries];
     if (list.length === 0) return;
 
-    await this.prisma.auditLog.createMany({
+    await client.auditLog.createMany({
       data: list.map((e) => ({
         userId: e.userId,
         objectType: e.objectType,

@@ -50,7 +50,7 @@ export class KitService extends BaseService<KitRecord, CreateKitInput, UpdateKit
         category: { select: { id: true, name: true } },
         packs: {
           include: { items: true },
-          orderBy: { name: 'asc' },
+          orderBy: { displayNumber: 'asc' },
         },
         computers: {
           include: { hostName: true },
@@ -181,7 +181,7 @@ export class KitService extends BaseService<KitRecord, CreateKitInput, UpdateKit
   async clone(id: number, userId: number): Promise<KitDetailRecord> {
     const source = await this.prisma.kit.findUnique({
       where: { id },
-      include: { packs: { include: { items: true } } },
+      include: { packs: { include: { items: true }, orderBy: { displayNumber: 'asc' } } },
     });
     if (!source) throw new NotFoundError('Kit not found');
 
@@ -205,12 +205,13 @@ export class KitService extends BaseService<KitRecord, CreateKitInput, UpdateKit
       data: { qrCode: qrPath },
     });
 
-    for (const pack of source.packs) {
+    for (const [index, pack] of source.packs.entries()) {
       const newPack = await this.prisma.pack.create({
         data: {
           name: pack.name,
           description: pack.description,
           kitId: newKit.id,
+          displayNumber: index + 1,
         },
       });
       const packQrPath = `/p/${newPack.id}`;

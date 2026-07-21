@@ -1,8 +1,11 @@
 ---
 id: '001'
 title: Pack displayNumber data model + shared renumber service
-status: open
-use-cases: [SUC-001, SUC-002, SUC-003]
+status: done
+use-cases:
+- SUC-001
+- SUC-002
+- SUC-003
 depends-on: []
 github-issue: ''
 issue: editable-pack-numbers-on-kit-page.md
@@ -30,54 +33,54 @@ confirmed out of scope by stakeholder).
 
 ## Acceptance Criteria
 
-- [ ] `Pack.displayNumber Int` column added via Prisma migration, with
+- [x] `Pack.displayNumber Int` column added via Prisma migration, with
       `@@unique([kitId, displayNumber])` (unique per kit, not global).
-- [ ] Migration backfills existing packs: nullable add → windowed
+- [x] Migration backfills existing packs: nullable add → windowed
       backfill (`ROW_NUMBER() OVER (PARTITION BY "kitId" ORDER BY id
       ASC)`) → `NOT NULL` + unique index, in that order.
-- [ ] `PackService.renumber(kitId: number, packId: number,
+- [x] `PackService.renumber(kitId: number, packId: number,
       requestedNumber: number, userId: number): Promise<PackRecord[]>`
       implemented:
-  - [ ] Validates `requestedNumber` is an integer in `1..N` where N is
+  - [x] Validates `requestedNumber` is an integer in `1..N` where N is
         the kit's current pack count; throws `ValidationError`
         otherwise, with **no packs changed**.
-  - [ ] Validates `packId` belongs to `kitId`; throws `NotFoundError`
+  - [x] Validates `packId` belongs to `kitId`; throws `NotFoundError`
         otherwise.
-  - [ ] Builds an in-memory `(assignedNumber, recencyFlag)` tuple per
+  - [x] Builds an in-memory `(assignedNumber, recencyFlag)` tuple per
         pack: the edited pack gets `(requestedNumber, 0)`; every other
         pack gets `(currentDisplayNumber, 1)`. Sorts ascending by
         `(assignedNumber, recencyFlag)` and assigns `1..N` by walk
         order (edited pack wins ties over the pack that previously held
         the contested number).
-  - [ ] Persists the result inside one `prisma.$transaction`, using a
+  - [x] Persists the result inside one `prisma.$transaction`, using a
         two-phase update: (1) set every pack whose number is changing to
         a unique negative sentinel (`-id`), (2) assign final positive
         `1..N` ranks — so no intermediate row ever collides with
         another under the unique constraint.
-  - [ ] Writes one `AuditLog` entry (field `displayNumber`, old/new
+  - [x] Writes one `AuditLog` entry (field `displayNumber`, old/new
         value, `source` per caller) for every pack whose number actually
         changed, inside the same transaction — not written for packs
         whose final number equals their prior number.
-  - [ ] Returns the full, freshly-ordered `PackRecord[]` for the kit
+  - [x] Returns the full, freshly-ordered `PackRecord[]` for the kit
         (sorted by `displayNumber` ascending).
-- [ ] Stakeholder example A verified: 7-pack kit, edit pack "7" to `4` →
+- [x] Stakeholder example A verified: 7-pack kit, edit pack "7" to `4` →
       edited pack = 4, old 4 → 5, old 5 → 6, old 6 → 7 (others
       unchanged).
-- [ ] Stakeholder example B verified: edit pack "3" to `6` → old pack
+- [x] Stakeholder example B verified: edit pack "3" to `6` → old pack
       "4" → 3, remainder renumbers continuously.
-- [ ] `PackService.create()` stamps a valid `displayNumber` (next
+- [x] `PackService.create()` stamps a valid `displayNumber` (next
       available integer = current pack count + 1) on every new pack —
       required by the new `NOT NULL` constraint.
-- [ ] `KitService.clone()`'s pack-copy loop stamps `displayNumber` on
+- [x] `KitService.clone()`'s pack-copy loop stamps `displayNumber` on
       each cloned pack preserving the source kit's relative pack order
       (order source packs by `displayNumber` ascending before copying).
-- [ ] `PackService.list()`, `PackService.listAll()`, and
+- [x] `PackService.list()`, `PackService.listAll()`, and
       `KitService.get()`'s embedded `packs` query change `orderBy` from
       `name: asc` to `displayNumber: asc`.
-- [ ] `contracts/pack.ts`: `PackRecord` gains `displayNumber: number`.
-- [ ] No changes to `label.service.ts` in this ticket (confirmed out of
+- [x] `contracts/pack.ts`: `PackRecord` gains `displayNumber: number`.
+- [x] No changes to `label.service.ts` in this ticket (confirmed out of
       scope by stakeholder).
-- [ ] No changes to `PackService.delete()` in this ticket (no
+- [x] No changes to `PackService.delete()` in this ticket (no
       delete-time compaction — confirmed out of scope by stakeholder;
       gaps left by deletion are an accepted, documented limitation).
 

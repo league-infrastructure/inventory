@@ -21,7 +21,7 @@ export class PackService extends BaseService<PackRecord, CreatePackInput, Update
     const packs = await this.prisma.pack.findMany({
       where: { kitId },
       include: { items: true },
-      orderBy: { name: 'asc' },
+      orderBy: { displayNumber: 'asc' },
     });
     return packs as unknown as PackRecord[];
   }
@@ -32,7 +32,7 @@ export class PackService extends BaseService<PackRecord, CreatePackInput, Update
         items: { orderBy: { name: 'asc' } },
         kit: { select: { id: true, name: true } },
       },
-      orderBy: { name: 'asc' },
+      orderBy: { displayNumber: 'asc' },
     });
     return packs as unknown as PackDetailRecord[];
   }
@@ -58,11 +58,14 @@ export class PackService extends BaseService<PackRecord, CreatePackInput, Update
       throw new ValidationError('Name is required');
     }
 
+    const existingPackCount = await this.prisma.pack.count({ where: { kitId } });
+
     const pack = await this.prisma.pack.create({
       data: {
         name: input.name.trim(),
         description: input.description || null,
         kitId,
+        displayNumber: existingPackCount + 1,
       },
     });
 
@@ -156,5 +159,100 @@ export class PackService extends BaseService<PackRecord, CreatePackInput, Update
     await this.prisma.pack.delete({ where: { id } });
 
     await this.writeAudit(this.createAuditEntry(userId, id, 'deleted', existing.name, null));
+  }
+
+  /**
+   * Renumber a kit's packs after a user edits one pack's displayNumber.
+   *
+   * Shared by the REST route and the MCP tool (ticket 002) — this is the
+   * one place the sort-and-renumber algorithm lives, so the two surfaces
+   * cannot diverge in behavior.
+   *
+   * Algorithm: build an in-memory (assignedNumber, recencyFlag) tuple per
+   * pack — the edited pack gets (requestedNumber, 0), every other pack
+   * keeps (its current displayNumber, 1) — then sort ascending by
+   * (assignedNumber, recencyFlag) and assign 1..N by walk order. The
+   * recencyFlag of 0 makes the edited pack win ties over whichever pack
+   * previously held the contested number.
+   *
+   * Persisted via a two-phase update inside one prisma.$transaction: every
+   * changing pack first moves to a unique negative sentinel (-id), then to
+   * its final positive rank, so no intermediate row ever collides with
+   * another under the @@unique([kitId, displayNumber]) constraint. Audit
+   * rows are written for changed packs inside the same transaction.
+   */
+  async renumber(
+    kitId: number,
+    packId: number,
+    requestedNumber: number,
+    userId: number,
+  ): Promise<PackRecord[]> {
+    const kit = await this.prisma.kit.findUnique({ where: { id: kitId } });
+    if (!kit) throw new NotFoundError('Kit not found');
+
+    const packs = await this.prisma.pack.findMany({
+      where: { kitId },
+      orderBy: { displayNumber: 'asc' },
+    });
+    const n = packs.length;
+
+    if (!Number.isInteger(requestedNumber) || requestedNumber < 1 || requestedNumber > n) {
+      throw new ValidationError(`requestedNumber must be an integer between 1 and ${n}`);
+    }
+
+    const target = packs.find((p) => p.id === packId);
+    if (!target) throw new NotFoundError('Pack not found in kit');
+
+    const ranked = packs
+      .map((p) => ({
+        pack: p,
+        assignedNumber: p.id === packId ? requestedNumber : p.displayNumber,
+        recencyFlag: p.id === packId ? 0 : 1,
+      }))
+      .sort((a, b) => {
+        if (a.assignedNumber !== b.assignedNumber) return a.assignedNumber - b.assignedNumber;
+        return a.recencyFlag - b.recencyFlag;
+      });
+
+    const changes: Array<{ id: number; oldNumber: number; newNumber: number }> = [];
+    ranked.forEach((entry, idx) => {
+      const newNumber = idx + 1;
+      if (newNumber !== entry.pack.displayNumber) {
+        changes.push({ id: entry.pack.id, oldNumber: entry.pack.displayNumber, newNumber });
+      }
+    });
+
+    if (changes.length > 0) {
+      await this.prisma.$transaction(async (tx) => {
+        // Phase 1: move every changing pack to a unique negative sentinel
+        // so no positive value is ever claimed by two rows at once.
+        for (const change of changes) {
+          await tx.pack.update({
+            where: { id: change.id },
+            data: { displayNumber: -change.id },
+          });
+        }
+        // Phase 2: assign final positive 1..N ranks.
+        for (const change of changes) {
+          await tx.pack.update({
+            where: { id: change.id },
+            data: { displayNumber: change.newNumber },
+          });
+        }
+
+        const auditEntries = changes.map((change) =>
+          this.createAuditEntry(
+            userId,
+            change.id,
+            'displayNumber',
+            String(change.oldNumber),
+            String(change.newNumber),
+          ),
+        );
+        await this.audit.write(auditEntries, tx);
+      });
+    }
+
+    return this.list(kitId);
   }
 }
