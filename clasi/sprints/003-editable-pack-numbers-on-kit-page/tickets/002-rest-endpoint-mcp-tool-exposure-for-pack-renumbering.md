@@ -1,9 +1,12 @@
 ---
 id: '002'
 title: REST endpoint + MCP tool exposure for pack renumbering
-status: open
-use-cases: [SUC-002, SUC-003]
-depends-on: ['001']
+status: done
+use-cases:
+- SUC-002
+- SUC-003
+depends-on:
+- '001'
 github-issue: ''
 issue: editable-pack-numbers-on-kit-page.md
 completes_issue: true
@@ -21,33 +24,33 @@ algorithm, so the two paths cannot diverge (issue requirement 4).
 
 ## Acceptance Criteria
 
-- [ ] `PATCH /packs/:id/renumber` added to `server/src/routes/packs.ts`:
-  - [ ] Gated by `requireQuartermaster` (matching the existing
+- [x] `PATCH /packs/:id/renumber` added to `server/src/routes/packs.ts`:
+  - [x] Gated by `requireQuartermaster` (matching the existing
         `PUT /packs/:id` convention for pack mutations).
-  - [ ] Request body: `{ displayNumber: number }`.
-  - [ ] Looks up the pack's `kitId` internally (caller supplies only the
+  - [x] Request body: `{ displayNumber: number }`.
+  - [x] Looks up the pack's `kitId` internally (caller supplies only the
         pack id + requested number, not the kit id) and calls
         `services.packs.renumber(kitId, id, displayNumber, user.id)`.
-  - [ ] Response: the full renumbered `PackRecord[]` for the kit (not a
+  - [x] Response: the full renumbered `PackRecord[]` for the kit (not a
         single pack), matching `renumber()`'s return shape.
-  - [ ] Out-of-range/invalid input surfaces `PackService`'s
+  - [x] Out-of-range/invalid input surfaces `PackService`'s
         `ValidationError` as a 4xx with the existing error-handling
         middleware pattern used by other routes in this file.
-- [ ] `renumber_pack` MCP tool added to `server/src/mcp/tools.ts`,
+- [x] `renumber_pack` MCP tool added to `server/src/mcp/tools.ts`,
       grouped under the existing `─── Packs ───` section:
-  - [ ] Args: `{ id: z.number(), displayNumber: z.number() }`.
-  - [ ] Calls `requireQM()` (matching `create_pack`/`update_pack`/
+  - [x] Args: `{ id: z.number(), displayNumber: z.number() }`.
+  - [x] Calls `requireQM()` (matching `create_pack`/`update_pack`/
         `delete_pack`'s existing access-control pattern in this file).
-  - [ ] Looks up the pack's `kitId` and calls
+  - [x] Looks up the pack's `kitId` and calls
         `services.packs.renumber(...)` — same call as the REST route,
         no separate logic.
-  - [ ] Tool description follows the file's existing convention of
+  - [x] Tool description follows the file's existing convention of
         warning against surfacing database ids to end users where
         relevant (see `get_kit`'s description for the pattern).
-- [ ] Both surfaces produce identical final `displayNumber` assignments
+- [x] Both surfaces produce identical final `displayNumber` assignments
       for the same starting state and input (verified by a shared test
       fixture/scenario run through both paths — see Testing).
-- [ ] `AuditLog` rows from the REST path have `source: UI`; rows from
+- [x] `AuditLog` rows from the REST path have `source: UI`; rows from
       the MCP path have `source: MCP` (this falls out automatically
       from `ServiceRegistry.create(prisma, 'UI' | 'MCP')`'s existing
       source-threading — verify it, don't reimplement it).

@@ -280,6 +280,18 @@ export function registerTools(server: McpServer): void {
     });
   });
 
+  server.tool('renumber_pack', 'Change a pack\'s display number within its kit (e.g. renumber pack 7 to 4). Other packs in the same kit are automatically renumbered so the whole kit stays a contiguous 1..N sequence — the response is the kit\'s full, freshly-ordered pack list, not just the one pack. NOTE: "id" is the pack\'s internal database ID (use list_packs to find it); when presenting pack numbers to users, always use "displayNumber", never database "id".', {
+    id: z.number(),
+    displayNumber: z.number(),
+  }, async ({ id, displayNumber }) => {
+    return safeCall(async () => {
+      requireQM();
+      const { services, user } = getContext();
+      const pack = await services.packs.get(id);
+      return ok(await services.packs.renumber(pack.kitId, id, displayNumber, user.id));
+    });
+  });
+
   // ─── Items ──────────────────────────────────────────────────────────
 
   server.tool('list_items', 'List items. If packId is provided, lists items for that pack. If omitted, lists all items with their pack and kit info.', {

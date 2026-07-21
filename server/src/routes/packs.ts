@@ -47,5 +47,19 @@ export function packsRouter(services: ServiceRegistry): Router {
     } catch (err) { next(err); }
   });
 
+  // Look up the pack's kitId internally so the caller only supplies the
+  // pack id + requested number, not the kit id. Response is the full
+  // renumbered pack list for the kit (not a single pack), since more than
+  // one pack's number may change — see PackService.renumber().
+  router.patch('/packs/:id/renumber', requireQuartermaster, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const user = req.user as User;
+      const id = parseInt(req.params.id as string, 10);
+      const pack = await services.packs.get(id);
+      const result = await services.packs.renumber(pack.kitId, id, req.body.displayNumber, user.id);
+      res.json(result);
+    } catch (err) { next(err); }
+  });
+
   return router;
 }
