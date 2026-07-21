@@ -259,15 +259,25 @@ export function registerTools(server: McpServer): void {
     });
   });
 
-  server.tool('update_pack', 'Update an existing pack', {
+  server.tool('update_pack', 'Update an existing pack\'s name and/or description, and optionally its display number within its kit. IMPORTANT: when displayNumber is included, the response is the kit\'s full, freshly-ordered pack list (identical shape to renumber_pack\'s response), not a single pack — because other packs in the kit may also be renumbered as a side effect. displayNumber is always applied via the same renumber algorithm as renumber_pack, never a raw column write. For a number-only edit, prefer the dedicated renumber_pack tool.', {
     id: z.number(),
     name: z.string().optional(),
     description: z.string().optional(),
-  }, async ({ id, ...input }) => {
+    displayNumber: z.number().optional(),
+  }, async ({ id, displayNumber, ...input }) => {
     return safeCall(async () => {
       requireQM();
       const { services, user } = getContext();
-      return ok(await services.packs.update(id, input, user.id));
+
+      if (displayNumber === undefined) {
+        return ok(await services.packs.update(id, input, user.id));
+      }
+
+      if (input.name !== undefined || input.description !== undefined) {
+        await services.packs.update(id, input, user.id);
+      }
+      const pack = await services.packs.get(id);
+      return ok(await services.packs.renumber(pack.kitId, id, displayNumber, user.id));
     });
   });
 
@@ -280,7 +290,7 @@ export function registerTools(server: McpServer): void {
     });
   });
 
-  server.tool('renumber_pack', 'Change a pack\'s display number within its kit (e.g. renumber pack 7 to 4). Other packs in the same kit are automatically renumbered so the whole kit stays a contiguous 1..N sequence — the response is the kit\'s full, freshly-ordered pack list, not just the one pack. NOTE: "id" is the pack\'s internal database ID (use list_packs to find it); when presenting pack numbers to users, always use "displayNumber", never database "id".', {
+  server.tool('renumber_pack', 'Change a pack\'s display number within its kit (e.g. renumber pack 7 to 4). Other packs in the same kit are automatically renumbered so the whole kit stays a contiguous 1..N sequence — the response is the kit\'s full, freshly-ordered pack list, not just the one pack. NOTE: "id" is the pack\'s internal database ID (use list_packs to find it); when presenting pack numbers to users, always use "displayNumber", never database "id". update_pack also accepts a displayNumber field, for combined name/description + number edits in one call.', {
     id: z.number(),
     displayNumber: z.number(),
   }, async ({ id, displayNumber }) => {

@@ -1,7 +1,7 @@
 ---
 id: '001'
 title: Delete-time compaction + shared renumber helper + label displayNumber switch
-status: open
+status: done
 use-cases:
 - SUC-001
 - SUC-002
@@ -46,44 +46,44 @@ already call `services.packs.delete(...)` unchanged — see sprint.md's
 
 ## Acceptance Criteria
 
-- [ ] `PackService.delete()` wraps the pack delete, its `'deleted'` audit
+- [x] `PackService.delete()` wraps the pack delete, its `'deleted'` audit
       row, and a compaction pass over the kit's remaining packs in one
       `prisma.$transaction`. (Today the audit write happens after the
       delete, outside any transaction — this moves inside.)
-- [ ] The two-phase negative-sentinel write (move changed packs to a
+- [x] The two-phase negative-sentinel write (move changed packs to a
       unique negative value, then to final positive ranks) and the
       per-changed-pack audit-row logic are extracted from `renumber()`
       into one shared private helper that both `renumber()` and
       `delete()`'s compaction step call. No parallel/duplicated
       implementation of this logic exists anywhere in `PackService`.
-- [ ] Deleting a middle pack (e.g., pack 3 of 5) results in the remaining
+- [x] Deleting a middle pack (e.g., pack 3 of 5) results in the remaining
       packs numbered `1, 2, 3, 4` immediately after the delete — not
       after a subsequent edit.
-- [ ] Deleting the last (highest-numbered) pack changes no other pack's
+- [x] Deleting the last (highest-numbered) pack changes no other pack's
       `displayNumber` and writes no `displayNumber` audit rows for
       unaffected packs.
-- [ ] Deleting the first pack shifts every remaining pack down by one.
-- [ ] The delete and the compaction commit atomically — no intermediate
+- [x] Deleting the first pack shifts every remaining pack down by one.
+- [x] The delete and the compaction commit atomically — no intermediate
       state (pack row gone, but sibling numbering not yet compacted) is
       ever observable to a concurrent reader.
-- [ ] `AuditLog` rows exist for the deleted pack (`field: 'deleted'`,
+- [x] `AuditLog` rows exist for the deleted pack (`field: 'deleted'`,
       unchanged from today) and for every remaining pack whose
       `displayNumber` changed (`field: 'displayNumber'`), with `source`
       matching how the delete was made (UI or MCP, per the calling
       `ServiceRegistry`'s configured source — same convention as
       `renumber()`).
-- [ ] `renumber()`'s external behavior and return shape are unchanged by
+- [x] `renumber()`'s external behavior and return shape are unchanged by
       the internal refactor (existing `pack-renumber.service.test.ts`
       tests continue to pass without modification).
-- [ ] `label.service.ts`'s private `getPackSequence()` method is deleted.
-- [ ] `generatePackLabel` renders `${kit.number}/${pack.displayNumber}`
+- [x] `label.service.ts`'s private `getPackSequence()` method is deleted.
+- [x] `generatePackLabel` renders `${kit.number}/${pack.displayNumber}`
       instead of a sequence computed from `getPackSequence()`.
-- [ ] `generateBatchLabels` renders each selected pack's
+- [x] `generateBatchLabels` renders each selected pack's
       `displayNumber`, not an index derived from `id ASC` order plus
       `findIndex`.
-- [ ] `generateBatchHtml` renders each selected pack's `displayNumber`,
+- [x] `generateBatchHtml` renders each selected pack's `displayNumber`,
       not an index derived from `id ASC` order plus `findIndex`.
-- [ ] After renumbering a kit's packs so `id` order and `displayNumber`
+- [x] After renumbering a kit's packs so `id` order and `displayNumber`
       order diverge, all three label-generation paths render numbers
       consistent with the kit's current `displayNumber` values, not the
       old `id`-order sequence.

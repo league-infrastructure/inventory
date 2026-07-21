@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import { AuditService } from './audit.service';
 import { BaseService } from './base.service';
 import { NotFoundError, ValidationError } from './errors';
@@ -152,13 +152,114 @@ export class PackService extends BaseService<PackRecord, CreatePackInput, Update
     return updated as unknown as PackDetailRecord;
   }
 
+  /**
+   * Delete a pack and compact its kit's remaining packs to a contiguous
+   * `1..N`, all in one transaction.
+   *
+   * Packs are hard-deleted (no `deletedAt`/restore path exists for Pack —
+   * `Item.packId` cascades at the DB level). The delete, its `'deleted'`
+   * audit row, and the compaction pass over the kit's remaining packs
+   * (via the shared `persistPackOrder` helper) commit atomically: if
+   * compaction fails partway, the delete itself rolls back, so a pack can
+   * never be observed as deleted while its kit's numbering is still
+   * inconsistent.
+   */
   async delete(id: number, userId: number): Promise<void> {
     const existing = await this.prisma.pack.findUnique({ where: { id } });
     if (!existing) throw new NotFoundError('Pack not found');
 
-    await this.prisma.pack.delete({ where: { id } });
+    await this.prisma.$transaction(async (tx) => {
+      await tx.pack.delete({ where: { id } });
 
-    await this.writeAudit(this.createAuditEntry(userId, id, 'deleted', existing.name, null));
+      await this.audit.write(
+        this.createAuditEntry(userId, id, 'deleted', existing.name, null),
+        tx,
+      );
+
+      // Already gap-closing order: the kit's current packs minus the
+      // deleted row, in their existing relative order.
+      const remainingPacks = await tx.pack.findMany({
+        where: { kitId: existing.kitId },
+        orderBy: { displayNumber: 'asc' },
+      });
+
+      await this.persistPackOrder(
+        tx,
+        remainingPacks,
+        remainingPacks.map((p) => p.id),
+        userId,
+      );
+    });
+  }
+
+  /**
+   * Persist a target pack order for a kit and write the resulting audit
+   * trail — the single shared implementation of the two-phase
+   * negative-sentinel persistence + per-changed-pack audit convention on
+   * `PackService`. Both `renumber()` (a user-driven edit of one pack's
+   * number) and `delete()`'s compaction step (closing the gap left by a
+   * deletion) call this helper rather than each inlining their own copy,
+   * so the technique has exactly one implementation and cannot silently
+   * diverge between the two callers.
+   *
+   * `currentPacks` is the kit's packs before this change (id +
+   * displayNumber); `orderedIds` is the already-decided target order —
+   * pack ids in their final `1..N` sequence. The two are diffed to find
+   * which packs actually change, then persisted via a two-phase update:
+   * every changing pack first moves to a unique negative sentinel (-id),
+   * then to its final positive rank, so no intermediate row ever
+   * collides with another under the `@@unique([kitId, displayNumber])`
+   * constraint. Audit rows (`field: 'displayNumber'`) are written for
+   * every changed pack inside the caller's transaction.
+   *
+   * No-op when the target order already matches current numbering: no
+   * `tx` queries are issued and no audit rows are written.
+   */
+  private async persistPackOrder(
+    tx: Prisma.TransactionClient,
+    currentPacks: Array<{ id: number; displayNumber: number }>,
+    orderedIds: number[],
+    userId: number,
+  ): Promise<void> {
+    const currentByid = new Map(currentPacks.map((p) => [p.id, p.displayNumber]));
+
+    const changes: Array<{ id: number; oldNumber: number; newNumber: number }> = [];
+    orderedIds.forEach((id, idx) => {
+      const newNumber = idx + 1;
+      const oldNumber = currentByid.get(id);
+      if (oldNumber !== undefined && newNumber !== oldNumber) {
+        changes.push({ id, oldNumber, newNumber });
+      }
+    });
+
+    if (changes.length === 0) return;
+
+    // Phase 1: move every changing pack to a unique negative sentinel so
+    // no positive value is ever claimed by two rows at once.
+    for (const change of changes) {
+      await tx.pack.update({
+        where: { id: change.id },
+        data: { displayNumber: -change.id },
+      });
+    }
+    // Phase 2: assign final positive 1..N ranks.
+    for (const change of changes) {
+      await tx.pack.update({
+        where: { id: change.id },
+        data: { displayNumber: change.newNumber },
+      });
+    }
+
+    const auditEntries = changes.map((change) =>
+      this.createAuditEntry(
+        userId,
+        change.id,
+        'displayNumber',
+        String(change.oldNumber),
+        String(change.newNumber),
+      ),
+    );
+    await this.audit.write(auditEntries, tx);
   }
 
   /**
@@ -175,11 +276,9 @@ export class PackService extends BaseService<PackRecord, CreatePackInput, Update
    * recencyFlag of 0 makes the edited pack win ties over whichever pack
    * previously held the contested number.
    *
-   * Persisted via a two-phase update inside one prisma.$transaction: every
-   * changing pack first moves to a unique negative sentinel (-id), then to
-   * its final positive rank, so no intermediate row ever collides with
-   * another under the @@unique([kitId, displayNumber]) constraint. Audit
-   * rows are written for changed packs inside the same transaction.
+   * Persistence (the two-phase negative-sentinel update + per-changed-pack
+   * audit rows) is delegated to the shared `persistPackOrder` helper,
+   * called inside this method's own transaction.
    */
   async renumber(
     kitId: number,
@@ -214,44 +313,11 @@ export class PackService extends BaseService<PackRecord, CreatePackInput, Update
         return a.recencyFlag - b.recencyFlag;
       });
 
-    const changes: Array<{ id: number; oldNumber: number; newNumber: number }> = [];
-    ranked.forEach((entry, idx) => {
-      const newNumber = idx + 1;
-      if (newNumber !== entry.pack.displayNumber) {
-        changes.push({ id: entry.pack.id, oldNumber: entry.pack.displayNumber, newNumber });
-      }
+    const orderedIds = ranked.map((entry) => entry.pack.id);
+
+    await this.prisma.$transaction(async (tx) => {
+      await this.persistPackOrder(tx, packs, orderedIds, userId);
     });
-
-    if (changes.length > 0) {
-      await this.prisma.$transaction(async (tx) => {
-        // Phase 1: move every changing pack to a unique negative sentinel
-        // so no positive value is ever claimed by two rows at once.
-        for (const change of changes) {
-          await tx.pack.update({
-            where: { id: change.id },
-            data: { displayNumber: -change.id },
-          });
-        }
-        // Phase 2: assign final positive 1..N ranks.
-        for (const change of changes) {
-          await tx.pack.update({
-            where: { id: change.id },
-            data: { displayNumber: change.newNumber },
-          });
-        }
-
-        const auditEntries = changes.map((change) =>
-          this.createAuditEntry(
-            userId,
-            change.id,
-            'displayNumber',
-            String(change.oldNumber),
-            String(change.newNumber),
-          ),
-        );
-        await this.audit.write(auditEntries, tx);
-      });
-    }
 
     return this.list(kitId);
   }

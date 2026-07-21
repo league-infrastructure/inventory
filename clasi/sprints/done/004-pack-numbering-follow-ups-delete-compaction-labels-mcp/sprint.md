@@ -1,7 +1,7 @@
 ---
 id: '004'
 title: 'Pack Numbering Follow-ups: Delete Compaction, Labels, MCP'
-status: planning-docs
+status: closed
 branch: sprint/004-pack-numbering-follow-ups-delete-compaction-labels-mcp
 worktree: false
 use-cases:

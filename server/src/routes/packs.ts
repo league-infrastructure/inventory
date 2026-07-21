@@ -32,10 +32,31 @@ export function packsRouter(services: ServiceRegistry): Router {
     } catch (err) { next(err); }
   });
 
+  // When displayNumber is present, the numbering part always delegates to
+  // renumber() — never a raw column write. Any name/description in the
+  // same body is applied first via the normal update() path. The response
+  // stays a single PackDetailRecord (this route's existing contract): the
+  // edited pack is re-fetched after renumber() so its own new number is
+  // reflected, even though other packs in the kit may also have shifted
+  // as a side effect (not included in this response — see
+  // PATCH /packs/:id/renumber for the full shifted set).
   router.put('/packs/:id', requireQuartermaster, async (req: Request, res: Response, next: NextFunction) => {
     try {
       const user = req.user as User;
-      res.json(await services.packs.update(parseInt(req.params.id as string, 10), req.body, user.id));
+      const id = parseInt(req.params.id as string, 10);
+      const { displayNumber, ...input } = req.body;
+
+      if (displayNumber === undefined) {
+        res.json(await services.packs.update(id, input, user.id));
+        return;
+      }
+
+      if (input.name !== undefined || input.description !== undefined) {
+        await services.packs.update(id, input, user.id);
+      }
+      const pack = await services.packs.get(id);
+      await services.packs.renumber(pack.kitId, id, displayNumber, user.id);
+      res.json(await services.packs.get(id));
     } catch (err) { next(err); }
   });
 
