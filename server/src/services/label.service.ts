@@ -205,16 +205,6 @@ export class LabelService {
     }
   }
 
-  private async getPackSequence(packId: number, kitId: number): Promise<number> {
-    const packs = await this.prisma.pack.findMany({
-      where: { kitId },
-      select: { id: true },
-      orderBy: { id: 'asc' },
-    });
-    const idx = packs.findIndex(p => p.id === packId);
-    return idx + 1;
-  }
-
   async generateKitLabel(kitId: number): Promise<Buffer> {
     const kit = await this.prisma.kit.findUnique({
       where: { id: kitId },
@@ -244,8 +234,7 @@ export class LabelService {
     });
     if (!pack) throw new NotFoundError('Pack not found');
 
-    const seq = await this.getPackSequence(packId, pack.kit.id);
-    const number = `${pack.kit.number}/${seq}`;
+    const number = `${pack.kit.number}/${pack.displayNumber}`;
 
     const qrBuffer = await this.generateQrBuffer(`/qr/p/${packId}`);
     const doc = this.createDoc();
@@ -460,7 +449,7 @@ export class LabelService {
       where: { id: kitId },
       include: {
         site: { select: { name: true } },
-        packs: { select: { id: true, name: true, description: true }, orderBy: { id: 'asc' } },
+        packs: { select: { id: true, name: true, description: true, displayNumber: true }, orderBy: { displayNumber: 'asc' } },
       },
     });
     if (!kit) throw new NotFoundError('Kit not found');
@@ -486,8 +475,7 @@ export class LabelService {
       }
       firstPage = false;
 
-      const allIdx = kit.packs.findIndex(p => p.id === pack.id);
-      const seq = allIdx + 1;
+      const seq = pack.displayNumber;
       const packQr = await this.generateQrBuffer(`/qr/p/${pack.id}`);
       this.addLabelContent(doc, packQr, `${kit.number}/${seq}`, pack.name);
     }
@@ -531,7 +519,7 @@ export class LabelService {
       where: { id: kitId },
       include: {
         site: { select: { name: true } },
-        packs: { select: { id: true, name: true, description: true }, orderBy: { id: 'asc' } },
+        packs: { select: { id: true, name: true, description: true, displayNumber: true }, orderBy: { displayNumber: 'asc' } },
       },
     });
     if (!kit) throw new NotFoundError('Kit not found');
@@ -546,8 +534,7 @@ export class LabelService {
     const selectedPacks = kit.packs.filter((p) => packIds.includes(p.id));
 
     for (const pack of selectedPacks) {
-      const allIdx = kit.packs.findIndex(p => p.id === pack.id);
-      const seq = allIdx + 1;
+      const seq = pack.displayNumber;
       const qr = await this.generateQrDataUri(`/qr/p/${pack.id}`);
       labels.push(this.renderLabelHtml(qr, `${kit.number}/${seq}`, pack.name));
     }

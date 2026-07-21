@@ -127,4 +127,63 @@ describe('Packs API', () => {
       expect(res.status).toBe(404);
     });
   });
+
+  describe('DELETE /api/packs/:id', () => {
+    it('deletes a middle pack and compacts the remaining packs to 1..N', async () => {
+      const { kitId, packIds } = await createKitWithPacks(5, 'delete-middle');
+      const [p1, p2, p3, p4, p5] = packIds;
+
+      const res = await agent.delete(`/api/packs/${p3}`);
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({ success: true });
+
+      const after = await prisma.pack.findMany({ where: { kitId }, orderBy: { displayNumber: 'asc' } });
+      expect(after.map((p) => p.displayNumber)).toEqual([1, 2, 3, 4]);
+      const byId = new Map(after.map((p) => [p.id, p.displayNumber]));
+      expect(byId.get(p1)).toBe(1);
+      expect(byId.get(p2)).toBe(2);
+      expect(byId.get(p4)).toBe(3);
+      expect(byId.get(p5)).toBe(4);
+      expect(byId.has(p3)).toBe(false);
+
+      // Deleted pack is gone via a follow-up GET.
+      const getRes = await agent.get(`/api/packs/${p3}`);
+      expect(getRes.status).toBe(404);
+    });
+
+    it('deleting the last pack leaves the others unchanged', async () => {
+      const { kitId, packIds } = await createKitWithPacks(3, 'delete-last');
+      const [p1, p2, p3] = packIds;
+
+      const res = await agent.delete(`/api/packs/${p3}`);
+      expect(res.status).toBe(200);
+
+      const after = await prisma.pack.findMany({ where: { kitId }, orderBy: { displayNumber: 'asc' } });
+      expect(after.map((p) => p.displayNumber)).toEqual([1, 2]);
+      const byId = new Map(after.map((p) => [p.id, p.displayNumber]));
+      expect(byId.get(p1)).toBe(1);
+      expect(byId.get(p2)).toBe(2);
+    });
+
+    it('rejects an unauthenticated request', async () => {
+      const { packIds } = await createKitWithPacks(1, 'delete-unauthed');
+      const res = await unauthed.delete(`/api/packs/${packIds[0]}`);
+      expect(res.status).toBe(401);
+    });
+
+    it('rejects a non-quartermaster user, leaving the pack and numbering untouched', async () => {
+      const { kitId, packIds } = await createKitWithPacks(3, 'delete-non-qm');
+
+      const res = await instructorAgent.delete(`/api/packs/${packIds[1]}`);
+      expect(res.status).toBe(403);
+
+      const after = await prisma.pack.findMany({ where: { kitId }, orderBy: { displayNumber: 'asc' } });
+      expect(after.map((p) => p.displayNumber)).toEqual([1, 2, 3]);
+    });
+
+    it('returns 404 for a nonexistent pack', async () => {
+      const res = await agent.delete('/api/packs/999999');
+      expect(res.status).toBe(404);
+    });
+  });
 });

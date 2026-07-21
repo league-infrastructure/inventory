@@ -220,6 +220,172 @@ describe('PackService.renumber()', () => {
   });
 });
 
+describe('PackService.delete() compaction', () => {
+  it('deleting a middle pack in a 5-pack kit compacts the remainder to 1,2,3,4 with no gap', async () => {
+    const { kitId, packIds } = await createKitWithPacks(5, 'del-middle');
+    const [p1, p2, p3, p4, p5] = packIds;
+
+    await getRegistry().packs.delete(p3, getUserId());
+
+    const numbers = await getDisplayNumbers(kitId);
+    expect(numbers).toEqual([1, 2, 3, 4]);
+
+    const map = await getDisplayNumberMap(kitId);
+    expect(map.get(p1)).toBe(1);
+    expect(map.get(p2)).toBe(2);
+    expect(map.get(p4)).toBe(3);
+    expect(map.get(p5)).toBe(4);
+    expect(map.has(p3)).toBe(false);
+
+    const auditRows = await getPrisma().auditLog.findMany({
+      where: { objectType: 'Pack', objectId: { in: packIds } },
+    });
+    const deletedRow = auditRows.find((r) => r.objectId === p3 && r.field === 'deleted');
+    expect(deletedRow).toMatchObject({ oldValue: expect.any(String), newValue: null });
+
+    const displayNumberRows = auditRows.filter((r) => r.field === 'displayNumber');
+    const byPack = new Map(displayNumberRows.map((r) => [r.objectId, r]));
+    expect(displayNumberRows.length).toBe(2);
+    expect(byPack.get(p4)).toMatchObject({ oldValue: '4', newValue: '3' });
+    expect(byPack.get(p5)).toMatchObject({ oldValue: '5', newValue: '4' });
+    expect(byPack.has(p1)).toBe(false);
+    expect(byPack.has(p2)).toBe(false);
+  });
+
+  it('deleting the last (highest-numbered) pack changes no other pack and writes no displayNumber audit rows', async () => {
+    const { kitId, packIds } = await createKitWithPacks(4, 'del-last');
+    const [p1, p2, p3, p4] = packIds;
+
+    await getRegistry().packs.delete(p4, getUserId());
+
+    const numbers = await getDisplayNumbers(kitId);
+    expect(numbers).toEqual([1, 2, 3]);
+
+    const map = await getDisplayNumberMap(kitId);
+    expect(map.get(p1)).toBe(1);
+    expect(map.get(p2)).toBe(2);
+    expect(map.get(p3)).toBe(3);
+
+    const displayNumberRows = await getPrisma().auditLog.findMany({
+      where: { objectType: 'Pack', objectId: { in: packIds }, field: 'displayNumber' },
+    });
+    expect(displayNumberRows.length).toBe(0);
+
+    const deletedRow = await getPrisma().auditLog.findFirst({
+      where: { objectType: 'Pack', objectId: p4, field: 'deleted' },
+    });
+    expect(deletedRow).toBeTruthy();
+  });
+
+  it('deleting the first pack shifts every remaining pack down by one', async () => {
+    const { kitId, packIds } = await createKitWithPacks(4, 'del-first');
+    const [p1, p2, p3, p4] = packIds;
+
+    await getRegistry().packs.delete(p1, getUserId());
+
+    const numbers = await getDisplayNumbers(kitId);
+    expect(numbers).toEqual([1, 2, 3]);
+
+    const map = await getDisplayNumberMap(kitId);
+    expect(map.get(p2)).toBe(1);
+    expect(map.get(p3)).toBe(2);
+    expect(map.get(p4)).toBe(3);
+
+    const displayNumberRows = await getPrisma().auditLog.findMany({
+      where: { objectType: 'Pack', objectId: { in: packIds }, field: 'displayNumber' },
+    });
+    expect(displayNumberRows.length).toBe(3);
+  });
+
+  it('deleting the only pack in a kit leaves it empty with no leftover audit noise', async () => {
+    const { kitId, packIds } = await createKitWithPacks(1, 'del-only');
+    const [p1] = packIds;
+
+    await getRegistry().packs.delete(p1, getUserId());
+
+    const numbers = await getDisplayNumbers(kitId);
+    expect(numbers).toEqual([]);
+
+    const displayNumberRows = await getPrisma().auditLog.findMany({
+      where: { objectType: 'Pack', objectId: { in: packIds }, field: 'displayNumber' },
+    });
+    expect(displayNumberRows.length).toBe(0);
+
+    const deletedRow = await getPrisma().auditLog.findFirst({
+      where: { objectType: 'Pack', objectId: p1, field: 'deleted' },
+    });
+    expect(deletedRow).toBeTruthy();
+  });
+
+  it('deleting a pack from a kit with a pre-existing numbering gap self-heals to a contiguous 1..N', async () => {
+    const { kitId, packIds } = await createKitWithPacks(5, 'del-gap');
+    const [p1, p2, p3, p4, p5] = packIds;
+
+    // Simulate a numbering gap that predates this sprint's compaction
+    // guarantee (e.g. a delete under the old, non-compacting behavior) by
+    // writing a non-contiguous displayNumber directly via Prisma, bypassing
+    // PackService entirely.
+    await getPrisma().pack.update({ where: { id: p5 }, data: { displayNumber: 10 } });
+
+    await getRegistry().packs.delete(p3, getUserId());
+
+    const numbers = await getDisplayNumbers(kitId);
+    expect(numbers).toEqual([1, 2, 3, 4]);
+
+    const map = await getDisplayNumberMap(kitId);
+    expect(map.get(p1)).toBe(1);
+    expect(map.get(p2)).toBe(2);
+    expect(map.get(p4)).toBe(3);
+    expect(map.get(p5)).toBe(4);
+  });
+
+  it('rolls back the delete and all numbering changes if compaction fails mid-transaction', async () => {
+    const { kitId, packIds } = await createKitWithPacks(3, 'del-atomic');
+    const [p1] = packIds;
+    const beforeMap = await getDisplayNumberMap(kitId);
+
+    const registry = getRegistry();
+    const originalWrite = registry.audit.write.bind(registry.audit);
+    let callCount = 0;
+    const spy = jest.spyOn(registry.audit, 'write').mockImplementation(async (...args: Parameters<typeof originalWrite>) => {
+      callCount += 1;
+      // Let the first write (the 'deleted' audit row) through, then force
+      // the second write (the compaction's displayNumber audit rows) to
+      // fail, simulating a mid-transaction failure.
+      if (callCount === 2) {
+        throw new Error('forced failure for atomicity test');
+      }
+      return originalWrite(...args);
+    });
+
+    try {
+      await expect(registry.packs.delete(p1, getUserId())).rejects.toThrow('forced failure for atomicity test');
+    } finally {
+      spy.mockRestore();
+    }
+
+    // The pack was never deleted — the transaction rolled back.
+    const stillThere = await getPrisma().pack.findUnique({ where: { id: p1 } });
+    expect(stillThere).not.toBeNull();
+
+    // No pack's displayNumber changed.
+    const afterMap = await getDisplayNumberMap(kitId);
+    expect(afterMap).toEqual(beforeMap);
+
+    // No 'deleted' or 'displayNumber' audit rows were left behind by the
+    // rolled-back attempt (excludes the unrelated 'name'/'qrCode'/'kitId'
+    // creation-audit rows createKitWithPacks already wrote for these packs).
+    const auditRows = await getPrisma().auditLog.findMany({
+      where: { objectType: 'Pack', objectId: { in: packIds }, field: { in: ['deleted', 'displayNumber'] } },
+    });
+    expect(auditRows.length).toBe(0);
+  });
+
+  it('throws NotFoundError when deleting a nonexistent pack', async () => {
+    await expect(getRegistry().packs.delete(999999, getUserId())).rejects.toThrow(NotFoundError);
+  });
+});
+
 describe('PackService.create() displayNumber stamping', () => {
   it('assigns the next sequential displayNumber in a kit that already has packs', async () => {
     const { kitId } = await createKitWithPacks(3, 'create-seq');
