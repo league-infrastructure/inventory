@@ -25,4 +25,5 @@ export interface CreatePackInput {
 export interface UpdatePackInput {
   name?: string;
   description?: string | null;
+  displayNumber?: number;
 }

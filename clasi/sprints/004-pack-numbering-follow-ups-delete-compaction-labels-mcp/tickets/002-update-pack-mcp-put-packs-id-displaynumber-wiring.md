@@ -1,7 +1,7 @@
 ---
 id: '002'
 title: update_pack MCP + PUT /packs/:id displayNumber wiring
-status: open
+status: done
 use-cases:
 - SUC-003
 depends-on:
@@ -46,33 +46,33 @@ Per sprint.md's Architecture / Design Rationale:
 
 ## Acceptance Criteria
 
-- [ ] `update_pack`'s MCP tool schema accepts an optional
+- [x] `update_pack`'s MCP tool schema accepts an optional
       `displayNumber: z.number()`.
-- [ ] When `update_pack` is called with `name`/`description` only (no
+- [x] When `update_pack` is called with `name`/`description` only (no
       `displayNumber`), its behavior and single-`PackDetailRecord`
       response are unchanged from today.
-- [ ] When `update_pack` is called with `displayNumber` (alone or
+- [x] When `update_pack` is called with `displayNumber` (alone or
       alongside `name`/`description`): any `name`/`description` change is
       applied via the existing `services.packs.update(...)` call, then
       `services.packs.renumber(pack.kitId, id, displayNumber, user.id)`
       is called and its full-list result is returned as the tool
       response.
-- [ ] Given the same starting pack numbers and the same requested
+- [x] Given the same starting pack numbers and the same requested
       number, `update_pack` (with `displayNumber` set) and `renumber_pack`
       produce the identical final `1..N` assignment (same underlying
       `renumber()` call).
-- [ ] `update_pack` never writes `displayNumber` via a raw
+- [x] `update_pack` never writes `displayNumber` via a raw
       `prisma.pack.update({ data: { displayNumber } })` — the only path
       to persisting it is through `PackService.renumber()`.
-- [ ] `update_pack`'s tool description states its `displayNumber`
+- [x] `update_pack`'s tool description states its `displayNumber`
       behavior (including the conditional response shape) and points to
       `renumber_pack` for a dedicated renumber call.
-- [ ] `renumber_pack`'s tool description gains one added line noting that
+- [x] `renumber_pack`'s tool description gains one added line noting that
       `update_pack` also accepts `displayNumber` for combined
       name/description + number edits.
-- [ ] `PUT /packs/:id` accepts an optional `displayNumber` in its request
+- [x] `PUT /packs/:id` accepts an optional `displayNumber` in its request
       body.
-- [ ] When `PUT /packs/:id` is called with `displayNumber`: the route
+- [x] When `PUT /packs/:id` is called with `displayNumber`: the route
       resolves the pack's `kitId`, calls
       `services.packs.renumber(kitId, id, displayNumber, user.id)`, then
       re-fetches and returns `services.packs.get(id)` — a single
@@ -80,14 +80,14 @@ Per sprint.md's Architecture / Design Rationale:
       Other packs in the kit may also have shifted as a side effect but
       are not included in this response (documented behavior, not a
       bug — see Description).
-- [ ] `PUT /packs/:id`'s response remains a single `PackDetailRecord` in
+- [x] `PUT /packs/:id`'s response remains a single `PackDetailRecord` in
       every case (with or without `displayNumber` in the request) — no
       change to its existing response shape/contract.
-- [ ] `PUT /packs/:id` never writes `displayNumber` via a raw column
+- [x] `PUT /packs/:id` never writes `displayNumber` via a raw column
       update — only through `renumber()`.
-- [ ] `contracts/pack.ts`'s `UpdatePackInput` gains an optional
+- [x] `contracts/pack.ts`'s `UpdatePackInput` gains an optional
       `displayNumber?: number` field.
-- [ ] An out-of-range `displayNumber` (per `renumber()`'s existing
+- [x] An out-of-range `displayNumber` (per `renumber()`'s existing
       `1..N` validation) passed to either `update_pack` or
       `PUT /packs/:id` is rejected with the same validation error
       `renumber_pack`/`PATCH .../renumber` already produce, with no

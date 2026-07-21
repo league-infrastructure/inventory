@@ -88,6 +88,24 @@ function getRenumberPackHandler(): ToolHandler {
   return handler;
 }
 
+/**
+ * Same fake-collector pattern as `getRenumberPackHandler`, for the
+ * `update_pack` tool (ticket 004-002).
+ */
+function getUpdatePackHandler(): ToolHandler {
+  const handlers = new Map<string, ToolHandler>();
+  const fakeServer = {
+    tool: (name: string, ...rest: any[]) => {
+      handlers.set(name, rest[rest.length - 1]);
+    },
+    prompt: () => {},
+  };
+  registerTools(fakeServer as any);
+  const handler = handlers.get('update_pack');
+  if (!handler) throw new Error('update_pack tool was not registered');
+  return handler;
+}
+
 function fakeUser(role: string): User {
   return { id: getUserId(), role } as User;
 }
@@ -159,5 +177,102 @@ describe('renumber_pack MCP tool', () => {
     });
     expect(mcpAudit.length).toBeGreaterThan(0);
     expect(mcpAudit.every((r) => r.source === 'MCP')).toBe(true);
+  });
+});
+
+describe('update_pack MCP tool (ticket 004-002)', () => {
+  it('with displayNumber produces the same final assignment as renumber_pack for an equivalent input, sourced MCP', async () => {
+    // renumber_pack path (already exercised above): pack 7 of 7 -> 4.
+    const renumberScenario = await createKitWithPacks(7, 'update-pack-cmp-renumber');
+    const renumberEdited = renumberScenario.packIds[6];
+    const renumberServices = ServiceRegistry.create(getPrisma(), 'MCP');
+    const renumberHandler = getRenumberPackHandler();
+
+    let renumberBody: any;
+    await mcpContext.run({ user: fakeUser('QUARTERMASTER'), services: renumberServices }, async () => {
+      const result = await renumberHandler({ id: renumberEdited, displayNumber: 4 });
+      expect(result.isError).toBeFalsy();
+      renumberBody = JSON.parse(result.content[0].text);
+    });
+    const renumberByPosition = new Map(
+      renumberBody.map((p: any) => [renumberScenario.packIds.indexOf(p.id), p.displayNumber]),
+    );
+
+    // update_pack path: identical starting shape and identical edit, driven
+    // through update_pack instead of renumber_pack.
+    const updateScenario = await createKitWithPacks(7, 'update-pack-cmp-update');
+    const updateEdited = updateScenario.packIds[6];
+    const updateServices = ServiceRegistry.create(getPrisma(), 'MCP');
+    const updateHandler = getUpdatePackHandler();
+
+    let updateBody: any;
+    await mcpContext.run({ user: fakeUser('QUARTERMASTER'), services: updateServices }, async () => {
+      const result = await updateHandler({ id: updateEdited, displayNumber: 4 });
+      expect(result.isError).toBeFalsy();
+      updateBody = JSON.parse(result.content[0].text);
+    });
+
+    // Contiguity invariant: full-list response, 1..N with no gaps.
+    expect(Array.isArray(updateBody)).toBe(true);
+    expect(updateBody).toHaveLength(7);
+    const numbers = updateBody.map((p: any) => p.displayNumber).sort((a: number, b: number) => a - b);
+    expect(numbers).toEqual([1, 2, 3, 4, 5, 6, 7]);
+
+    const updateByPosition = new Map(
+      updateBody.map((p: any) => [updateScenario.packIds.indexOf(p.id), p.displayNumber]),
+    );
+    expect(updateByPosition).toEqual(renumberByPosition);
+
+    // Audit source: MCP.
+    const updateAudit = await getPrisma().auditLog.findMany({
+      where: { objectType: 'Pack', objectId: { in: updateScenario.packIds }, field: 'displayNumber' },
+    });
+    expect(updateAudit.length).toBeGreaterThan(0);
+    expect(updateAudit.every((r) => r.source === 'MCP')).toBe(true);
+  });
+
+  it('with name/description only is unaffected: still returns a single pack record, no renumber', async () => {
+    const { packIds } = await createKitWithPacks(3, 'update-pack-name-only');
+    const services = ServiceRegistry.create(getPrisma(), 'MCP');
+    const handler = getUpdatePackHandler();
+
+    let body: any;
+    await mcpContext.run({ user: fakeUser('QUARTERMASTER'), services }, async () => {
+      const result = await handler({ id: packIds[0], name: 'Renamed Pack' });
+      expect(result.isError).toBeFalsy();
+      body = JSON.parse(result.content[0].text);
+    });
+
+    // Single record, not the renumbered kit list.
+    expect(Array.isArray(body)).toBe(false);
+    expect(body.id).toBe(packIds[0]);
+    expect(body.name).toBe('Renamed Pack');
+
+    // No renumber side effect: displayNumbers untouched, no displayNumber audit rows.
+    const after = await getPrisma().pack.findMany({
+      where: { id: { in: packIds } },
+      orderBy: { displayNumber: 'asc' },
+    });
+    expect(after.map((p) => p.displayNumber)).toEqual([1, 2, 3]);
+
+    const displayNumberAudit = await getPrisma().auditLog.findMany({
+      where: { objectType: 'Pack', objectId: { in: packIds }, field: 'displayNumber' },
+    });
+    expect(displayNumberAudit).toHaveLength(0);
+  });
+
+  it('rejects an out-of-range displayNumber with no packs changed', async () => {
+    const { kitId, packIds } = await createKitWithPacks(3, 'update-pack-out-of-range');
+    const services = ServiceRegistry.create(getPrisma(), 'MCP');
+    const handler = getUpdatePackHandler();
+
+    await mcpContext.run({ user: fakeUser('QUARTERMASTER'), services }, async () => {
+      const result = await handler({ id: packIds[0], displayNumber: 10 });
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toMatch(/must be an integer between/i);
+    });
+
+    const after = await getPrisma().pack.findMany({ where: { kitId }, orderBy: { displayNumber: 'asc' } });
+    expect(after.map((p) => p.displayNumber)).toEqual([1, 2, 3]);
   });
 });
