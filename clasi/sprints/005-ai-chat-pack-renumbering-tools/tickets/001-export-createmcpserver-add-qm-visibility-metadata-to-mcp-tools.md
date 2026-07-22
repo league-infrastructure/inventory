@@ -1,7 +1,7 @@
 ---
 id: '001'
 title: Export createMcpServer + add QM-visibility metadata to MCP tools
-status: in-progress
+status: done
 use-cases:
 - SUC-001
 depends-on: []
