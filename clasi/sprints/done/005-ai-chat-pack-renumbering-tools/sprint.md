@@ -1,7 +1,7 @@
 ---
 id: '005'
 title: AI Chat Pack Renumbering Tools
-status: planning-docs
+status: closed
 branch: sprint/005-ai-chat-pack-renumbering-tools
 worktree: false
 use-cases:
