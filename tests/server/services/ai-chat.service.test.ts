@@ -37,17 +37,24 @@ describe('AiChatService', () => {
       }
     });
 
-    it('returns all tools for QUARTERMASTER', () => {
-      const tools = service.getToolsForRole('QUARTERMASTER');
-      expect(tools.length).toBeGreaterThan(20);
+    it('returns all tools for QUARTERMASTER', async () => {
+      const tools = await service.getToolsForRole('QUARTERMASTER');
+      // The catalog now comes live from the MCP server's tools/list (~47
+      // tools), not a hand-picked ~26-tool subset — assert a floor rather
+      // than an exact count so this doesn't need updating every time a
+      // tool is added to mcp/tools.ts.
+      expect(tools.length).toBeGreaterThan(40);
       const names = tools.map(t => t.name);
       expect(names).toContain('create_kit');
       expect(names).toContain('delete_item');
       expect(names).toContain('list_kits');
+      // Newly-reachable categories (via the unified MCP catalog).
+      expect(names).toContain('renumber_pack');
+      expect(names).toContain('get_version');
     });
 
-    it('returns only read tools for INSTRUCTOR', () => {
-      const tools = service.getToolsForRole('INSTRUCTOR');
+    it('returns only read tools for INSTRUCTOR', async () => {
+      const tools = await service.getToolsForRole('INSTRUCTOR');
       const names = tools.map(t => t.name);
       expect(names).toContain('list_kits');
       expect(names).toContain('list_sites');
@@ -58,10 +65,11 @@ describe('AiChatService', () => {
       expect(names).not.toContain('create_kit');
       expect(names).not.toContain('delete_item');
       expect(names).not.toContain('create_pack');
+      expect(names).not.toContain('renumber_pack');
     });
 
-    it('each tool has name, description, and input_schema', () => {
-      const tools = service.getToolsForRole('QUARTERMASTER');
+    it('each tool has name, description, and input_schema', async () => {
+      const tools = await service.getToolsForRole('QUARTERMASTER');
       for (const tool of tools) {
         expect(tool.name).toBeTruthy();
         expect(tool.description).toBeTruthy();

@@ -1,7 +1,7 @@
 ---
 id: '002'
 title: Rewire AI chat to consume the MCP tool catalog via an in-process client
-status: open
+status: done
 use-cases:
 - SUC-001
 - SUC-002
@@ -89,22 +89,22 @@ ticket does not repeat that reasoning, only the resulting work.
 
 ## Acceptance Criteria
 
-- [ ] `ai-chat.service.ts` no longer defines `getToolDefinitions()` or
+- [x] `ai-chat.service.ts` no longer defines `getToolDefinitions()` or
       `executeTool()`.
-- [ ] For both `QUARTERMASTER` and `INSTRUCTOR` roles, the chat's
+- [x] For both `QUARTERMASTER` and `INSTRUCTOR` roles, the chat's
       resulting tool list (name + `input_schema`) is exactly the
       QM-filtered subset of the MCP server's own `tools/list` output —
       asserted by structural comparison (e.g. sorted name arrays plus a
       spot check that schemas match), not by checking a hand-picked
       sample of tool names.
-- [ ] A QM-gated tool (e.g. `renumber_pack`) called by a non-QM-role
+- [x] A QM-gated tool (e.g. `renumber_pack`) called by a non-QM-role
       chat user is rejected with the same "Quartermaster access
       required" error the MCP HTTP path produces — this is a new
       call-time check for the chat path (today's `executeTool()` has
       none; only list-time filtering exists today), so the test must
       actually attempt the call and observe the rejection, not just
       check that the tool is absent from the list.
-- [ ] `renumber_pack` (and `update_pack` with `displayNumber`), reached
+- [x] `renumber_pack` (and `update_pack` with `displayNumber`), reached
       via the chat's new execution path, delegate to
       `services.packs.renumber(...)` and return the kit's full,
       freshly-ordered pack list — same final `1..N` assignment as an
@@ -112,24 +112,24 @@ ticket does not repeat that reasoning, only the resulting work.
       input (structural comparison, mirroring
       `tests/server/services/mcp-renumber-pack.test.ts`), and the
       resulting audit rows record `source: 'MCP'`.
-- [ ] `update_pack` with only `name`/`description` (no `displayNumber`),
+- [x] `update_pack` with only `name`/`description` (no `displayNumber`),
       reached via the chat's new path, still returns a single pack
       record with no renumber side effect.
-- [ ] `delete_pack`, reached via the chat's new path, still calls
+- [x] `delete_pack`, reached via the chat's new path, still calls
       `services.packs.delete()` (delete-time compaction from sprint
       004 applies) — confirmed by test, not assumed.
-- [ ] A successful tool call's result reaches the Anthropic loop as
+- [x] A successful tool call's result reaches the Anthropic loop as
       `{ type: 'tool_result', tool_use_id, content, is_error }` with
       `is_error` sourced from the MCP `CallToolResult.isError` (a
       deliberate improvement over today's implicit error convention).
-- [ ] `chat()`'s public signature (parameters and return type) is
+- [x] `chat()`'s public signature (parameters and return type) is
       unchanged; `getToolsForRole` is the one deliberate breaking change
       (sync → `async`), with no callers outside this module and its own
       tests (confirmed during planning by repo-wide search) needing
       updates beyond this ticket's own test file.
-- [ ] `server/src/prompts/ai-chat-system.txt` mentions Operating
+- [x] `server/src/prompts/ai-chat-system.txt` mentions Operating
       Systems, Images, and Notes among its key concepts.
-- [ ] Client/server/transport resources created per `chat()` call are
+- [x] Client/server/transport resources created per `chat()` call are
       closed when the call completes (success or error path).
 
 ## Testing
