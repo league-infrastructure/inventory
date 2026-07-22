@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { MessageSquare, Send, X } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
@@ -7,6 +7,12 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
 }
+
+// Cap on how tall the message textarea auto-grows before it scrolls
+// internally instead. The actual pixel cap is computed at runtime from the
+// textarea's own computed line-height/padding/border (see resizeInput in
+// AiChat) so it stays correct if font size or spacing ever changes.
+const MAX_INPUT_LINES = 8;
 
 interface PageContext {
   page: string;
@@ -95,6 +101,37 @@ export default function AiChat() {
       inputRef.current.focus();
     }
   }, [open]);
+
+  // Auto-resize the message textarea to fit its content, up to an ~8-line
+  // cap (computed from the field's own font/line-height/padding/border, not
+  // a hardcoded pixel guess), then scroll internally beyond that. Runs on
+  // every content change, including the input becoming empty after
+  // handleSend() clears it — which naturally settles back to one line.
+  const resizeInput = useCallback(() => {
+    const el = inputRef.current;
+    if (!el) return;
+
+    // Reset to auto first so scrollHeight reflects the current content
+    // (not a stale prior height) when shrinking.
+    el.style.height = 'auto';
+
+    const computed = window.getComputedStyle(el);
+    const lineHeight = parseFloat(computed.lineHeight);
+    const verticalExtra =
+      parseFloat(computed.paddingTop) +
+      parseFloat(computed.paddingBottom) +
+      parseFloat(computed.borderTopWidth) +
+      parseFloat(computed.borderBottomWidth);
+    const capPx = lineHeight * MAX_INPUT_LINES + verticalExtra;
+
+    const scrollHeight = el.scrollHeight;
+    el.style.height = `${Math.min(scrollHeight, capPx)}px`;
+    el.style.overflowY = scrollHeight > capPx ? 'auto' : 'hidden';
+  }, []);
+
+  useLayoutEffect(() => {
+    resizeInput();
+  }, [input, resizeInput]);
 
   if (configured === null || configured === false) return null;
 
@@ -269,7 +306,7 @@ export default function AiChat() {
                 onKeyDown={handleKeyDown}
                 placeholder="Type a message..."
                 rows={1}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/50"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm resize-none overflow-hidden transition-[height] duration-100 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary/50"
                 disabled={streaming}
               />
               <button

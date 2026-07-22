@@ -1,7 +1,7 @@
 ---
 id: '006'
 title: AI Chat Input Auto-Expand
-status: planning-docs
+status: closed
 branch: sprint/006-ai-chat-input-auto-expand
 worktree: false
 use-cases:
