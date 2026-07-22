@@ -27,7 +27,7 @@ const MCP_INSTRUCTIONS = `CRITICAL RULES FOR COMMUNICATING WITH USERS:
    responses to the user. The only exception is when the user explicitly
    asks for database IDs.`;
 
-function createMcpServer(): McpServer {
+export function createMcpServer(): McpServer {
   const server = new McpServer(
     { name: 'inventory', version: '1.0.0' },
     { capabilities: { tools: {} } },

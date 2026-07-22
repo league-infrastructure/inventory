@@ -80,6 +80,9 @@ function getRenumberPackHandler(): ToolHandler {
     tool: (name: string, ...rest: any[]) => {
       handlers.set(name, rest[rest.length - 1]);
     },
+    registerTool: (name: string, _config: any, cb: ToolHandler) => {
+      handlers.set(name, cb);
+    },
     prompt: () => {},
   };
   registerTools(fakeServer as any);
@@ -97,6 +100,9 @@ function getUpdatePackHandler(): ToolHandler {
   const fakeServer = {
     tool: (name: string, ...rest: any[]) => {
       handlers.set(name, rest[rest.length - 1]);
+    },
+    registerTool: (name: string, _config: any, cb: ToolHandler) => {
+      handlers.set(name, cb);
     },
     prompt: () => {},
   };

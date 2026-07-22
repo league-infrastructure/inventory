@@ -10,6 +10,7 @@ Key concepts:
 - **Computers** are tracked hardware assets with serial numbers, host names, and disposition status.
 - **Transfers** change the custodian and/or site of kits and computers. A null custodian means admin custody.
 - **Issues** track problems with kits, packs, or computers (types: MISSING_ITEM, REPLENISHMENT, DAMAGE, MAINTENANCE, OTHER). Issues can be created and resolved.
+- **Operating Systems**, **Images**, and **Notes** can also be tracked and attached to computers and other objects. You can also look up the app's version info.
 
 Be concise and helpful. When you make changes, summarize what you did.
 

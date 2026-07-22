@@ -85,12 +85,16 @@ export function registerTools(server: McpServer): void {
     });
   });
 
-  server.tool('create_site', 'Create a new site', {
-    name: z.string(),
-    address: z.string().optional(),
-    latitude: z.number().optional(),
-    longitude: z.number().optional(),
-    isHomeSite: z.boolean().optional(),
+  server.registerTool('create_site', {
+    description: 'Create a new site',
+    inputSchema: {
+      name: z.string(),
+      address: z.string().optional(),
+      latitude: z.number().optional(),
+      longitude: z.number().optional(),
+      isHomeSite: z.boolean().optional(),
+    },
+    _meta: { requiresQM: true },
   }, async (args) => {
     return safeCall(async () => {
       requireQM();
@@ -99,14 +103,18 @@ export function registerTools(server: McpServer): void {
     });
   });
 
-  server.tool('update_site', 'Update an existing site', {
-    id: z.number(),
-    name: z.string().optional(),
-    address: z.string().optional(),
-    latitude: z.number().optional(),
-    longitude: z.number().optional(),
-    isHomeSite: z.boolean().optional(),
-    isActive: z.boolean().optional(),
+  server.registerTool('update_site', {
+    description: 'Update an existing site',
+    inputSchema: {
+      id: z.number(),
+      name: z.string().optional(),
+      address: z.string().optional(),
+      latitude: z.number().optional(),
+      longitude: z.number().optional(),
+      isHomeSite: z.boolean().optional(),
+      isActive: z.boolean().optional(),
+    },
+    _meta: { requiresQM: true },
   }, async ({ id, ...input }) => {
     return safeCall(async () => {
       requireQM();
@@ -115,8 +123,12 @@ export function registerTools(server: McpServer): void {
     });
   });
 
-  server.tool('delete_site', 'Delete a site (must have no kits assigned and be deactivated)', {
-    id: z.number(),
+  server.registerTool('delete_site', {
+    description: 'Delete a site (must have no kits assigned and be deactivated)',
+    inputSchema: {
+      id: z.number(),
+    },
+    _meta: { requiresQM: true },
   }, async ({ id }) => {
     return safeCall(async () => {
       requireQM();
@@ -153,12 +165,16 @@ export function registerTools(server: McpServer): void {
     });
   });
 
-  server.tool('create_kit', 'Create a new kit', {
-    number: z.number(),
-    containerType: z.string().optional(),
-    name: z.string(),
-    description: z.string().optional(),
-    siteId: z.number(),
+  server.registerTool('create_kit', {
+    description: 'Create a new kit',
+    inputSchema: {
+      number: z.number(),
+      containerType: z.string().optional(),
+      name: z.string(),
+      description: z.string().optional(),
+      siteId: z.number(),
+    },
+    _meta: { requiresQM: true },
   }, async (args) => {
     return safeCall(async () => {
       requireQM();
@@ -167,16 +183,20 @@ export function registerTools(server: McpServer): void {
     });
   });
 
-  server.tool('update_kit', 'Update an existing kit. Set siteId/custodianId/categoryId to null to clear. All ID fields expect numeric database IDs — use list tools (list_sites, list_kits, etc.) to look up valid IDs first.', {
-    id: z.number(),
-    number: z.number().optional(),
-    containerType: z.string().optional(),
-    name: z.string().optional(),
-    description: z.string().optional(),
-    siteId: zIdParam(),
-    custodianId: zIdParam(),
-    categoryId: zIdParam().describe('Numeric category ID. Use list_kits to see existing categories, or null to clear.'),
-    status: z.string().optional(),
+  server.registerTool('update_kit', {
+    description: 'Update an existing kit. Set siteId/custodianId/categoryId to null to clear. All ID fields expect numeric database IDs — use list tools (list_sites, list_kits, etc.) to look up valid IDs first.',
+    inputSchema: {
+      id: z.number(),
+      number: z.number().optional(),
+      containerType: z.string().optional(),
+      name: z.string().optional(),
+      description: z.string().optional(),
+      siteId: zIdParam(),
+      custodianId: zIdParam(),
+      categoryId: zIdParam().describe('Numeric category ID. Use list_kits to see existing categories, or null to clear.'),
+      status: z.string().optional(),
+    },
+    _meta: { requiresQM: true },
   }, async ({ id, ...input }) => {
     return safeCall(async () => {
       requireQM();
@@ -185,8 +205,12 @@ export function registerTools(server: McpServer): void {
     });
   });
 
-  server.tool('delete_kit', 'Delete a kit (must be retired and have no packs or computers)', {
-    id: z.number(),
+  server.registerTool('delete_kit', {
+    description: 'Delete a kit (must be retired and have no packs or computers)',
+    inputSchema: {
+      id: z.number(),
+    },
+    _meta: { requiresQM: true },
   }, async ({ id }) => {
     return safeCall(async () => {
       requireQM();
@@ -206,10 +230,14 @@ export function registerTools(server: McpServer): void {
     });
   });
 
-  server.tool('set_kit_last_inventoried', 'Set or clear the last inventoried date for a kit. Pass a date string to set, or "clear" to remove all inventory check records.', {
-    kitId: z.number(),
-    date: z.string().describe('ISO date string (e.g. "2026-03-07") to set, or "clear" to remove all inventory checks'),
-    notes: z.string().optional().describe('Optional notes for the inventory check'),
+  server.registerTool('set_kit_last_inventoried', {
+    description: 'Set or clear the last inventoried date for a kit. Pass a date string to set, or "clear" to remove all inventory check records.',
+    inputSchema: {
+      kitId: z.number(),
+      date: z.string().describe('ISO date string (e.g. "2026-03-07") to set, or "clear" to remove all inventory checks'),
+      notes: z.string().optional().describe('Optional notes for the inventory check'),
+    },
+    _meta: { requiresQM: true },
   }, async ({ kitId, date, notes }) => {
     return safeCall(async () => {
       requireQM();
@@ -247,10 +275,14 @@ export function registerTools(server: McpServer): void {
     });
   });
 
-  server.tool('create_pack', 'Create a new pack in a kit', {
-    kitId: z.number(),
-    name: z.string(),
-    description: z.string().optional(),
+  server.registerTool('create_pack', {
+    description: 'Create a new pack in a kit',
+    inputSchema: {
+      kitId: z.number(),
+      name: z.string(),
+      description: z.string().optional(),
+    },
+    _meta: { requiresQM: true },
   }, async ({ kitId, ...input }) => {
     return safeCall(async () => {
       requireQM();
@@ -259,11 +291,15 @@ export function registerTools(server: McpServer): void {
     });
   });
 
-  server.tool('update_pack', 'Update an existing pack\'s name and/or description, and optionally its display number within its kit. IMPORTANT: when displayNumber is included, the response is the kit\'s full, freshly-ordered pack list (identical shape to renumber_pack\'s response), not a single pack — because other packs in the kit may also be renumbered as a side effect. displayNumber is always applied via the same renumber algorithm as renumber_pack, never a raw column write. For a number-only edit, prefer the dedicated renumber_pack tool.', {
-    id: z.number(),
-    name: z.string().optional(),
-    description: z.string().optional(),
-    displayNumber: z.number().optional(),
+  server.registerTool('update_pack', {
+    description: 'Update an existing pack\'s name and/or description, and optionally its display number within its kit. IMPORTANT: when displayNumber is included, the response is the kit\'s full, freshly-ordered pack list (identical shape to renumber_pack\'s response), not a single pack — because other packs in the kit may also be renumbered as a side effect. displayNumber is always applied via the same renumber algorithm as renumber_pack, never a raw column write. For a number-only edit, prefer the dedicated renumber_pack tool.',
+    inputSchema: {
+      id: z.number(),
+      name: z.string().optional(),
+      description: z.string().optional(),
+      displayNumber: z.number().optional(),
+    },
+    _meta: { requiresQM: true },
   }, async ({ id, displayNumber, ...input }) => {
     return safeCall(async () => {
       requireQM();
@@ -281,7 +317,11 @@ export function registerTools(server: McpServer): void {
     });
   });
 
-  server.tool('delete_pack', 'Delete a pack', { id: z.number() }, async ({ id }) => {
+  server.registerTool('delete_pack', {
+    description: 'Delete a pack',
+    inputSchema: { id: z.number() },
+    _meta: { requiresQM: true },
+  }, async ({ id }) => {
     return safeCall(async () => {
       requireQM();
       const { services, user } = getContext();
@@ -290,9 +330,13 @@ export function registerTools(server: McpServer): void {
     });
   });
 
-  server.tool('renumber_pack', 'Change a pack\'s display number within its kit (e.g. renumber pack 7 to 4). Other packs in the same kit are automatically renumbered so the whole kit stays a contiguous 1..N sequence — the response is the kit\'s full, freshly-ordered pack list, not just the one pack. NOTE: "id" is the pack\'s internal database ID (use list_packs to find it); when presenting pack numbers to users, always use "displayNumber", never database "id". update_pack also accepts a displayNumber field, for combined name/description + number edits in one call.', {
-    id: z.number(),
-    displayNumber: z.number(),
+  server.registerTool('renumber_pack', {
+    description: 'Change a pack\'s display number within its kit (e.g. renumber pack 7 to 4). Other packs in the same kit are automatically renumbered so the whole kit stays a contiguous 1..N sequence — the response is the kit\'s full, freshly-ordered pack list, not just the one pack. NOTE: "id" is the pack\'s internal database ID (use list_packs to find it); when presenting pack numbers to users, always use "displayNumber", never database "id". update_pack also accepts a displayNumber field, for combined name/description + number edits in one call.',
+    inputSchema: {
+      id: z.number(),
+      displayNumber: z.number(),
+    },
+    _meta: { requiresQM: true },
   }, async ({ id, displayNumber }) => {
     return safeCall(async () => {
       requireQM();
@@ -316,11 +360,15 @@ export function registerTools(server: McpServer): void {
     });
   });
 
-  server.tool('create_item', 'Create a new item in a pack', {
-    packId: z.number(),
-    name: z.string(),
-    type: z.string(),
-    expectedQuantity: z.number().optional(),
+  server.registerTool('create_item', {
+    description: 'Create a new item in a pack',
+    inputSchema: {
+      packId: z.number(),
+      name: z.string(),
+      type: z.string(),
+      expectedQuantity: z.number().optional(),
+    },
+    _meta: { requiresQM: true },
   }, async ({ packId, ...input }) => {
     return safeCall(async () => {
       requireQM();
@@ -329,11 +377,15 @@ export function registerTools(server: McpServer): void {
     });
   });
 
-  server.tool('update_item', 'Update an existing item', {
-    id: z.number(),
-    name: z.string().optional(),
-    type: z.string().optional(),
-    expectedQuantity: z.number().optional(),
+  server.registerTool('update_item', {
+    description: 'Update an existing item',
+    inputSchema: {
+      id: z.number(),
+      name: z.string().optional(),
+      type: z.string().optional(),
+      expectedQuantity: z.number().optional(),
+    },
+    _meta: { requiresQM: true },
   }, async ({ id, ...input }) => {
     return safeCall(async () => {
       requireQM();
@@ -342,7 +394,11 @@ export function registerTools(server: McpServer): void {
     });
   });
 
-  server.tool('delete_item', 'Delete an item', { id: z.number() }, async ({ id }) => {
+  server.registerTool('delete_item', {
+    description: 'Delete an item',
+    inputSchema: { id: z.number() },
+    _meta: { requiresQM: true },
+  }, async ({ id }) => {
     return safeCall(async () => {
       requireQM();
       const { services, user } = getContext();
@@ -360,8 +416,12 @@ export function registerTools(server: McpServer): void {
     });
   });
 
-  server.tool('create_operating_system', 'Create a new operating system entry', {
-    name: z.string(),
+  server.registerTool('create_operating_system', {
+    description: 'Create a new operating system entry',
+    inputSchema: {
+      name: z.string(),
+    },
+    _meta: { requiresQM: true },
   }, async ({ name }) => {
     return safeCall(async () => {
       requireQM();
@@ -370,9 +430,13 @@ export function registerTools(server: McpServer): void {
     });
   });
 
-  server.tool('update_operating_system', 'Rename an operating system entry', {
-    id: z.number(),
-    name: z.string(),
+  server.registerTool('update_operating_system', {
+    description: 'Rename an operating system entry',
+    inputSchema: {
+      id: z.number(),
+      name: z.string(),
+    },
+    _meta: { requiresQM: true },
   }, async ({ id, name }) => {
     return safeCall(async () => {
       requireQM();
@@ -381,8 +445,12 @@ export function registerTools(server: McpServer): void {
     });
   });
 
-  server.tool('delete_operating_system', 'Delete an operating system (must not be assigned to any computers)', {
-    id: z.number(),
+  server.registerTool('delete_operating_system', {
+    description: 'Delete an operating system (must not be assigned to any computers)',
+    inputSchema: {
+      id: z.number(),
+    },
+    _meta: { requiresQM: true },
   }, async ({ id }) => {
     return safeCall(async () => {
       requireQM();
@@ -408,25 +476,29 @@ export function registerTools(server: McpServer): void {
     });
   });
 
-  server.tool('create_computer', 'Create a new computer', {
-    serialNumber: z.string().optional(),
-    serviceTag: z.string().optional(),
-    manufacturer: z.string().optional().describe('Dell, Lenovo, Apple, HP, or Other'),
-    model: z.string().optional(),
-    modelNumber: z.string().optional(),
-    manufacturedYear: z.number().optional(),
-    adminUsername: z.string().optional(),
-    adminPassword: z.string().optional(),
-    studentUsername: z.string().optional(),
-    studentPassword: z.string().optional(),
-    disposition: z.string().optional(),
-    dateReceived: z.string().optional(),
-    notes: z.string().optional(),
-    siteId: zIdParam(),
-    kitId: zIdParam(),
-    osId: zIdParam(),
-    custodianId: zIdParam(),
-    hostNameId: zIdParam(),
+  server.registerTool('create_computer', {
+    description: 'Create a new computer',
+    inputSchema: {
+      serialNumber: z.string().optional(),
+      serviceTag: z.string().optional(),
+      manufacturer: z.string().optional().describe('Dell, Lenovo, Apple, HP, or Other'),
+      model: z.string().optional(),
+      modelNumber: z.string().optional(),
+      manufacturedYear: z.number().optional(),
+      adminUsername: z.string().optional(),
+      adminPassword: z.string().optional(),
+      studentUsername: z.string().optional(),
+      studentPassword: z.string().optional(),
+      disposition: z.string().optional(),
+      dateReceived: z.string().optional(),
+      notes: z.string().optional(),
+      siteId: zIdParam(),
+      kitId: zIdParam(),
+      osId: zIdParam(),
+      custodianId: zIdParam(),
+      hostNameId: zIdParam(),
+    },
+    _meta: { requiresQM: true },
   }, async (args) => {
     return safeCall(async () => {
       requireQM();
@@ -435,28 +507,32 @@ export function registerTools(server: McpServer): void {
     });
   });
 
-  server.tool('update_computer', 'Update an existing computer. For nullable ID fields, pass null or "null" to clear. For lastInventoried, pass "clear" to remove.', {
-    id: z.number(),
-    serialNumber: z.string().optional(),
-    serviceTag: z.string().optional(),
-    manufacturer: z.string().optional().describe('Dell, Lenovo, Apple, HP, or Other'),
-    model: z.string().optional(),
-    modelNumber: z.string().optional(),
-    manufacturedYear: z.number().optional(),
-    adminUsername: z.string().optional(),
-    adminPassword: z.string().optional(),
-    studentUsername: z.string().optional(),
-    studentPassword: z.string().optional(),
-    disposition: z.string().optional(),
-    dateReceived: z.string().optional(),
-    lastInventoried: z.string().optional().describe('ISO date string (e.g. "2026-03-07") to set, or "clear" to remove'),
-    notes: z.string().optional(),
-    siteId: zIdParam(),
-    kitId: zIdParam(),
-    osId: zIdParam(),
-    custodianId: zIdParam(),
-    hostNameId: zIdParam(),
-    categoryId: zIdParam(),
+  server.registerTool('update_computer', {
+    description: 'Update an existing computer. For nullable ID fields, pass null or "null" to clear. For lastInventoried, pass "clear" to remove.',
+    inputSchema: {
+      id: z.number(),
+      serialNumber: z.string().optional(),
+      serviceTag: z.string().optional(),
+      manufacturer: z.string().optional().describe('Dell, Lenovo, Apple, HP, or Other'),
+      model: z.string().optional(),
+      modelNumber: z.string().optional(),
+      manufacturedYear: z.number().optional(),
+      adminUsername: z.string().optional(),
+      adminPassword: z.string().optional(),
+      studentUsername: z.string().optional(),
+      studentPassword: z.string().optional(),
+      disposition: z.string().optional(),
+      dateReceived: z.string().optional(),
+      lastInventoried: z.string().optional().describe('ISO date string (e.g. "2026-03-07") to set, or "clear" to remove'),
+      notes: z.string().optional(),
+      siteId: zIdParam(),
+      kitId: zIdParam(),
+      osId: zIdParam(),
+      custodianId: zIdParam(),
+      hostNameId: zIdParam(),
+      categoryId: zIdParam(),
+    },
+    _meta: { requiresQM: true },
   }, async ({ id, ...input }) => {
     return safeCall(async () => {
       requireQM();
@@ -467,8 +543,12 @@ export function registerTools(server: McpServer): void {
     });
   });
 
-  server.tool('delete_computer', 'Delete a computer', {
-    id: z.number(),
+  server.registerTool('delete_computer', {
+    description: 'Delete a computer',
+    inputSchema: {
+      id: z.number(),
+    },
+    _meta: { requiresQM: true },
   }, async ({ id }) => {
     return safeCall(async () => {
       requireQM();
@@ -494,9 +574,13 @@ export function registerTools(server: McpServer): void {
     });
   });
 
-  server.tool('create_hostname', 'Create a new host name', {
-    name: z.string(),
-    scheme: z.string().optional().describe('Optional grouping scheme for the host name'),
+  server.registerTool('create_hostname', {
+    description: 'Create a new host name',
+    inputSchema: {
+      name: z.string(),
+      scheme: z.string().optional().describe('Optional grouping scheme for the host name'),
+    },
+    _meta: { requiresQM: true },
   }, async ({ name, scheme }) => {
     return safeCall(async () => {
       requireQM();
@@ -505,10 +589,14 @@ export function registerTools(server: McpServer): void {
     });
   });
 
-  server.tool('update_hostname', 'Update a host name (rename or change scheme)', {
-    id: z.number(),
-    name: z.string().optional().describe('New name for the host name record'),
-    scheme: z.string().nullable().optional().describe('Grouping scheme; pass null to clear'),
+  server.registerTool('update_hostname', {
+    description: 'Update a host name (rename or change scheme)',
+    inputSchema: {
+      id: z.number(),
+      name: z.string().optional().describe('New name for the host name record'),
+      scheme: z.string().nullable().optional().describe('Grouping scheme; pass null to clear'),
+    },
+    _meta: { requiresQM: true },
   }, async ({ id, name, scheme }) => {
     return safeCall(async () => {
       if (name === undefined && scheme === undefined) {
@@ -520,8 +608,12 @@ export function registerTools(server: McpServer): void {
     });
   });
 
-  server.tool('delete_hostname', 'Delete an unassigned host name', {
-    id: z.number(),
+  server.registerTool('delete_hostname', {
+    description: 'Delete an unassigned host name',
+    inputSchema: {
+      id: z.number(),
+    },
+    _meta: { requiresQM: true },
   }, async ({ id }) => {
     return safeCall(async () => {
       requireQM();
@@ -558,9 +650,13 @@ export function registerTools(server: McpServer): void {
     });
   });
 
-  server.tool('create_image', 'Create an image record from a URL', {
-    url: z.string().describe('URL of the image'),
-    fileName: z.string().optional().describe('Original filename for matching purposes'),
+  server.registerTool('create_image', {
+    description: 'Create an image record from a URL',
+    inputSchema: {
+      url: z.string().describe('URL of the image'),
+      fileName: z.string().optional().describe('Original filename for matching purposes'),
+    },
+    _meta: { requiresQM: true },
   }, async ({ url, fileName }) => {
     return safeCall(async () => {
       requireQM();
@@ -569,8 +665,12 @@ export function registerTools(server: McpServer): void {
     });
   });
 
-  server.tool('delete_image', 'Delete an image record and remove from S3 if applicable. Unlinks from any attached computers/kits/packs.', {
-    id: z.number(),
+  server.registerTool('delete_image', {
+    description: 'Delete an image record and remove from S3 if applicable. Unlinks from any attached computers/kits/packs.',
+    inputSchema: {
+      id: z.number(),
+    },
+    _meta: { requiresQM: true },
   }, async ({ id }) => {
     return safeCall(async () => {
       requireQM();
@@ -582,10 +682,14 @@ export function registerTools(server: McpServer): void {
     });
   });
 
-  server.tool('attach_image', 'Attach an image to a Computer, Kit, or Pack (sets its imageId)', {
-    imageId: z.number(),
-    objectType: z.enum(['Computer', 'Kit', 'Pack']),
-    objectId: z.number(),
+  server.registerTool('attach_image', {
+    description: 'Attach an image to a Computer, Kit, or Pack (sets its imageId)',
+    inputSchema: {
+      imageId: z.number(),
+      objectType: z.enum(['Computer', 'Kit', 'Pack']),
+      objectId: z.number(),
+    },
+    _meta: { requiresQM: true },
   }, async ({ imageId, objectType, objectId }) => {
     return safeCall(async () => {
       requireQM();
@@ -595,9 +699,13 @@ export function registerTools(server: McpServer): void {
     });
   });
 
-  server.tool('detach_image', 'Remove the image link from a Computer, Kit, or Pack (sets imageId to null)', {
-    objectType: z.enum(['Computer', 'Kit', 'Pack']),
-    objectId: z.number(),
+  server.registerTool('detach_image', {
+    description: 'Remove the image link from a Computer, Kit, or Pack (sets imageId to null)',
+    inputSchema: {
+      objectType: z.enum(['Computer', 'Kit', 'Pack']),
+      objectId: z.number(),
+    },
+    _meta: { requiresQM: true },
   }, async ({ objectType, objectId }) => {
     return safeCall(async () => {
       requireQM();
@@ -656,10 +764,14 @@ export function registerTools(server: McpServer): void {
     });
   });
 
-  server.tool('create_note', 'Add a note to a Kit, Pack, or Computer', {
-    objectType: z.enum(['Kit', 'Pack', 'Computer']),
-    objectId: z.number(),
-    text: z.string(),
+  server.registerTool('create_note', {
+    description: 'Add a note to a Kit, Pack, or Computer',
+    inputSchema: {
+      objectType: z.enum(['Kit', 'Pack', 'Computer']),
+      objectId: z.number(),
+      text: z.string(),
+    },
+    _meta: { requiresQM: true },
   }, async (args) => {
     return safeCall(async () => {
       requireQM();
@@ -668,9 +780,13 @@ export function registerTools(server: McpServer): void {
     });
   });
 
-  server.tool('update_note', 'Update an existing note', {
-    id: z.number(),
-    text: z.string(),
+  server.registerTool('update_note', {
+    description: 'Update an existing note',
+    inputSchema: {
+      id: z.number(),
+      text: z.string(),
+    },
+    _meta: { requiresQM: true },
   }, async ({ id, text }) => {
     return safeCall(async () => {
       requireQM();
@@ -679,8 +795,12 @@ export function registerTools(server: McpServer): void {
     });
   });
 
-  server.tool('delete_note', 'Delete a note', {
-    id: z.number(),
+  server.registerTool('delete_note', {
+    description: 'Delete a note',
+    inputSchema: {
+      id: z.number(),
+    },
+    _meta: { requiresQM: true },
   }, async ({ id }) => {
     return safeCall(async () => {
       requireQM();
