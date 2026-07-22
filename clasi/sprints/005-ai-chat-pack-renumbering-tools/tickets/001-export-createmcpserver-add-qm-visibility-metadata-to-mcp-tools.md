@@ -1,7 +1,7 @@
 ---
 id: '001'
 title: Export createMcpServer + add QM-visibility metadata to MCP tools
-status: open
+status: in-progress
 use-cases:
 - SUC-001
 depends-on: []
@@ -49,16 +49,16 @@ one ticket 002 builds, can read it without any further plumbing.
 
 ## Acceptance Criteria
 
-- [ ] `createMcpServer` is exported from `server/src/mcp/server.ts`;
+- [x] `createMcpServer` is exported from `server/src/mcp/server.ts`;
       `createMcpHandler`'s behavior is unchanged (existing MCP HTTP
       tests, if any, and manual smoke-check of `POST /mcp` continue to
       pass).
-- [ ] Every tool in `server/src/mcp/tools.ts` whose handler calls
+- [x] Every tool in `server/src/mcp/tools.ts` whose handler calls
       `requireQM()` declares `_meta: { requiresQM: true }` at its
       `server.tool(...)` registration call.
-- [ ] No tool whose handler does *not* call `requireQM()` declares
+- [x] No tool whose handler does *not* call `requireQM()` declares
       `_meta.requiresQM === true`.
-- [ ] A new test enumerates every registered tool (via the fake-collector
+- [x] A new test enumerates every registered tool (via the fake-collector
       pattern already used in
       `tests/server/services/mcp-renumber-pack.test.ts` — a minimal
       object exposing `.tool(name, ...rest)` that records each
@@ -68,10 +68,10 @@ one ticket 002 builds, can read it without any further plumbing.
       This is the drift-guard the whole sprint exists to add — it must
       fail if a future tool adds a `requireQM()` call without the
       matching annotation, or vice versa.
-- [ ] No existing MCP tool test (`tests/server/services/mcp-renumber-pack.test.ts`,
+- [x] No existing MCP tool test (`tests/server/services/mcp-renumber-pack.test.ts`,
       any others under `tests/server/services/` exercising `registerTools`)
       regresses.
-- [ ] No change to any tool's response shape, error behavior, or
+- [x] No change to any tool's response shape, error behavior, or
       `requireQM()` call — this ticket is additive metadata only.
 
 ## Testing
