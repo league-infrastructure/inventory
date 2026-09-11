@@ -170,8 +170,17 @@ with their status, creation date, and last usage.
 
 ## Security
 
-- **Token storage**: Tokens are stored as SHA-256 hashes. The plaintext
-  is shown only once at creation time.
+- **Token storage**: Tokens are stored as a SHA-256 hash (used for
+  lookup/validation) plus a separate AES-256-GCM encrypted copy, so the
+  owner can view the full token again later on the MCP Setup page — no
+  plaintext is written to the database. The encryption key is
+  `TOKEN_ENCRYPTION_KEY` if set, otherwise it's derived from
+  `SESSION_SECRET`, so no new configuration is required in production.
+  Only the owning user's own tokens are ever decrypted (`GET
+  /api/tokens`); the admin token list never includes token values, and
+  revoked tokens never decrypt. Tokens created before this encrypted
+  column existed have no encrypted copy and show a "regenerate to
+  reveal" note instead.
 - **Revocation**: Tokens can be revoked immediately by the token owner
   (from the Account page) or by an admin (from the admin dashboard).
 - **Role changes**: When a user's role is changed, all their active
