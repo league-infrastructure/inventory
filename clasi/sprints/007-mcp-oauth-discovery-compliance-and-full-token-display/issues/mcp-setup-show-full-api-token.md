@@ -1,5 +1,9 @@
 ---
-status: pending
+status: in-progress
+sprint: '007'
+tickets:
+- 007-002
+- 007-003
 ---
 
 # MCP Setup page: always show the full API token, never a truncated prefix
