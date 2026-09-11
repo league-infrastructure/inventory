@@ -1,7 +1,7 @@
 ---
 id: '001'
 title: Server OAuth discovery compliance
-status: in-progress
+status: done
 use-cases:
 - SUC-001
 - SUC-002
@@ -34,47 +34,47 @@ rationale.
 
 ## Acceptance Criteria
 
-- [ ] `tokenAuth.ts` adds `WWW-Authenticate: Bearer realm="mcp",
+- [x] `tokenAuth.ts` adds `WWW-Authenticate: Bearer realm="mcp",
       resource_metadata="<PUBLIC_URL>/.well-known/oauth-protected-resource"`
       to every 401 response it returns (all three 401 branches: missing
       header, malformed header, invalid/expired token).
-- [ ] A new well-known router serves `/.well-known/oauth-protected-resource`
+- [x] A new well-known router serves `/.well-known/oauth-protected-resource`
       and `/.well-known/oauth-protected-resource/api/mcp` as JSON:
       `{ resource: "<PUBLIC_URL>/api/mcp", authorization_servers:
       ["<PUBLIC_URL>"], scopes_supported: [], bearer_methods_supported:
       ["header"] }`.
-- [ ] The same router serves `/.well-known/oauth-authorization-server/api/mcp`
+- [x] The same router serves `/.well-known/oauth-authorization-server/api/mcp`
       as JSON, matching the existing root document but with
       `"none"` added to `token_endpoint_auth_methods_supported`, plus
       `registration_endpoint`, `client_id_metadata_document_supported:
       true`, and `scopes_supported: []`.
-- [ ] The existing root `/.well-known/oauth-authorization-server` document
+- [x] The existing root `/.well-known/oauth-authorization-server` document
       is updated with the same additions (`none`, `registration_endpoint`,
       `client_id_metadata_document_supported`, `scopes_supported`).
-- [ ] Any other unhandled path under `/.well-known/` returns 404 JSON
+- [x] Any other unhandled path under `/.well-known/` returns 404 JSON
       (e.g. `{ error: "not_found" }`), never falls through to the SPA
       `index.html`. This router (and its 404 guard) is mounted in
       `app.ts` *before* the production `app.get('*')` SPA catch-all.
-- [ ] `POST /oauth/register` accepts any JSON body and returns 201 with a
+- [x] `POST /oauth/register` accepts any JSON body and returns 201 with a
       generated opaque `client_id`, echoing back `redirect_uris`,
       `client_name`, and `grant_types` from the request, plus
       `token_endpoint_auth_method: "none"`. No persistence required —
       stateless, matching that `client_id` is not validated elsewhere
       today (see Design Rationale in sprint.md for why this is
       intentional, not a shortcut).
-- [ ] `/oauth/authorize` validates `redirect_uri` against an allow-list:
+- [x] `/oauth/authorize` validates `redirect_uri` against an allow-list:
       `https://claude.ai/api/mcp/auth_callback`,
       `https://claude.com/api/mcp/auth_callback`, and any
       `http://localhost:<port>/...` or `http://127.0.0.1:<port>/...`
       loopback URL. Any other `redirect_uri` gets 400
       `{ error: "invalid_request" }` instead of proceeding.
-- [ ] New tests in `tests/server/oauth-discovery.test.ts` cover: the
+- [x] New tests in `tests/server/oauth-discovery.test.ts` cover: the
       `WWW-Authenticate` header on all three 401 cases, both
       protected-resource metadata documents, both authorization-server
       metadata documents (root and path-aware), the `/.well-known/*` 404
       guard, `POST /oauth/register`, and the `redirect_uri` allow-list
       (both accept and reject cases).
-- [ ] `npm run test:server` passes for this new suite and for any
+- [x] `npm run test:server` passes for this new suite and for any
       existing suite touched by this change (excluding the six
       pre-existing unrelated failures — app, auth, github, pike13,
       integrations, issue.service — tracked in

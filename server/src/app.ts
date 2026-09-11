@@ -37,6 +37,7 @@ import { ServiceRegistry } from './services/service.registry';
 import { tokenAuth } from './middleware/tokenAuth';
 import { slackRouter } from './routes/slack';
 import { oauthRouter } from './routes/oauth';
+import { wellKnownRouter } from './routes/wellKnown';
 import { schedulerRouter } from './routes/scheduler';
 import { SchedulerService } from './services/scheduler.service';
 import { BackupService } from './services/backup.service';
@@ -173,6 +174,13 @@ app.use(slackRouter(services));
 
 // OAuth 2.0 endpoints for MCP connector authentication
 app.use(oauthRouter(services.tokens, prisma));
+
+// OAuth discovery metadata (RFC 9728 / RFC 8414 well-known documents) and
+// the /.well-known/* 404 guard. ORDERING IS LOAD-BEARING: this must be
+// mounted before the production SPA `app.get('*')` catch-all below, or
+// every /.well-known/* path (including unmatched ones that should 404)
+// would instead resolve to index.html. See sprint.md Migration Concerns.
+app.use(wellKnownRouter());
 
 // MCP server — token-authenticated endpoint for external AI clients
 const mcpTokenAuth = tokenAuth(services.tokens, prisma);
