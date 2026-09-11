@@ -140,11 +140,42 @@ client's current test coverage.
 ## Architecture
 
 **Substantial** — this sprint changes the `ApiToken` data model (new
-`token` column), adds a new cross-cutting well-known-discovery module
+`tokenEnc` column), adds a new cross-cutting well-known-discovery module
 that the routing layer (`app.ts`) must mount ahead of the existing SPA
 catch-all, and touches 3+ modules across server and client (`oauth.ts`,
 `tokenAuth.ts`, `token.service.ts`, `tokens.ts`, `app.ts`,
 `McpSetup.tsx`), so the full methodology applies.
+
+## Revision
+
+Two changes were made during implementation versus this original plan;
+both are reflected in the sections below (module list, diagrams, Design
+Rationale, Migration Concerns) rather than left as stale prose:
+
+1. **Ticket 002 stored the token encrypted, not plaintext.** The harness
+   safety classifier refused plaintext-at-rest during implementation.
+   `ApiToken` gained `tokenEnc String?` (not `token`), decrypted via a new
+   `server/src/services/tokenCrypto.ts` module (AES-256-GCM, random
+   12-byte IV, blob format `v1:<iv>:<tag>:<ciphertext>`, key from
+   `TOKEN_ENCRYPTION_KEY` env or `sha256(SESSION_SECRET)` as a
+   zero-config fallback). `TokenService.list(userId?, { includeToken })`
+   decrypts only on the owner's own-token path (`GET /api/tokens`);
+   `GET /api/admin/tokens` passes `includeToken: false` and never
+   decrypts. This still satisfies both issues' acceptance criteria (the
+   owner can always see their full token) without landing plaintext bearer
+   tokens in the database.
+2. **Ticket 001 extracted a shared `server/src/routes/publicUrl.ts`**
+   (`getPublicUrl(req)`) used by `oauth.ts`, `wellKnown.ts`, and
+   `tokenAuth.ts`, replacing three separate ad hoc base-URL
+   reconstructions with one. It also exported `oauth.ts`'s
+   `buildAuthorizationServerMetadata()` and `isAllowedRedirectUri()` so
+   `wellKnown.ts` reuses them as the single source of truth for the
+   path-aware AS-metadata document, instead of duplicating that logic —
+   this adds a new intra-server dependency (`wellKnown.ts` → `oauth.ts`)
+   not shown in the original plan.
+
+See `git diff --stat master...HEAD` for the full file list, summarized
+in Sprint Changes below.
 
 ### Architecture Overview
 
@@ -155,37 +186,60 @@ catch-all, and touches 3+ modules across server and client (`oauth.ts`,
    JSON, and guarantee any other unmatched `/.well-known/*` path returns
    404 JSON rather than falling through to the SPA. This is a distinct
    responsibility from the OAuth authorization protocol itself: it is
-   about *routing and metadata publication*, not *token issuance*.
+   about *routing and metadata publication*, not *token issuance*. It
+   reuses `oauth.ts`'s `buildAuthorizationServerMetadata()` and
+   `isAllowedRedirectUri()` (both exported for this purpose) rather than
+   duplicating that logic, and shares `getPublicUrl(req)` (new,
+   `publicUrl.ts`) for base-URL resolution.
 2. **OAuth authorization flow** (existing, extended) — `oauth.ts` keeps
    owning `/oauth/authorize` and `/oauth/token` (PKCE, auth codes) and
    gains `/oauth/register` (stateless DCR) and a `redirect_uri`
    allow-list. Still one module: registration and authorization are two
-   facets of the same authorization-server role.
-3. **Token authentication** (existing, extended) — `tokenAuth.ts`'s 401
+   facets of the same authorization-server role. Its metadata-builder and
+   redirect-validator are now exported so the discovery module (above)
+   can reuse them.
+3. **Base URL resolution** (new) — `publicUrl.ts`'s `getPublicUrl(req)`
+   is a single-function helper (prefers `PUBLIC_URL`, falls back to
+   reconstructing from the request) shared by `oauth.ts`, `wellKnown.ts`,
+   and `tokenAuth.ts`, replacing three separate ad hoc implementations.
+4. **Token authentication** (existing, extended) — `tokenAuth.ts`'s 401
    responses gain a `WWW-Authenticate` header pointing at the
-   protected-resource metadata. Its `validate()` call path is unchanged.
-4. **Token persistence** (existing, extended) — `token.service.ts` and
-   the `ApiToken` Prisma model gain a nullable plaintext `token` column
-   alongside the existing `tokenHash`/`prefix`. `validate()` continues to
-   look up by hash only; `token` is write-once-at-creation, read-only
-   thereafter.
-5. **Token API** (existing, extended) — `tokens.ts`'s `GET /api/tokens`
-   returns the plaintext `token` field for the caller's own, non-revoked
-   tokens (session-auth-only route, unchanged access control).
-6. **MCP Setup UI** (existing, reworked) — `McpSetup.tsx` lists every
+   protected-resource metadata (via `getPublicUrl`). Its `validate()`
+   call path is unchanged.
+5. **Token encryption** (new) — `tokenCrypto.ts` encrypts/decrypts token
+   plaintext for at-rest storage: AES-256-GCM, a fresh random 12-byte IV
+   per token, blob format `v1:<iv>:<tag>:<ciphertext>`, key from
+   `TOKEN_ENCRYPTION_KEY` env (32 bytes, hex or base64) or
+   `sha256(SESSION_SECRET)` as a zero-config fallback. Used only by
+   `token.service.ts`; no other module touches ciphertext directly.
+6. **Token persistence** (existing, extended) — `token.service.ts` and
+   the `ApiToken` Prisma model gain a nullable `tokenEnc` column
+   (encrypted, not plaintext — see Revision above) alongside the existing
+   `tokenHash`/`prefix`. `validate()` continues to look up by hash only;
+   `TokenService.list(userId?, { includeToken })` decrypts via
+   `tokenCrypto.ts` only when `includeToken: true` and the row is
+   unrevoked.
+7. **Token API** (existing, extended) — `tokens.ts`'s `GET /api/tokens`
+   calls `list(userId, { includeToken: true })`, returning the decrypted
+   token for the caller's own, non-revoked tokens (session-auth-only
+   route, unchanged access control); `GET /api/admin/tokens` passes
+   `includeToken: false` and never decrypts other users' tokens.
+8. **MCP Setup UI** (existing, reworked) — `McpSetup.tsx` lists every
    non-revoked token in full and adds Claude-Code-via-OAuth instructions;
    drops its `localStorage` cache entirely.
 
-**Component diagram:**
+**Component diagram** (end-of-sprint state):
 
 ```mermaid
 flowchart LR
     Client[Claude Code / claude.ai]
     TokenAuth[Token Auth Middleware\ntokenAuth.ts]
-    WellKnown[OAuth Discovery Metadata\nwellKnown router — new]
+    WellKnown[OAuth Discovery Metadata\nwellKnown.ts — new]
     OAuthRouter[OAuth Authorization Router\noauth.ts]
+    PublicUrl[Base URL Helper\npublicUrl.ts — new]
     TokenService[Token Service\ntoken.service.ts]
-    TokensAPI[Tokens API\n/api/tokens]
+    TokenCrypto[Token Encryption\ntokenCrypto.ts — new]
+    TokensAPI[Tokens API\n/api/tokens, /api/admin/tokens]
     ApiTokenTable[(ApiToken table)]
     McpSetup[MCP Setup Page\nMcpSetup.tsx]
 
@@ -193,17 +247,24 @@ flowchart LR
     TokenAuth -->|resource_metadata URL points to| WellKnown
     Client -->|"GET /.well-known/*"| WellKnown
     Client -->|"/oauth/authorize, /oauth/register, /oauth/token"| OAuthRouter
+    WellKnown -->|"reuses buildAuthorizationServerMetadata(), isAllowedRedirectUri()"| OAuthRouter
+    TokenAuth -->|getPublicUrl req| PublicUrl
+    WellKnown -->|getPublicUrl req| PublicUrl
+    OAuthRouter -->|getPublicUrl req| PublicUrl
     TokenAuth -->|validate Bearer hash| TokenService
     OAuthRouter -->|create 'oauth'-labeled token| TokenService
-    TokensAPI -->|create / list / revoke| TokenService
-    TokenService -->|read/write tokenHash + token| ApiTokenTable
+    TokensAPI -->|"list(userId, {includeToken})"| TokenService
+    TokenService -->|encrypt/decrypt| TokenCrypto
+    TokenService -->|read/write tokenHash + tokenEnc| ApiTokenTable
     McpSetup -->|"GET/POST/DELETE /api/tokens"| TokensAPI
 ```
 
 Not shown: `app.ts`'s route-mounting order, which is load-bearing (see
 Migration Concerns) but is a wiring detail, not a component.
 
-**Entity-relationship diagram** (data model change — additive column):
+**Entity-relationship diagram** (data model change — additive column;
+revised from the plan's `token` to the actual `tokenEnc`, see Revision
+above):
 
 ```mermaid
 erDiagram
@@ -212,7 +273,7 @@ erDiagram
         int id PK
         string label
         string tokenHash
-        string token "nullable plaintext — new"
+        string tokenEnc "nullable, AES-256-GCM ciphertext blob — new"
         string prefix
         int userId FK
         string role
@@ -223,31 +284,49 @@ erDiagram
     }
 ```
 
-No dependency-direction change: the well-known metadata module and the
+No dependency-*direction* change: the well-known metadata module and the
 extended `oauth.ts` both remain infrastructure-adjacent routers consumed
 only by `app.ts`; neither introduces a new inward dependency from
-business logic.
+business logic. There is one new *intra-layer* edge versus the plan:
+`wellKnown.ts` now depends on `oauth.ts` for
+`buildAuthorizationServerMetadata()`/`isAllowedRedirectUri()` (see
+Revision above) — both modules stay in the same routing layer, so this
+doesn't change the overall dependency direction, but it does mean
+`oauth.ts` is no longer a leaf among routers.
 
 ### Design Rationale
 
-**Decision: persist the plaintext token in a new nullable column,
-instead of continuing hash-only storage.**
+**Decision: persist the token encrypted at rest in a new nullable
+column, instead of continuing hash-only storage.**
 - Context: the stakeholder needs the MCP Setup page to show the full
   token reliably, across browsers and after every OAuth token exchange;
   a SHA-256 hash cannot be reversed to recover the original value.
 - Alternatives considered: (a) keep hash-only storage and rely on
   client-side `localStorage` — the status quo, and the direct cause of
   this issue, since `localStorage` is per-browser and doesn't survive
-  OAuth-minted tokens hiding the hand-made one; (b) encrypt the token at
-  the application layer with a managed key.
-- Why this choice: encryption adds key-management complexity
-  disproportionate to an internal, single-tenant admin tool; the
-  stakeholder explicitly accepted the plaintext-at-rest trade-off (see
-  issue `mcp-setup-show-full-api-token.md`).
-- Consequences: database backups and DB access now expose raw bearer
-  tokens; `docs/mcp.md`'s security note must say so. Pre-migration rows
-  have `token = NULL` and the UI must show "regenerate to reveal" for
-  those rather than crash or fabricate a value.
+  OAuth-minted tokens hiding the hand-made one; (b) store the token as
+  plaintext, as originally planned in this document (the stakeholder had
+  accepted that trade-off for this internal tool); (c) encrypt the token
+  at the application layer with AES-256-GCM (chosen).
+- Why this choice: the plan's plaintext-at-rest option (b) was blocked
+  during implementation — the harness's safety classifier refused it
+  outright regardless of stakeholder sign-off. Encryption (c) achieves
+  the same functional outcome (the owner can always retrieve their full
+  token) without landing a plaintext bearer token in the database, at
+  the cost of introducing key management. `tokenCrypto.ts` keeps that
+  cost minimal: it derives a key from `SESSION_SECRET` (already
+  configured in production) when `TOKEN_ENCRYPTION_KEY` isn't set, so no
+  new required configuration.
+- Consequences: database backups and DB access no longer expose raw
+  bearer tokens directly — an attacker needs the encryption key
+  (`TOKEN_ENCRYPTION_KEY` or `SESSION_SECRET`) in addition to DB access.
+  `docs/mcp.md`'s security note describes encrypted-at-rest storage, not
+  plaintext. Pre-migration rows have `tokenEnc = NULL` and the UI shows
+  "regenerate to reveal" for those, same as the original plan. New risk
+  not present in the plaintext design: if the encryption key ever
+  changes (key rotation, `SESSION_SECRET` regenerated without migrating
+  `TOKEN_ENCRYPTION_KEY` first), existing `tokenEnc` values become
+  permanently undecryptable — see Migration Concerns and Open Questions.
 
 **Decision: publish discovery metadata from a new router module rather
 than extending `oauth.ts` or patching the SPA catch-all in place.**
@@ -268,6 +347,33 @@ than extending `oauth.ts` or patching the SPA catch-all in place.**
   router must be registered before `app.get('*')` — and should carry a
   comment saying so, since nothing else in `app.ts` currently depends on
   ordering this tightly.
+
+**Decision (made during implementation, not in the original plan):
+extract a shared `publicUrl.ts` and export `oauth.ts`'s metadata builder
+and redirect validator for `wellKnown.ts` to reuse.**
+- Context: once `wellKnown.ts` existed (previous decision), it needed
+  the same base-URL logic `oauth.ts` already had, and needed to produce
+  an authorization-server metadata document consistent with the one
+  `oauth.ts` serves at the root `/.well-known/oauth-authorization-server`
+  — any drift between the two would violate SUC-001's acceptance
+  criteria.
+- Alternatives considered: (a) let `wellKnown.ts` duplicate the base-URL
+  reconstruction and metadata-building logic independently; (b) extract
+  `getPublicUrl(req)` into a small shared `publicUrl.ts` and export
+  `buildAuthorizationServerMetadata()`/`isAllowedRedirectUri()` from
+  `oauth.ts` for `wellKnown.ts` to import (chosen).
+- Why this choice: duplication is exactly the shotgun-surgery risk this
+  sprint's own anti-pattern check was watching for — a future change to
+  the metadata shape or the base-URL rule would otherwise have to be
+  made in two places and could silently diverge. A single-function
+  helper module and two exported pure functions are cheap ways to avoid
+  that with no new runtime coupling beyond an import.
+- Consequences: `wellKnown.ts` now depends on `oauth.ts` (see the
+  dependency-direction note above) — an edge not anticipated in the
+  original plan, though it stays within the same routing layer and adds
+  no cycle. `oauth.ts`'s metadata builder and redirect validator are now
+  a semi-public interface (used outside their original file) and should
+  be treated as such in future changes to `oauth.ts`.
 
 **Decision: minimal, stateless dynamic client registration rather than a
 persisted client registry.**
@@ -290,12 +396,23 @@ persisted client registry.**
 
 ### Migration Concerns
 
-- The Prisma migration adding `ApiToken.token String?` is purely
-  additive and nullable — no backfill, no data loss, no downtime.
-  Existing rows get `token = NULL`.
+- The Prisma migration `20260911213612_api_token_encrypted` adds
+  `ApiToken.tokenEnc String?` — purely additive and nullable, no
+  backfill, no data loss, no downtime. Existing rows get
+  `tokenEnc = NULL`.
 - `TokenService.validate()` is unchanged (hash lookup only); the new
-  column is write-at-creation and read-only elsewhere, so there is no
-  behavioral change to authentication itself.
+  column is write-at-creation and read/decrypt-only elsewhere, so there
+  is no behavioral change to authentication itself.
+- **New risk versus the plan**: decrypting `tokenEnc` requires the same
+  key that encrypted it. Production must either set
+  `TOKEN_ENCRYPTION_KEY` and keep it stable, or rely on the
+  `sha256(SESSION_SECRET)` fallback and never rotate `SESSION_SECRET`
+  without a migration plan for existing tokens — rotating either without
+  a plan makes every existing `tokenEnc` value permanently
+  undecryptable (rows would need to fall back to "regenerate to
+  reveal," same UI path as a pre-migration `NULL`). This did not exist
+  under the original plaintext plan and should be called out to
+  whoever manages production secrets before this deploy.
 - `app.ts`'s route-mounting order changes: the new well-known router (and
   its `/.well-known/*` 404 guard) must be registered before the
   production SPA `app.get('*')` catch-all, or discovery metadata will
@@ -313,13 +430,60 @@ persisted client registry.**
   `client_id`, registered or not, is accepted on `/oauth/authorize`)?
   Deferred — neither issue asks for it; flag for a future security-focused
   sprint if it becomes a concern.
-- Should the persisted plaintext `token` column be encrypted at the
-  application layer in a later hardening pass? The stakeholder has
-  accepted the trade-off for now; noting it here so it isn't forgotten.
+- ~~Should the persisted token column be encrypted at the application
+  layer in a later hardening pass?~~ Resolved during implementation: yes
+  — the harness safety classifier required it, so encryption shipped in
+  this sprint rather than being deferred (see Revision and Design
+  Rationale above).
+- **New**: should `TOKEN_ENCRYPTION_KEY` be set explicitly in production
+  rather than relying on the `SESSION_SECRET`-derived fallback, and
+  should there be a documented key-rotation procedure? Not addressed by
+  either issue's acceptance criteria; flag for the team-lead / a future
+  sprint before `SESSION_SECRET` is ever rotated for an unrelated
+  reason.
 - Is a one-time notice needed for users whose existing tokens will show
   "regenerate to reveal" post-migration? Not required by either issue's
   acceptance criteria; leaving as a UI-only affordance per
   `mcp-setup-show-full-api-token.md`.
+
+### Sprint Changes
+
+Files created or modified across all three tickets (`git diff --stat
+master...HEAD`, planning artifacts omitted):
+
+**Created:**
+- `server/src/routes/wellKnown.ts` — OAuth discovery metadata router.
+- `server/src/routes/publicUrl.ts` — shared `getPublicUrl(req)` helper.
+- `server/src/services/tokenCrypto.ts` — AES-256-GCM encrypt/decrypt for
+  token-at-rest storage.
+- `server/prisma/migrations/20260911213612_api_token_encrypted/` —
+  adds `ApiToken.tokenEnc`.
+- `tests/server/oauth-discovery.test.ts`,
+  `tests/server/services/token.service.test.ts`,
+  `tests/server/tokens.test.ts`.
+
+**Modified:**
+- `server/src/routes/oauth.ts` — `/oauth/register`, `redirect_uri`
+  allow-list, exported `buildAuthorizationServerMetadata()` /
+  `isAllowedRedirectUri()`, `none` auth method added to AS metadata.
+- `server/src/middleware/tokenAuth.ts` — `WWW-Authenticate` header on
+  401s.
+- `server/src/app.ts` — mounts `wellKnownRouter` ahead of the SPA
+  catch-all.
+- `server/src/services/token.service.ts` — `tokenEnc` read/write via
+  `tokenCrypto.ts`; `list()` gains the `includeToken` option.
+- `server/src/routes/tokens.ts` — `GET /api/tokens` passes
+  `includeToken: true`; `GET /api/admin/tokens` passes
+  `includeToken: false`.
+- `server/prisma/schema.prisma` — `ApiToken.tokenEnc String?`.
+- `client/src/pages/McpSetup.tsx` — full-token list, "Claude Code via
+  OAuth" section, `localStorage` removed.
+- `docs/mcp.md` — OAuth discovery/DCR flow, encrypted-at-rest security
+  note.
+- `secrets/dev.env.example` — documents `TOKEN_ENCRYPTION_KEY`.
+
+Ticket commits: `df532a7` (007-001), `b6b22ab` (007-002), `f859995`
+(007-003).
 
 ## Use Cases
 
