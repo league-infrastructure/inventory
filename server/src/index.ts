@@ -12,7 +12,7 @@ if (fs.existsSync(envPath)) {
 import app from './app';
 import { initConfigCache } from './services/config';
 
-const port = parseInt(process.env.PORT || '3000', 10);
+const port = parseInt(process.env.PORT || '9310', 10);
 
 initConfigCache().then(() => {
   app.listen(port, '0.0.0.0', () => {

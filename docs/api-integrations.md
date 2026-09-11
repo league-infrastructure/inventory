@@ -33,7 +33,7 @@ are not configured.
 | Setting | Value |
 |---------|-------|
 | Environment variables | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` |
-| Callback URL (dev) | `http://localhost:5173/api/auth/github/callback` |
+| Callback URL (dev) | `http://localhost:9311/api/auth/github/callback` |
 | Callback URL (prod) | `https://<app>.jtlapp.net/api/auth/github/callback` |
 | Scopes requested | `read:user`, `user:email` |
 
@@ -59,7 +59,7 @@ are not configured.
 | Setting | Value |
 |---------|-------|
 | Environment variables | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` |
-| Callback URL (dev) | `http://localhost:5173/api/auth/google/callback` |
+| Callback URL (dev) | `http://localhost:9311/api/auth/google/callback` |
 | Callback URL (prod) | `https://<app>.jtlapp.net/api/auth/google/callback` |
 | Scopes requested | `profile`, `email` |
 
@@ -95,7 +95,7 @@ However, tokens can be revoked, so handle 401 responses gracefully.
 | Environment variables | `PIKE13_CLIENT_ID`, `PIKE13_CLIENT_SECRET`, `PIKE13_ACCESS_TOKEN` |
 | Authorization endpoint | `https://pike13.com/oauth/authorize` (or `https://BUSINESS.pike13.com/oauth/authorize`) |
 | Token endpoint | `https://pike13.com/oauth/token` |
-| Callback URL (dev) | `http://localhost:5173/api/auth/pike13/callback` |
+| Callback URL (dev) | `http://localhost:9311/api/auth/pike13/callback` |
 | Callback URL (prod) | `https://<app>.jtlapp.net/api/auth/pike13/callback` |
 | API base URL (default) | `https://pike13.com/api/v2/desk` |
 | API base URL (override) | Set `PIKE13_API_BASE` for subdomain-specific businesses |

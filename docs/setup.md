@@ -101,8 +101,8 @@ npm run dev
 
 | Service  | URL | Hot-reload |
 |----------|-----|------------|
-| Frontend | http://localhost:5173 | Yes (Vite HMR) |
-| Backend  | http://localhost:3000/api | Yes (ts-node-dev) |
+| Frontend | http://localhost:9311 | Yes (Vite HMR) |
+| Backend  | http://localhost:9310/api | Yes (ts-node-dev) |
 | Database | localhost:5434 (or 5432 in Codespaces) | N/A |
 
 ### Docker Development
@@ -115,8 +115,8 @@ npm run dev:docker
 
 | Service  | URL | Hot-reload |
 |----------|-----|------------|
-| Frontend | http://localhost:5173 | Rebuild required |
-| Backend  | http://localhost:3000/api | Rebuild required |
+| Frontend | http://localhost:9311 | Rebuild required |
+| Backend  | http://localhost:9310/api | Rebuild required |
 | Database | Internal (port 5432) | N/A |
 
 Stop with:
@@ -130,11 +130,11 @@ npm run dev:docker:down
 ## 4. Verify It's Working
 
 ```bash
-curl http://localhost:3000/api/health
+curl http://localhost:9310/api/health
 # → {"status":"ok"}
 ```
 
-Opening http://localhost:5173 in a browser should show the React app.
+Opening http://localhost:9311 in a browser should show the React app.
 
 ---
 
@@ -188,4 +188,4 @@ that migration as applied before continuing.
 
 **Vite starts but the app can't reach the API**
 Check that the Vite proxy target in `client/vite.config.ts` matches the
-port the server is running on (default `http://localhost:3000`).
+port the server is running on (default `http://localhost:9310`).

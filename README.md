@@ -50,9 +50,9 @@ production-ready app development. Clone, configure, and deploy.
 npm run dev
 ```
 
-- Frontend: http://localhost:5173
-- Backend API: http://localhost:3000/api
-- Health check: `curl http://localhost:3000/api/health`
+- Frontend: http://localhost:9311
+- Backend API: http://localhost:9310/api
+- Health check: `curl http://localhost:9310/api/health`
 
 See [docs/setup.md](docs/setup.md) for full setup, Docker dev mode, and troubleshooting.
 

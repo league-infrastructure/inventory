@@ -313,8 +313,8 @@ third-party API keys, etc.).
 ```bash
 npm run dev
 # Starts: Postgres container (port 5434) + Express (port 3000) + Vite (port 5173)
-# Frontend: http://localhost:5173
-# Backend:  http://localhost:3000/api
+# Frontend: http://localhost:9311
+# Backend:  http://localhost:9310/api
 ```
 
 Requires a local Docker daemon for the database container.

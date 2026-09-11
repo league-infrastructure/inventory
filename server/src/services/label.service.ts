@@ -34,7 +34,7 @@ export class LabelService {
   private baseUrl: string;
 
   constructor(private prisma: PrismaClient, baseUrl?: string) {
-    const raw = baseUrl ?? process.env.QR_DOMAIN ?? process.env.APP_BASE_URL ?? 'http://localhost:5173';
+    const raw = baseUrl ?? process.env.QR_DOMAIN ?? process.env.APP_BASE_URL ?? 'http://localhost:9311';
     this.baseUrl = raw.replace(/\/+$/, '');
   }
 

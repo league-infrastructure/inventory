@@ -8,7 +8,7 @@
     },
     "inventory": {
       "type": "http",
-      "url": "http://localhost:3000/api/mcp",
+      "url": "http://localhost:9310/api/mcp",
       "headers": {
         "Authorization": "Bearer 359dde89d0ac9a6b1c9540a8a596fcc2e44b8709b551956b3afccdaf651c7cd0"
       }
