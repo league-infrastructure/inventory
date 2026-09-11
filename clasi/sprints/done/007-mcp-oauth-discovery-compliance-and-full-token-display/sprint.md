@@ -1,7 +1,7 @@
 ---
 id: '007'
 title: MCP OAuth discovery compliance and full-token display
-status: executing
+status: done
 branch: sprint/007-mcp-oauth-discovery-compliance-and-full-token-display
 use-cases:
 - SUC-001
