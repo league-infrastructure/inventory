@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import crypto from 'crypto';
+import { encryptToken, decryptToken } from './tokenCrypto';
 
 export interface TokenCreateResult {
   id: number;
@@ -18,6 +19,24 @@ export interface TokenListItem {
   expiresAt: string | null;
   createdAt: string;
   user?: { id: number; displayName: string; email: string };
+  /**
+   * The decrypted full token value, or `null`. Convention (relied on by
+   * ticket 003 / the MCP Setup page):
+   *   - `null` for revoked rows — never expose a revoked token's value.
+   *   - `null` for rows created before this encryption support shipped
+   *     (`tokenEnc` is `NULL` in the database).
+   *   - `null` if decryption fails for any reason (tampered/corrupt blob,
+   *     wrong key) rather than throwing.
+   *   - `null` whenever `list()` was called with `includeToken: false`
+   *     (e.g. the admin listing, which must never expose tokens).
+   *   - Otherwise, the decrypted plaintext token.
+   */
+  token: string | null;
+}
+
+export interface TokenListOptions {
+  /** When true, decrypt and include the full token value for eligible rows. */
+  includeToken?: boolean;
 }
 
 export interface TokenValidationResult {
@@ -34,12 +53,14 @@ export class TokenService {
 
     const rawToken = crypto.randomBytes(32).toString('hex');
     const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+    const tokenEnc = encryptToken(rawToken);
     const prefix = rawToken.substring(0, 8);
 
     const record = await this.prisma.apiToken.create({
       data: {
         label,
         tokenHash,
+        tokenEnc,
         prefix,
         userId,
         role: user.role,
@@ -49,7 +70,7 @@ export class TokenService {
     return { id: record.id, label: record.label, prefix, token: rawToken };
   }
 
-  async list(userId?: number): Promise<TokenListItem[]> {
+  async list(userId?: number, options?: TokenListOptions): Promise<TokenListItem[]> {
     const where = userId != null
       ? { userId, revokedAt: null }
       : {};
@@ -60,17 +81,31 @@ export class TokenService {
       orderBy: { createdAt: 'desc' },
     });
 
-    return tokens.map((t) => ({
-      id: t.id,
-      label: t.label,
-      prefix: t.prefix,
-      role: t.role,
-      lastUsedAt: t.lastUsedAt?.toISOString() ?? null,
-      revokedAt: t.revokedAt?.toISOString() ?? null,
-      expiresAt: t.expiresAt?.toISOString() ?? null,
-      createdAt: t.createdAt.toISOString(),
-      user: t.user ? { id: t.user.id, displayName: t.user.displayName, email: t.user.email ?? '—' } : undefined,
-    }));
+    const includeToken = options?.includeToken ?? false;
+
+    return tokens.map((t) => {
+      let token: string | null = null;
+      if (includeToken && !t.revokedAt && t.tokenEnc) {
+        try {
+          token = decryptToken(t.tokenEnc);
+        } catch {
+          token = null;
+        }
+      }
+
+      return {
+        id: t.id,
+        label: t.label,
+        prefix: t.prefix,
+        role: t.role,
+        lastUsedAt: t.lastUsedAt?.toISOString() ?? null,
+        revokedAt: t.revokedAt?.toISOString() ?? null,
+        expiresAt: t.expiresAt?.toISOString() ?? null,
+        createdAt: t.createdAt.toISOString(),
+        user: t.user ? { id: t.user.id, displayName: t.user.displayName, email: t.user.email ?? '—' } : undefined,
+        token,
+      };
+    });
   }
 
   async revoke(id: number, userId?: number): Promise<void> {

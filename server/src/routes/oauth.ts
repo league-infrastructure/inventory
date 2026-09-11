@@ -2,9 +2,56 @@ import { Router, Request, Response } from 'express';
 import { PrismaClient, User } from '@prisma/client';
 import crypto from 'crypto';
 import { TokenService } from '../services/token.service';
+import { getPublicUrl } from './publicUrl';
 
 export function emailToClientId(email: string): string {
   return crypto.createHash('sha256').update(email.toLowerCase()).digest('hex').slice(0, 32);
+}
+
+/**
+ * Builds the OAuth 2.0 Authorization Server Metadata document (RFC 8414).
+ *
+ * Single source of truth for this document's shape — used by both the
+ * root `/.well-known/oauth-authorization-server` route below and the
+ * path-aware `/.well-known/oauth-authorization-server/api/mcp` route in
+ * `wellKnown.ts`, so the two always agree.
+ */
+export function buildAuthorizationServerMetadata(baseUrl: string) {
+  return {
+    issuer: baseUrl,
+    authorization_endpoint: `${baseUrl}/oauth/authorize`,
+    token_endpoint: `${baseUrl}/oauth/token`,
+    registration_endpoint: `${baseUrl}/oauth/register`,
+    grant_types_supported: ['authorization_code', 'client_credentials'],
+    token_endpoint_auth_methods_supported: ['client_secret_post', 'client_secret_basic', 'none'],
+    response_types_supported: ['code'],
+    code_challenge_methods_supported: ['S256'],
+    client_id_metadata_document_supported: true,
+    scopes_supported: [],
+  };
+}
+
+const EXACT_ALLOWED_REDIRECT_URIS = new Set([
+  'https://claude.ai/api/mcp/auth_callback',
+  'https://claude.com/api/mcp/auth_callback',
+]);
+
+/**
+ * Allow-list for `/oauth/authorize`'s `redirect_uri`: the two known Claude
+ * callback URLs, plus any loopback address (any port, any path) for local
+ * development clients (e.g. Claude Code running a local callback server).
+ */
+export function isAllowedRedirectUri(redirectUri: string): boolean {
+  if (EXACT_ALLOWED_REDIRECT_URIS.has(redirectUri)) return true;
+
+  let parsed: URL;
+  try {
+    parsed = new URL(redirectUri);
+  } catch {
+    return false;
+  }
+
+  return parsed.protocol === 'http:' && (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1');
 }
 
 // --- In-memory authorization code store ---
@@ -39,16 +86,24 @@ export function oauthRouter(tokenService: TokenService, prisma: PrismaClient): R
   const router = Router();
 
   // OAuth 2.0 Authorization Server Metadata (RFC 8414)
-  router.get('/.well-known/oauth-authorization-server', (_req: Request, res: Response) => {
-    const baseUrl = process.env.PUBLIC_URL || `${_req.protocol}://${_req.get('host')}`;
-    res.json({
-      issuer: baseUrl,
-      authorization_endpoint: `${baseUrl}/oauth/authorize`,
-      token_endpoint: `${baseUrl}/oauth/token`,
-      grant_types_supported: ['authorization_code', 'client_credentials'],
-      token_endpoint_auth_methods_supported: ['client_secret_post', 'client_secret_basic'],
-      response_types_supported: ['code'],
-      code_challenge_methods_supported: ['S256'],
+  router.get('/.well-known/oauth-authorization-server', (req: Request, res: Response) => {
+    res.json(buildAuthorizationServerMetadata(getPublicUrl(req)));
+  });
+
+  // Dynamic Client Registration (RFC 7591) — minimal and stateless.
+  // Accepts any JSON body, generates an opaque client_id, and never
+  // persists or validates it later, matching /oauth/authorize's existing
+  // (unvalidated) treatment of client_id. See sprint.md Design Rationale.
+  router.post('/oauth/register', (req: Request, res: Response) => {
+    const body = (req.body && typeof req.body === 'object') ? req.body : {};
+    const clientId = crypto.randomBytes(16).toString('hex');
+
+    res.status(201).json({
+      ...body,
+      client_id: clientId,
+      client_id_issued_at: Math.floor(Date.now() / 1000),
+      grant_types: body.grant_types || ['authorization_code'],
+      token_endpoint_auth_method: 'none',
     });
   });
 
@@ -67,6 +122,13 @@ export function oauthRouter(tokenService: TokenService, prisma: PrismaClient): R
       return res.status(400).json({
         error: 'invalid_request',
         error_description: 'redirect_uri is required',
+      });
+    }
+
+    if (!isAllowedRedirectUri(redirect_uri)) {
+      return res.status(400).json({
+        error: 'invalid_request',
+        error_description: 'redirect_uri not allowed',
       });
     }
 

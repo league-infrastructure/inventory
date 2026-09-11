@@ -1,5 +1,8 @@
 ---
-status: pending
+status: done
+sprint: '007'
+tickets:
+- 007-001
 ---
 
 # MCP OAuth: deploy the pending session fix and make discovery spec-compliant

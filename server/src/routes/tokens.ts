@@ -20,7 +20,7 @@ export function tokensRouter(services: ServiceRegistry): Router {
   router.get('/tokens', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
     try {
       const user = req.user as User;
-      res.json(await services.tokens.list(user.id));
+      res.json(await services.tokens.list(user.id, { includeToken: true }));
     } catch (err) { next(err); }
   });
 
@@ -36,7 +36,7 @@ export function tokensRouter(services: ServiceRegistry): Router {
 
   router.get('/admin/tokens', requireQuartermaster, async (_req: Request, res: Response, next: NextFunction) => {
     try {
-      res.json(await services.tokens.list());
+      res.json(await services.tokens.list(undefined, { includeToken: false }));
     } catch (err) { next(err); }
   });
 

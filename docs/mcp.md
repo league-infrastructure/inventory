@@ -65,6 +65,54 @@ Add to your project's `.mcp.json`:
 Any client that supports MCP Streamable HTTP transport can connect using
 the server URL and a Bearer token in the Authorization header.
 
+## Connecting with OAuth
+
+Instead of manually generating and pasting a Bearer token, MCP clients
+that support OAuth 2.0 authorization-code flow with PKCE can connect
+directly — no client id needs to be configured ahead of time.
+
+### How discovery works
+
+1. The client sends an unauthenticated request to `/api/mcp` and gets a
+   `401` with a `WWW-Authenticate: Bearer realm="mcp",
+   resource_metadata="<server-url>/.well-known/oauth-protected-resource"`
+   header.
+2. It fetches that protected-resource metadata document (RFC 9728),
+   which names the resource and its authorization server.
+3. It fetches `/.well-known/oauth-authorization-server` (RFC 8414),
+   which lists the `/oauth/authorize`, `/oauth/token`, and
+   `/oauth/register` endpoints and advertises `none` as a supported
+   `token_endpoint_auth_method`.
+4. The client registers itself with `POST /oauth/register` (dynamic
+   client registration, RFC 7591) and receives a generated `client_id` —
+   this is stateless and unauthenticated; any client can obtain one.
+5. The client opens `/oauth/authorize` with that `client_id` and a
+   `redirect_uri`, the user signs in with Google, and the server
+   redirects back with an authorization code.
+6. The client exchanges the code at `/oauth/token` (PKCE-verified) for a
+   Bearer token, which is used for all subsequent `/api/mcp` calls.
+
+`redirect_uri` is restricted to an allow-list: the Claude Code and
+claude.ai callback URLs, and any `http://localhost` or `http://127.0.0.1`
+loopback address (any port, any path) for local development clients.
+
+### Claude Code
+
+```
+claude mcp add --transport http inventory https://inventory.jointheleague.org/api/mcp
+```
+
+Then run `/mcp` inside Claude Code and follow the prompts — it will open
+a browser for Google sign-in and complete the OAuth flow automatically.
+
+### claude.ai custom connector
+
+1. Go to **Settings → Connectors → Add custom connector**.
+2. Enter the server URL: `https://inventory.jointheleague.org/api/mcp`.
+3. No client id or secret is needed — claude.ai discovers everything it
+   needs (including registering itself) automatically.
+4. Complete the Google sign-in prompt when it appears.
+
 ## Available Tools
 
 ### Read Operations (any authenticated user)
@@ -122,8 +170,17 @@ with their status, creation date, and last usage.
 
 ## Security
 
-- **Token storage**: Tokens are stored as SHA-256 hashes. The plaintext
-  is shown only once at creation time.
+- **Token storage**: Tokens are stored as a SHA-256 hash (used for
+  lookup/validation) plus a separate AES-256-GCM encrypted copy, so the
+  owner can view the full token again later on the MCP Setup page — no
+  plaintext is written to the database. The encryption key is
+  `TOKEN_ENCRYPTION_KEY` if set, otherwise it's derived from
+  `SESSION_SECRET`, so no new configuration is required in production.
+  Only the owning user's own tokens are ever decrypted (`GET
+  /api/tokens`); the admin token list never includes token values, and
+  revoked tokens never decrypt. Tokens created before this encrypted
+  column existed have no encrypted copy and show a "regenerate to
+  reveal" note instead.
 - **Revocation**: Tokens can be revoked immediately by the token owner
   (from the Account page) or by an admin (from the admin dashboard).
 - **Role changes**: When a user's role is changed, all their active
