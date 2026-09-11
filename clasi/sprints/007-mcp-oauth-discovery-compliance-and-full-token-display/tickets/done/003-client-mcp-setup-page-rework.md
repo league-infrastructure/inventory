@@ -1,7 +1,7 @@
 ---
 id: '003'
 title: Client MCP Setup page rework
-status: open
+status: done
 use-cases:
 - SUC-002
 - SUC-003
@@ -32,34 +32,46 @@ did the server half).
 
 ## Acceptance Criteria
 
-- [ ] The API Key field and both config snippets (Claude Desktop, Claude
+- [x] The API Key field and both config snippets (Claude Desktop, Claude
       Code) render the complete token verbatim — no `...`, no `truncate`
       CSS class, no "Token not available — regenerate" state for tokens
       that have a stored value.
-- [ ] Tokens with `token = null` (pre-migration) show a "regenerate to
+- [x] Tokens with `token = null` (pre-migration) show a "regenerate to
       reveal" note instead of a truncated value or a crash.
-- [ ] The page lists every one of the caller's non-revoked tokens (label,
+- [x] The page lists every one of the caller's non-revoked tokens (label,
       created date, last used, full token value, copy button, revoke
       button) — not just `tokens[0]`.
-- [ ] The config snippets default to the most recently created token
+- [x] The config snippets default to the most recently created token
       labeled `mcp` if one exists; otherwise fall back to the newest
       token overall.
-- [ ] Revoking a token from the list removes it from the list without
+- [x] Revoking a token from the list removes it from the list without
       affecting the display of the others.
-- [ ] All `localStorage` reads/writes for `mcp_token_<id>` are removed
+- [x] All `localStorage` reads/writes for `mcp_token_<id>` are removed
       from `McpSetup.tsx`.
-- [ ] A new "Claude Code via OAuth" section documents: `claude mcp add
+- [x] A new "Claude Code via OAuth" section documents: `claude mcp add
       --transport http inventory <PUBLIC_URL>/api/mcp`, then `/mcp` to
       authorize — no client id needed now that dynamic client
       registration exists (ticket 001). The existing claude.ai custom
       connector section is kept, with a note that no manually entered
       client id/secret is required.
-- [ ] `client/src/pages/admin/AdminTokens.tsx` is left unchanged — it may
+- [x] `client/src/pages/admin/AdminTokens.tsx` is left unchanged — it may
       keep showing prefixes for other users' tokens (out of scope per
       issue).
 - [ ] Manual verification against production/staging: opening MCP Setup
       in a fresh browser with empty `localStorage` shows the complete
       token for an existing key with a non-null `token` value.
+      **Not performed** — no browser tool was reachable in this
+      non-interactive session (`browsermcp` reported "No connection to
+      browser extension"), and this environment has no access to
+      production/staging. Verified instead: `npx tsc --noEmit` and
+      `npm run build` both clean; local dev server + Postgres exercised
+      directly via the test-auth bypass and `curl` against
+      `GET/POST/DELETE /api/tokens`, confirming the API shape the page
+      consumes (`token: string | null` present, full value returned for
+      a freshly created token); the rendered JSX was read closely against
+      every acceptance criterion. The team-lead or stakeholder should do
+      the actual fresh-browser check against a deployed environment
+      before/at close.
 
 ## Implementation Plan
 
