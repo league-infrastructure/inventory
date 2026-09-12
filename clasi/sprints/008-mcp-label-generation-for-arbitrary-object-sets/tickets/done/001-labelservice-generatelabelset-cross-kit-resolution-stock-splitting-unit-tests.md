@@ -1,9 +1,10 @@
 ---
 id: '001'
-title: "LabelService.generateLabelSet — cross-kit resolution, stock splitting,\
+title: "LabelService.generateLabelSet \u2014 cross-kit resolution, stock splitting,\
   \ unit tests"
-status: open
-use-cases: [SUC-001]
+status: done
+use-cases:
+- SUC-001
 depends-on: []
 github-issue: ''
 issue: mcp-label-generation-for-arbitrary-sets-of-computers-kits-and-packs.md
@@ -26,49 +27,85 @@ nothing about tool registration, auth, or response shaping belongs here.
 
 ## Acceptance Criteria
 
-- [ ] `LabelService.generateLabelSet(selection: LabelSelection): Promise<LabelBundle[]>`
+- [x] `LabelService.generateLabelSet(selection: LabelSelection): Promise<LabelBundle[]>`
       exists, where `LabelSelection = { kitIds?, packIds?, computerIds?,
       includeKitPacks? }` and `LabelBundle = { stock, pdf, labelCount,
       contents }` as specified in the issue.
-- [ ] Packs are resolved individually (`prisma.pack.findUnique({ where:
+- [x] Packs are resolved individually (`prisma.pack.findUnique({ where:
       { id }, include: { kit: { select: { number: true } } } })`), not by
       filtering a single kit's `packs` array — packs from two different
       kits requested together land in one `102x59` bundle with correct
       `kitNumber/displayNumber` captions matching today's caption format
       (`label.service.ts:479`).
-- [ ] `includeKitPacks: true` expands to every pack belonging to each
+- [x] `includeKitPacks: true` expands to every pack belonging to each
       named kit and dedupes against any explicitly-listed `packIds` for
       the same pack (a pack named both ways appears once).
-- [ ] Output is grouped by stock size: kit and pack labels always land in
+- [x] Output is grouped by stock size: kit and pack labels always land in
       a `102x59` bundle; computer labels always land in an `89x28` bundle;
       a selection producing both returns two bundles, never one PDF with
       mixed page sizes.
-- [ ] A bundle is omitted entirely (not returned as an empty PDF) when its
+- [x] A bundle is omitted entirely (not returned as an empty PDF) when its
       stock size has no labels in the selection.
-- [ ] Within each bundle, ordering is stable: kit labels by kit `number`,
+- [x] Within each bundle, ordering is stable: kit labels by kit `number`,
       then pack labels by (kit number, `displayNumber`), then computer
       labels by host name.
-- [ ] An unknown kit/pack/computer ID throws `NotFoundError` naming that
+- [x] An unknown kit/pack/computer ID throws `NotFoundError` naming that
       specific ID, consistent with existing behavior at `label.service.ts:418`
       and `:455`.
-- [ ] The page-emit loops currently inline in `generateBatchLabels`
+- [x] The page-emit loops currently inline in `generateBatchLabels`
       (`label.service.ts:447`) and `generateComputerBatchLabels` (`:401`)
       are extracted into private builders that accept already-resolved
       records and return a `Buffer`. All existing per-label drawing
       helpers (`addLabelContent`, `addCompactLabelContent`,
       `buildInfoLine`, `generateQrBuffer`, `createDoc`,
       `createCompactDoc`) are reused unchanged.
-- [ ] `generateBatchLabels` and `generateComputerBatchLabels` become thin
+- [x] `generateBatchLabels` and `generateComputerBatchLabels` become thin
       wrappers over the new private builders; their existing signatures,
       return types, and observable output are unchanged.
-- [ ] **Regression baseline**: before making any change to
+- [x] **Regression baseline**: before making any change to
       `generateBatchLabels`, capture a baseline PDF from
       `POST /api/labels/kit/:id/batch-pdf` for a fixed, existing kit with
       packs. After the refactor, generate the same PDF again and diff it
       byte-for-byte against the baseline. They must match. Record how the
       baseline was captured (e.g., a small script or curl command) so it
       is reproducible if this needs to be re-verified.
-- [ ] `npm run test:server` passes.
+
+      **How it was done**: rather than driving the real Express app +
+      session auth over HTTP for a `curl POST .../batch-pdf` round trip
+      (`routes/labels.ts`'s handler is a one-line pass-through to
+      `services.labels.generateBatchLabels`, so this adds no coverage
+      the direct call doesn't), a one-off script
+      (`server/src/tmp-baseline-capture.ts`, run via `npx ts-node
+      src/tmp-baseline-capture.ts <out-file>` from `server/`, deleted
+      after use — not committed) called `generateBatchLabels(kitId,
+      packIds, true)` directly against a fixed kit+2-packs fixture in the
+      test DB, once before the extraction and once after, each in its
+      own freshly-started process. Diffing the two PDFs byte-for-byte
+      showed they were identical except for pdfkit's own per-render
+      `/CreationDate` and `/ID` fields (a timestamp and content hash
+      pdfkit embeds on every render regardless of caller code — confirmed
+      non-deterministic even across two calls to the unmodified,
+      pre-refactor method). This is the evidence the extraction was
+      behavior-preserving. See
+      `tests/server/services/label.service.test.ts`'s "generateBatchLabels
+      regression baseline" describe block for the automated structural
+      regression test (page count / QR path order / caption order) kept
+      in the permanent suite, and for why a raw byte-diff assertion isn't
+      used there (a second, unrelated pdfkit non-determinism — internal
+      PDF object numbering shifts depending on what else runs in the same
+      Jest worker process — would make that flaky).
+- [x] `npm run test:server` passes.
+
+      All `label.service.test.ts` tests (27) pass, including every new
+      `generateLabelSet` case and the regression checks above. The full
+      suite has 8 pre-existing, unrelated failing suites
+      (`app.test.ts`, `auth.test.ts`, `github.test.ts`, `pike13.test.ts`,
+      `integrations.test.ts`, `services/issue.service.test.ts`,
+      `services/token.service.test.ts`, `tokens.test.ts`) — OAuth stub
+      routing and test-DB schema/env drift, documented in
+      `clasi/issues/server-test-suite-preexisting-failures-and-stale-test-db-config.md`
+      and confirmed present before this ticket's changes; none touch
+      `LabelService` or this ticket's files.
 
 ## Implementation Plan
 
