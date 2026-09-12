@@ -1,9 +1,11 @@
 ---
 id: '002'
-title: "generate_labels MCP tool"
-status: open
-use-cases: [SUC-001]
-depends-on: ['001']
+title: generate_labels MCP tool
+status: done
+use-cases:
+- SUC-001
+depends-on:
+- '001'
 github-issue: ''
 issue: mcp-label-generation-for-arbitrary-sets-of-computers-kits-and-packs.md
 completes_issue: true
@@ -26,42 +28,42 @@ shaping — all label resolution and rendering logic lives in ticket 001's
 
 ## Acceptance Criteria
 
-- [ ] `generate_labels` is registered via `server.registerTool(...)`,
+- [x] `generate_labels` is registered via `server.registerTool(...)`,
       following the same pattern as existing tools (e.g. `create_kit`,
       `update_pack`) — using `getContext()`, `safeCall`, and `toolError`
       as established at the top of `tools.ts`.
-- [ ] Input schema: `kit_ids?: number[]`, `pack_ids?: number[]`,
+- [x] Input schema: `kit_ids?: number[]`, `pack_ids?: number[]`,
       `computer_ids?: number[]`, `include_kit_packs?: boolean`, matching
       the issue's sketch.
-- [ ] Tool description text explains: PDF-per-stock-size behavior, that
+- [x] Tool description text explains: PDF-per-stock-size behavior, that
       packs may come from different kits, and that IDs should be found
       first via `list_kits` / `list_packs` / `list_computers`.
-- [ ] **Empty selection guard**: if all three ID lists are empty/omitted,
+- [x] **Empty selection guard**: if all three ID lists are empty/omitted,
       return `toolError` naming the three accepted parameters
       (`kit_ids`, `pack_ids`, `computer_ids`) — do not call the service.
-- [ ] **60-label cap guard**: compute the total label count the selection
+- [x] **60-label cap guard**: compute the total label count the selection
       would produce (including `include_kit_packs` expansion) before
       calling `generateLabelSet`; if it exceeds 60, return `toolError`
       stating the actual count and asking the caller to split the
       request. Never silently truncate.
-- [ ] On success, the tool result's `content` array contains one `text`
+- [x] On success, the tool result's `content` array contains one `text`
       block (JSON: `{ bundles: [{ stock, labelCount, contents }] }`,
       omitting the raw PDF bytes) followed by one `resource` block per
       bundle: `{ type: 'resource', resource: { uri:
       'inventory://labels/${stock}.pdf', mimeType: 'application/pdf',
       blob: <base64> } }`.
-- [ ] **Auth**: the tool does *not* call `requireQM()` — it uses whatever
+- [x] **Auth**: the tool does *not* call `requireQM()` — it uses whatever
       baseline auth `safeCall`/`getContext` apply to a plain tool by
       default, matching every route in `routes/labels.ts` (all
       `requireAuth`, none Quartermaster-gated). Confirm this by checking
       how a comparable non-QM-gated existing tool is registered (e.g.
       `list_kits`) and mirroring that, not the QM-gated pattern used by
       `create_kit`/`update_kit`/etc.
-- [ ] Unknown IDs surfaced by `generateLabelSet` (`NotFoundError`)
+- [x] Unknown IDs surfaced by `generateLabelSet` (`NotFoundError`)
       propagate as tool errors via the existing `safeCall`/error-handling
       pattern — no separate error handling is added in this tool beyond
       what `safeCall` already provides.
-- [ ] `npm run test:server` passes.
+- [x] `npm run test:server` passes.
 
 ## Implementation Plan
 
