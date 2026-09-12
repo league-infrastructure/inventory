@@ -1,8 +1,9 @@
 ---
 id: '003'
-title: "list_computers filter pass-through"
-status: open
-use-cases: [SUC-002]
+title: list_computers filter pass-through
+status: done
+use-cases:
+- SUC-002
 depends-on: []
 github-issue: ''
 issue: mcp-label-generation-for-arbitrary-sets-of-computers-kits-and-packs.md
@@ -29,22 +30,22 @@ parallel or last.
 
 ## Acceptance Criteria
 
-- [ ] `list_computers`'s input schema gains four optional fields:
+- [x] `list_computers`'s input schema gains four optional fields:
       `site_id?: number`, `kit_id?: number`, `disposition?: <matching
       ComputerService's existing disposition type>`, `unassigned?:
       boolean`.
-- [ ] Each provided filter is passed straight through to
+- [x] Each provided filter is passed straight through to
       `getContext().services.computer.list(...)` (or equivalent existing
       call site) unchanged — no new validation or filtering logic is
       added at the tool layer beyond what `ComputerService.list()` already
       enforces.
-- [ ] Filters compose: providing more than one (e.g. `kit_id` +
+- [x] Filters compose: providing more than one (e.g. `kit_id` +
       `disposition`) narrows on both, matching `ComputerService.list()`'s
       existing behavior when called with multiple filters.
-- [ ] Omitting all filters preserves today's behavior — the full computer
+- [x] Omitting all filters preserves today's behavior — the full computer
       list, unchanged in shape and ordering.
-- [ ] Tool description text is updated to mention the new filters.
-- [ ] `npm run test:server` passes.
+- [x] Tool description text is updated to mention the new filters.
+- [x] `npm run test:server` passes.
 
 ## Implementation Plan
 

@@ -462,12 +462,27 @@ export function registerTools(server: McpServer): void {
 
   // ─── Computers ──────────────────────────────────────────────────────
 
-  server.tool('list_computers', 'List all computers. IMPORTANT: When presenting computers to users, identify them by host name or model, never by database ID.', {}, async () => {
-    return safeCall(async () => {
-      const { services } = getContext();
-      return ok(await services.computers.list());
-    });
-  });
+  server.tool(
+    'list_computers',
+    'List computers, optionally narrowed by filters. IMPORTANT: When presenting computers to users, '
+    + 'identify them by host name or model, never by database ID. Filters: site_id and kit_id narrow to '
+    + 'a specific site/kit (find their IDs via list_sites/list_kits first); disposition narrows to one of '
+    + 'ACTIVE, LOANED, NEEDS_REPAIR, IN_REPAIR, SCRAPPED, LOST, or DECOMMISSIONED; unassigned=true returns '
+    + 'only computers with no site and no kit. Filters compose (e.g. kit_id + disposition narrows on both). '
+    + 'Omitting all filters returns the full computer list, as before.',
+    {
+      site_id: z.number().optional(),
+      kit_id: z.number().optional(),
+      disposition: z.string().optional().describe('ACTIVE, LOANED, NEEDS_REPAIR, IN_REPAIR, SCRAPPED, LOST, or DECOMMISSIONED'),
+      unassigned: z.boolean().optional(),
+    },
+    async ({ site_id, kit_id, disposition, unassigned }) => {
+      return safeCall(async () => {
+        const { services } = getContext();
+        return ok(await services.computers.list({ siteId: site_id, kitId: kit_id, disposition, unassigned }));
+      });
+    },
+  );
 
   server.tool('get_computer', 'Get a computer by database ID. NOTE: Users identify computers by host name or model, not database ID. Use list_computers to find the database ID first.', { id: z.number() }, async ({ id }) => {
     return safeCall(async () => {
