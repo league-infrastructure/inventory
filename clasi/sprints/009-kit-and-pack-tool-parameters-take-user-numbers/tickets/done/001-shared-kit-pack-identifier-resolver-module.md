@@ -1,8 +1,10 @@
 ---
 id: '001'
 title: Shared kit/pack identifier resolver module
-status: open
-use-cases: [SUC-001, SUC-002]
+status: done
+use-cases:
+- SUC-001
+- SUC-002
 depends-on: []
 github-issue: ''
 issue: mcp-tools-must-use-user-facing-identifiers-not-database-ids.md
@@ -45,22 +47,22 @@ buildable and testable standalone.
 
 ## Acceptance Criteria
 
-- [ ] `server/src/mcp/identifiers.ts` exports a kit-number resolver and a
+- [x] `server/src/mcp/identifiers.ts` exports a kit-number resolver and a
       pack-designator resolver (naming/signatures at implementer's
       discretion, consistent with the existing style of
       `server/src/mcp/context.ts` / `tools.ts`).
-- [ ] A valid `kit_number` resolves to the correct `Kit`; an unknown
+- [x] A valid `kit_number` resolves to the correct `Kit`; an unknown
       number throws an explicit, tool-facing error and never falls back
       to interpreting the number as a database id.
-- [ ] A valid `(kit_number, pack_number)` pair, and the equivalent
+- [x] A valid `(kit_number, pack_number)` pair, and the equivalent
       combined `"kit_number/pack_number"` string, both resolve to the
       correct `Pack`; an unknown kit or an unknown pack-within-kit
       throws an explicit, distinguishable error.
-- [ ] Collision test passes: kit number 26 (database id 17) and kit
+- [x] Collision test passes: kit number 26 (database id 17) and kit
       number 17 resolve to their own distinct kits; packs 503 (`"26/1"`),
       413 (`"16/1"`), and 535 (`"7/1"`) each resolve to their own
       distinct pack.
-- [ ] No existing tool in `tools.ts` is modified by this ticket.
+- [x] No existing tool in `tools.ts` is modified by this ticket.
 
 ## Implementation Plan
 
