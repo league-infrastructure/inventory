@@ -1,7 +1,7 @@
 ---
 id: 008
 title: MCP Label Generation for Arbitrary Object Sets
-status: executing
+status: done
 branch: sprint/008-mcp-label-generation-for-arbitrary-object-sets
 use-cases:
 - SUC-001
