@@ -19,6 +19,53 @@ const COMPACT_MARGIN = 4;
 const ORG_NAME = 'The League Of\nAmazing Programmers';
 const CONTACT_LINE = 'jointheleague.org (858) 284-0481';
 
+// A single 102x59 (kit or pack) label page, already resolved to the values
+// addLabelContent() needs — no further Prisma lookups happen while
+// rendering.
+interface KitPackPage {
+  qrPath: string;
+  number: string;
+  name: string;
+  description?: string | null;
+}
+
+// A single 89x28 (computer) label page, already resolved.
+interface ComputerPageRecord {
+  qrPath: string;
+  machineName: string;
+  credentials: string | null;
+  infoLine: string | null;
+}
+
+/** Physical label stock a bundle is printed on. */
+export type LabelStock = '102x59' | '89x28';
+
+/**
+ * Explicit-ID selection of kits, packs, and/or computers to generate
+ * labels for. Packs are resolved individually (not through a single
+ * kit's `packs` array), so packs from different kits can be requested
+ * together in one call.
+ */
+export interface LabelSelection {
+  kitIds?: number[];
+  packIds?: number[];
+  computerIds?: number[];
+  /**
+   * When true, every pack belonging to each kit in `kitIds` is added to
+   * the selection, deduped against any pack already present in `packIds`.
+   */
+  includeKitPacks?: boolean;
+}
+
+/** One rendered PDF, plus a manifest of what it contains. */
+export interface LabelBundle {
+  stock: LabelStock;
+  pdf: Buffer;
+  labelCount: number;
+  /** Human-readable caption for each label in the bundle, in render order. */
+  contents: string[];
+}
+
 // Layout constants
 const HEADER_HEIGHT = 48;
 const LEFT_COL_WIDTH = 75;
@@ -398,15 +445,42 @@ export class LabelService {
     });
   }
 
-  async generateComputerBatchLabels(computerIds: number[]): Promise<Buffer> {
-    if (!computerIds.length) throw new Error('No computer IDs provided');
-
+  /**
+   * Render one 89x28 compact label per resolved computer record, in the
+   * order given. Page 1 is drawn on the document created by
+   * createCompactDoc(); every subsequent record gets an explicit addPage()
+   * first — this mirrors the original inline loop in
+   * generateComputerBatchLabels exactly.
+   */
+  private async buildComputerBundle(records: ComputerPageRecord[]): Promise<Buffer> {
     const doc = this.createCompactDoc();
     const buffers: Buffer[] = [];
     doc.on('data', (chunk: Buffer) => buffers.push(chunk));
 
-    for (let i = 0; i < computerIds.length; i++) {
-      const computerId = computerIds[i];
+    for (let i = 0; i < records.length; i++) {
+      const record = records[i];
+      if (i > 0) {
+        doc.addPage({
+          size: [COMPACT_WIDTH_PT, COMPACT_HEIGHT_PT],
+          margins: { top: COMPACT_MARGIN, bottom: COMPACT_MARGIN, left: COMPACT_MARGIN, right: COMPACT_MARGIN },
+        });
+      }
+
+      const qrBuffer = await this.generateQrBuffer(record.qrPath);
+      this.addCompactLabelContent(doc, qrBuffer, record.machineName, record.credentials, record.infoLine);
+    }
+
+    doc.end();
+    return new Promise((resolve) => {
+      doc.on('end', () => resolve(Buffer.concat(buffers)));
+    });
+  }
+
+  async generateComputerBatchLabels(computerIds: number[]): Promise<Buffer> {
+    if (!computerIds.length) throw new Error('No computer IDs provided');
+
+    const records: ComputerPageRecord[] = [];
+    for (const computerId of computerIds) {
       const computer = await this.prisma.computer.findUnique({
         where: { id: computerId },
         include: {
@@ -417,14 +491,6 @@ export class LabelService {
       });
       if (!computer) throw new NotFoundError(`Computer ${computerId} not found`);
 
-      if (i > 0) {
-        doc.addPage({
-          size: [COMPACT_WIDTH_PT, COMPACT_HEIGHT_PT],
-          margins: { top: COMPACT_MARGIN, bottom: COMPACT_MARGIN, left: COMPACT_MARGIN, right: COMPACT_MARGIN },
-        });
-      }
-
-      const qrBuffer = await this.generateQrBuffer(`/qr/c/${computerId}`);
       const machineName = computer.hostName?.name || computer.model || `#${computerId}`;
       const credentials = (computer.studentUsername || computer.studentPassword)
         ? `user: ${computer.studentUsername || '—'}  pass: ${computer.studentPassword || '—'}`
@@ -435,7 +501,31 @@ export class LabelService {
         computer.serialNumber,
       );
 
-      this.addCompactLabelContent(doc, qrBuffer, machineName, credentials, infoLine);
+      records.push({ qrPath: `/qr/c/${computerId}`, machineName, credentials, infoLine });
+    }
+
+    return this.buildComputerBundle(records);
+  }
+
+  /**
+   * Render one 102x59 label per resolved kit/pack page, in the order
+   * given. Page 1 is drawn on the document created by createDoc(); every
+   * subsequent page gets an explicit addPage() first — this mirrors the
+   * original inline loop in generateBatchLabels exactly.
+   */
+  private async buildKitPackBundle(pages: KitPackPage[]): Promise<Buffer> {
+    const doc = this.createDoc();
+    const buffers: Buffer[] = [];
+    doc.on('data', (chunk: Buffer) => buffers.push(chunk));
+
+    for (let i = 0; i < pages.length; i++) {
+      const page = pages[i];
+      if (i > 0) {
+        doc.addPage({ size: [LABEL_HEIGHT_PT, LABEL_WIDTH_PT], layout: 'landscape', margins: { top: MARGIN, bottom: MARGIN, left: MARGIN, right: MARGIN } });
+      }
+
+      const qrBuffer = await this.generateQrBuffer(page.qrPath);
+      this.addLabelContent(doc, qrBuffer, page.number, page.name, page.description);
     }
 
     doc.end();
@@ -454,36 +544,171 @@ export class LabelService {
     });
     if (!kit) throw new NotFoundError('Kit not found');
 
-    const doc = this.createDoc();
-    const buffers: Buffer[] = [];
-    doc.on('data', (chunk: Buffer) => buffers.push(chunk));
-
-    let firstPage = true;
+    const pages: KitPackPage[] = [];
 
     if (includeKit) {
-      const kitQr = await this.generateQrBuffer(`/qr/k/${kitId}`);
-      this.addLabelContent(doc, kitQr, String(kit.number), kit.name, kit.description);
-      firstPage = false;
+      pages.push({ qrPath: `/qr/k/${kitId}`, number: String(kit.number), name: kit.name, description: kit.description });
     }
 
     const selectedPacks = kit.packs.filter((p) => packIds.includes(p.id));
-
-    for (let i = 0; i < selectedPacks.length; i++) {
-      const pack = selectedPacks[i];
-      if (!firstPage) {
-        doc.addPage({ size: [LABEL_HEIGHT_PT, LABEL_WIDTH_PT], layout: 'landscape', margins: { top: MARGIN, bottom: MARGIN, left: MARGIN, right: MARGIN } });
-      }
-      firstPage = false;
-
-      const seq = pack.displayNumber;
-      const packQr = await this.generateQrBuffer(`/qr/p/${pack.id}`);
-      this.addLabelContent(doc, packQr, `${kit.number}/${seq}`, pack.name);
+    for (const pack of selectedPacks) {
+      pages.push({ qrPath: `/qr/p/${pack.id}`, number: `${kit.number}/${pack.displayNumber}`, name: pack.name });
     }
 
-    doc.end();
-    return new Promise((resolve) => {
-      doc.on('end', () => resolve(Buffer.concat(buffers)));
+    return this.buildKitPackBundle(pages);
+  }
+
+  /**
+   * Generate label PDFs for an arbitrary, explicit-ID selection of kits,
+   * packs, and/or computers, grouped by physical label stock size.
+   *
+   * Unlike generateBatchLabels(), packs are resolved individually
+   * (prisma.pack.findUnique per ID, joined to their own kit for the
+   * caption) rather than filtered against one kit's `packs` array — this
+   * is what allows packs from different kits to be requested together.
+   *
+   * Returns one bundle per stock size actually present in the selection
+   * (never both if only one is requested, never a bundle with zero
+   * labels). Kit/pack labels always render at 102x59; computer labels
+   * always render at 89x28 — a selection is never combined into one
+   * mixed-page-size PDF.
+   */
+  async generateLabelSet(selection: LabelSelection): Promise<LabelBundle[]> {
+    const kitIds = selection.kitIds ?? [];
+    const packIds = selection.packIds ?? [];
+    const computerIds = selection.computerIds ?? [];
+    const includeKitPacks = selection.includeKitPacks ?? false;
+
+    // --- Resolve kits (always with their packs, so includeKitPacks can
+    // expand without a second round-trip) ---
+    const kits = await Promise.all(kitIds.map(async (id) => {
+      const kit = await this.prisma.kit.findUnique({
+        where: { id },
+        include: {
+          packs: { select: { id: true, name: true, description: true, displayNumber: true }, orderBy: { displayNumber: 'asc' } },
+        },
+      });
+      if (!kit) throw new NotFoundError(`Kit ${id} not found`);
+      return kit;
+    }));
+
+    // --- Resolve explicitly-listed packs individually, joined to their
+    // own kit — this is the one change that unblocks cross-kit selection.
+    const explicitPacks = await Promise.all(packIds.map(async (id) => {
+      const pack = await this.prisma.pack.findUnique({
+        where: { id },
+        include: { kit: { select: { number: true } } },
+      });
+      if (!pack) throw new NotFoundError(`Pack ${id} not found`);
+      return pack;
+    }));
+
+    // --- Resolve computers ---
+    const computers = await Promise.all(computerIds.map(async (id) => {
+      const computer = await this.prisma.computer.findUnique({
+        where: { id },
+        include: {
+          hostName: { select: { name: true } },
+          kit: { select: { number: true } },
+          os: { select: { name: true } },
+        },
+      });
+      if (!computer) throw new NotFoundError(`Computer ${id} not found`);
+      return computer;
+    }));
+
+    // --- Dedup packs: explicit packIds win identity; includeKitPacks
+    // only adds packs not already present. ---
+    interface ResolvedPack {
+      id: number;
+      name: string;
+      description: string | null;
+      displayNumber: number;
+      kitNumber: number;
+    }
+    const packById = new Map<number, ResolvedPack>();
+    for (const pack of explicitPacks) {
+      packById.set(pack.id, {
+        id: pack.id,
+        name: pack.name,
+        description: pack.description,
+        displayNumber: pack.displayNumber,
+        kitNumber: pack.kit.number,
+      });
+    }
+    if (includeKitPacks) {
+      for (const kit of kits) {
+        for (const pack of kit.packs) {
+          if (!packById.has(pack.id)) {
+            packById.set(pack.id, {
+              id: pack.id,
+              name: pack.name,
+              description: pack.description,
+              displayNumber: pack.displayNumber,
+              kitNumber: kit.number,
+            });
+          }
+        }
+      }
+    }
+
+    const bundles: LabelBundle[] = [];
+
+    // --- 102x59 bundle: kits (by number) then packs (by kit number, then
+    // displayNumber) ---
+    const sortedKits = [...kits].sort((a, b) => a.number - b.number);
+    const sortedPacks = [...packById.values()].sort(
+      (a, b) => a.kitNumber - b.kitNumber || a.displayNumber - b.displayNumber,
+    );
+
+    if (sortedKits.length > 0 || sortedPacks.length > 0) {
+      const pages: KitPackPage[] = [];
+      const contents: string[] = [];
+
+      for (const kit of sortedKits) {
+        pages.push({ qrPath: `/qr/k/${kit.id}`, number: String(kit.number), name: kit.name, description: kit.description });
+        contents.push(`Kit ${kit.number}: ${kit.name}`);
+      }
+      for (const pack of sortedPacks) {
+        pages.push({ qrPath: `/qr/p/${pack.id}`, number: `${pack.kitNumber}/${pack.displayNumber}`, name: pack.name });
+        contents.push(`Pack ${pack.kitNumber}/${pack.displayNumber}: ${pack.name}`);
+      }
+
+      const pdf = await this.buildKitPackBundle(pages);
+      bundles.push({ stock: '102x59', pdf, labelCount: pages.length, contents });
+    }
+
+    // --- 89x28 bundle: computers, by host name ---
+    const sortedComputers = [...computers].sort((a, b) => {
+      const nameA = a.hostName?.name ?? '';
+      const nameB = b.hostName?.name ?? '';
+      return nameA.localeCompare(nameB);
     });
+
+    if (sortedComputers.length > 0) {
+      const records: ComputerPageRecord[] = [];
+      const contents: string[] = [];
+
+      for (const computer of sortedComputers) {
+        const machineName = computer.hostName?.name || computer.model || `#${computer.id}`;
+        const credentials = (computer.studentUsername || computer.studentPassword)
+          ? `user: ${computer.studentUsername || '—'}  pass: ${computer.studentPassword || '—'}`
+          : null;
+        const infoLine = this.buildInfoLine(
+          computer.kit?.number ?? null,
+          computer.os?.name ?? null,
+          computer.serialNumber,
+        );
+
+        records.push({ qrPath: `/qr/c/${computer.id}`, machineName, credentials, infoLine });
+        contents.push(machineName);
+      }
+
+      const pdf = await this.buildComputerBundle(records);
+      bundles.push({ stock: '89x28', pdf, labelCount: records.length, contents });
+    }
+
+    return bundles;
   }
 
   // --- HTML label generation ---

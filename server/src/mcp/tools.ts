@@ -462,12 +462,27 @@ export function registerTools(server: McpServer): void {
 
   // ─── Computers ──────────────────────────────────────────────────────
 
-  server.tool('list_computers', 'List all computers. IMPORTANT: When presenting computers to users, identify them by host name or model, never by database ID.', {}, async () => {
-    return safeCall(async () => {
-      const { services } = getContext();
-      return ok(await services.computers.list());
-    });
-  });
+  server.tool(
+    'list_computers',
+    'List computers, optionally narrowed by filters. IMPORTANT: When presenting computers to users, '
+    + 'identify them by host name or model, never by database ID. Filters: site_id and kit_id narrow to '
+    + 'a specific site/kit (find their IDs via list_sites/list_kits first); disposition narrows to one of '
+    + 'ACTIVE, LOANED, NEEDS_REPAIR, IN_REPAIR, SCRAPPED, LOST, or DECOMMISSIONED; unassigned=true returns '
+    + 'only computers with no site and no kit. Filters compose (e.g. kit_id + disposition narrows on both). '
+    + 'Omitting all filters returns the full computer list, as before.',
+    {
+      site_id: z.number().optional(),
+      kit_id: z.number().optional(),
+      disposition: z.string().optional().describe('ACTIVE, LOANED, NEEDS_REPAIR, IN_REPAIR, SCRAPPED, LOST, or DECOMMISSIONED'),
+      unassigned: z.boolean().optional(),
+    },
+    async ({ site_id, kit_id, disposition, unassigned }) => {
+      return safeCall(async () => {
+        const { services } = getContext();
+        return ok(await services.computers.list({ siteId: site_id, kitId: kit_id, disposition, unassigned }));
+      });
+    },
+  );
 
   server.tool('get_computer', 'Get a computer by database ID. NOTE: Users identify computers by host name or model, not database ID. Use list_computers to find the database ID first.', { id: z.number() }, async ({ id }) => {
     return safeCall(async () => {
@@ -564,6 +579,98 @@ export function registerTools(server: McpServer): void {
       return ok({ deleted: true });
     });
   });
+
+  // ─── Labels ─────────────────────────────────────────────────────────
+
+  const LABEL_CAP = 60;
+
+  server.tool(
+    'generate_labels',
+    'Generate printable label PDFs for an explicit set of kits, packs, and/or computers. '
+    + 'Renders one PDF per physical label stock size present in the selection: 102x59mm for '
+    + 'kits and packs, 89x28mm for computers — a single PDF never mixes stock sizes, so a '
+    + 'mixed kit/pack + computer selection returns two PDFs in one response. Packs may be '
+    + 'drawn from different kits in the same call. Set include_kit_packs to true to also '
+    + 'include every pack belonging to each kit in kit_ids (deduped against any pack already '
+    + 'listed in pack_ids). At least one of kit_ids, pack_ids, or computer_ids must be '
+    + 'non-empty, and the total label count (after include_kit_packs expansion) must not '
+    + 'exceed 60 — split larger requests into multiple calls rather than expecting truncation. '
+    + 'Use list_kits, list_packs, and list_computers first to find the numeric database IDs '
+    + 'this tool requires.',
+    {
+      kit_ids: z.array(z.number()).optional(),
+      pack_ids: z.array(z.number()).optional(),
+      computer_ids: z.array(z.number()).optional(),
+      include_kit_packs: z.boolean().optional(),
+    },
+    async ({ kit_ids, pack_ids, computer_ids, include_kit_packs }) => {
+      return safeCall(async () => {
+        const { services } = getContext();
+
+        const kitIds = kit_ids ?? [];
+        const packIds = pack_ids ?? [];
+        const computerIds = computer_ids ?? [];
+        const includeKitPacks = include_kit_packs ?? false;
+
+        if (kitIds.length === 0 && packIds.length === 0 && computerIds.length === 0) {
+          return toolError(
+            'No labels requested: provide at least one ID in kit_ids, pack_ids, or computer_ids.',
+          );
+        }
+
+        // Upper-bound label count computed from the raw ID lists, without
+        // calling generateLabelSet. Packs are the only part of the
+        // selection that can be deduped (explicit pack_ids plus, when
+        // include_kit_packs is set, every pack belonging to a listed kit,
+        // matching generateLabelSet's own pack-level Map dedup) — kit_ids
+        // and computer_ids are counted as given, since generateLabelSet
+        // does not dedupe those either.
+        const packIdSet = new Set(packIds);
+        if (includeKitPacks && kitIds.length > 0) {
+          const kitPacks = await services.prisma.pack.findMany({
+            where: { kitId: { in: kitIds } },
+            select: { id: true },
+          });
+          for (const p of kitPacks) packIdSet.add(p.id);
+        }
+        const estimatedCount = kitIds.length + packIdSet.size + computerIds.length;
+
+        if (estimatedCount > LABEL_CAP) {
+          return toolError(
+            `Selection would produce ${estimatedCount} labels, exceeding the ${LABEL_CAP}-label `
+            + 'cap. Split the request into smaller batches.',
+          );
+        }
+
+        const bundles = await services.labels.generateLabelSet({
+          kitIds,
+          packIds,
+          computerIds,
+          includeKitPacks,
+        });
+
+        const manifest = {
+          bundles: bundles.map((b) => ({ stock: b.stock, labelCount: b.labelCount, contents: b.contents })),
+        };
+
+        const content: CallToolResult['content'] = [
+          { type: 'text', text: JSON.stringify(manifest, null, 2) },
+        ];
+        for (const bundle of bundles) {
+          content.push({
+            type: 'resource',
+            resource: {
+              uri: `inventory://labels/${bundle.stock}.pdf`,
+              mimeType: 'application/pdf',
+              blob: bundle.pdf.toString('base64'),
+            },
+          });
+        }
+
+        return { content };
+      });
+    },
+  );
 
   // ─── Host Names ─────────────────────────────────────────────────────
 
