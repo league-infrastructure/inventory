@@ -1,9 +1,13 @@
 ---
 id: '003'
 title: Convert pack-identifying parameters across pack tools
-status: open
-use-cases: [SUC-002, SUC-003]
-depends-on: ['001', '002']
+status: done
+use-cases:
+- SUC-002
+- SUC-003
+depends-on:
+- '001'
+- '002'
 github-issue: ''
 issue: mcp-tools-must-use-user-facing-identifiers-not-database-ids.md
 completes_issue: true
@@ -57,26 +61,26 @@ dependency) and out of scope, respectively.
 
 ## Acceptance Criteria
 
-- [ ] Every tool listed above takes a `kit_number` + `pack_number`
+- [x] Every tool listed above takes a `kit_number` + `pack_number`
       designator (structured pair or combined `"26/1"` string) instead
       of a pack database-id parameter, and no longer accepts
       `id`/`packId` for pack identification.
-- [ ] Each converted tool: a valid designator resolves to and operates
+- [x] Each converted tool: a valid designator resolves to and operates
       on the correct pack; an unknown kit number, or an unknown
       pack-within-kit, returns an explicit tool error, not silent
       misresolution.
-- [ ] Collision case verified on at least `update_pack` or `list_items`:
+- [x] Collision case verified on at least `update_pack` or `list_items`:
       packs 503 (`"26/1"`), 413 (`"16/1"`), and 535 (`"7/1"`) each
       resolve to and operate on their own distinct pack.
-- [ ] `generate_labels`'s `pack_ids` (added in sprint 008) is converted
+- [x] `generate_labels`'s `pack_ids` (added in sprint 008) is converted
       — the pack-side counterpart of ticket 002's `kit_ids`/`kit_id`
       conversions.
-- [ ] `renumber_pack`'s target `displayNumber` parameter is unchanged;
+- [x] `renumber_pack`'s target `displayNumber` parameter is unchanged;
       only the parameter identifying which pack changes.
-- [ ] QM-gating on every converted tool is unchanged — existing
+- [x] QM-gating on every converted tool is unchanged — existing
       `_meta.requiresQM` assertions in
       `tests/server/services/mcp-tool-metadata.test.ts` still pass.
-- [ ] Kit-identifying and computer-identifying parameters on shared
+- [x] Kit-identifying and computer-identifying parameters on shared
       tools (`generate_labels`, `list_issues`, `create_issue`) are
       untouched by this ticket (verify ticket 002's kit conversions on
       these same tools still work correctly after this ticket's edits).

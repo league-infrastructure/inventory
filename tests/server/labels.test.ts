@@ -138,7 +138,7 @@ describe('generate_labels MCP tool', () => {
         const result = await handler({});
         expect(result.isError).toBe(true);
         expect(result.content[0].text).toMatch(/kit_numbers/);
-        expect(result.content[0].text).toMatch(/pack_ids/);
+        expect(result.content[0].text).toMatch(/packs/);
         expect(result.content[0].text).toMatch(/computer_ids/);
       });
       expect(generateLabelSetSpy).not.toHaveBeenCalled();
