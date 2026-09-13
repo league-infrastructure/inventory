@@ -1,9 +1,12 @@
 ---
 id: '004'
 title: Rewrite MCP_INSTRUCTIONS and add drift-guard assertion
-status: open
-use-cases: [SUC-003]
-depends-on: ['002', '003']
+status: done
+use-cases:
+- SUC-003
+depends-on:
+- '002'
+- '003'
 github-issue: ''
 issue: mcp-tools-must-use-user-facing-identifiers-not-database-ids.md
 completes_issue: true
@@ -46,28 +49,41 @@ having converted every in-scope kit/pack tool:
 
 ## Acceptance Criteria
 
-- [ ] `MCP_INSTRUCTIONS` no longer contains kit-number-vs-database-id
+- [x] `MCP_INSTRUCTIONS` no longer contains kit-number-vs-database-id
       mapping guidance; the model is not instructed to use database ids
       "internally" for kit/pack tools.
-- [ ] Rules 1, 3, 4 (or their equivalents) are retained for identifiers
+- [x] Rules 1, 3, 4 (or their equivalents) are retained for identifiers
       this sprint does not touch (sites, OS, host names, computers by
       name, images/notes/issues/items).
-- [ ] `tests/server/services/mcp-tool-metadata.test.ts` has a new,
+- [x] `tests/server/services/mcp-tool-metadata.test.ts` has a new,
       passing assertion that fails if any tool converted in tickets
       002/003 is registered with a kit/pack parameter matching
       `/id$/i`.
-- [ ] The existing `_meta.requiresQM` assertions in that same test file
+- [x] The existing `_meta.requiresQM` assertions in that same test file
       still pass unmodified.
-- [ ] Both-surfaces verification (SUC-003): at least one converted tool
+- [x] Both-surfaces verification (SUC-003): at least one converted tool
       is exercised through the MCP HTTP path and through the in-app AI
       chat path (`ai-chat.service.ts`'s `withMcpClient`), confirming
       consistent results — extend
       `tests/server/services/ai-chat-mcp-unification.test.ts` or
       `ai-chat.service.test.ts` if no existing case covers a converted
-      kit/pack tool.
+      kit/pack tool. **Satisfied by existing ticket-003 tests**, no
+      extension needed: `ai-chat-mcp-unification.test.ts`'s "renumber_pack
+      via chat matches the direct MCP tool call for the same starting
+      state and input, audited as MCP" (and its update_pack/delete_pack
+      siblings) already exercise a converted pack tool (`renumber_pack`,
+      a pack designator param) through both the direct-handler path
+      (this codebase's established stand-in for the MCP path — the same
+      `registerTools()` fake-collector convention used by
+      `mcp-kit-tools.test.ts`, `mcp-pack-tools.test.ts`,
+      `mcp-renumber-pack.test.ts`, `labels.test.ts`, and
+      `computers.test.ts`; no test in this suite makes a literal HTTP
+      round-trip to `/api/mcp` with an authenticated tool call) and
+      `AiChatService.withMcpClient()`, asserting identical results.
 - [ ] `npm run test:server` shows no new failures relative to the
       tracked pre-existing baseline (309 passed / 41 failed / 350
-      total).
+      total). **Left unchecked per instruction**: verified once at
+      `close_sprint` for the whole sprint, not re-run per ticket.
 
 ## Implementation Plan
 
