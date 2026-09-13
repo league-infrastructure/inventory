@@ -137,7 +137,7 @@ describe('generate_labels MCP tool', () => {
       await mcpContext.run({ user: fakeUser('QUARTERMASTER'), services }, async () => {
         const result = await handler({});
         expect(result.isError).toBe(true);
-        expect(result.content[0].text).toMatch(/kit_ids/);
+        expect(result.content[0].text).toMatch(/kit_numbers/);
         expect(result.content[0].text).toMatch(/pack_ids/);
         expect(result.content[0].text).toMatch(/computer_ids/);
       });
@@ -174,7 +174,7 @@ describe('generate_labels MCP tool', () => {
     const handler = getGenerateLabelsHandler();
 
     await mcpContext.run({ user: fakeUser('QUARTERMASTER'), services }, async () => {
-      const result = await handler({ kit_ids: [kitId], include_kit_packs: true });
+      const result = await handler({ kit_numbers: [kitNumber], include_kit_packs: true });
       expect(result.isError).toBeFalsy();
       expect(result.content).toHaveLength(2);
 
@@ -201,7 +201,7 @@ describe('generate_labels MCP tool', () => {
     const handler = getGenerateLabelsHandler();
 
     await mcpContext.run({ user: fakeUser('QUARTERMASTER'), services }, async () => {
-      const result = await handler({ kit_ids: [kitId], computer_ids: [computerId] });
+      const result = await handler({ kit_numbers: [kitNumber], computer_ids: [computerId] });
       expect(result.isError).toBeFalsy();
       expect(result.content).toHaveLength(3); // 1 text block + 2 resource blocks
 
@@ -222,21 +222,63 @@ describe('generate_labels MCP tool', () => {
     const handler = getGenerateLabelsHandler();
 
     await mcpContext.run({ user: fakeUser('INSTRUCTOR'), services }, async () => {
-      const result = await handler({ kit_ids: [kitId] });
+      const result = await handler({ kit_numbers: [kitNumber] });
       expect(result.isError).toBeFalsy();
       const manifest = JSON.parse(result.content[0].text as string);
       expect(manifest.bundles).toHaveLength(1);
     });
   });
 
-  it('propagates NotFoundError for an unknown kit ID as a tool error', async () => {
+  it('collision: kit_numbers resolves by kit number, never database id — the sprint 008 regression case', async () => {
+    // kitA and kitB: kitA's number is set to equal kitB's database id, and
+    // kitB's number is set to equal kitA's database id — the same "one
+    // kit's number matches a different kit's database id" shape as the
+    // stakeholder's production report (kit number 26 / database id 17),
+    // built from auto-assigned ids so it can't collide with another test
+    // file's hardcoded ids under parallel jest workers against the shared
+    // test database.
+    const reg = getRegistry();
+    const uid = getUserId();
+    const suffix = getSuffix();
+    const kitA = await reg.kits.create({
+      number: (suffix % 100000) + 950001,
+      name: `svc-test-${suffix}-genlabels-collision-a`,
+      siteId,
+    }, uid);
+    const kitB = await reg.kits.create({
+      number: kitA.id,
+      name: `svc-test-${suffix}-genlabels-collision-b`,
+      siteId,
+    }, uid);
+    await reg.kits.update(kitA.id, { number: kitB.id }, uid);
+
+    try {
+      const services = ServiceRegistry.create(getPrisma(), 'MCP');
+      const handler = getGenerateLabelsHandler();
+      const generateLabelSetSpy = jest.spyOn(services.labels, 'generateLabelSet');
+
+      await mcpContext.run({ user: fakeUser('QUARTERMASTER'), services }, async () => {
+        // kit_numbers: [kitB.id] must resolve to kitA (the kit whose
+        // *number* is kitB.id), never to kitB itself.
+        const result = await handler({ kit_numbers: [kitB.id] });
+        expect(result.isError).toBeFalsy();
+        expect(generateLabelSetSpy).toHaveBeenCalledWith(
+          expect.objectContaining({ kitIds: [kitA.id] }),
+        );
+      });
+    } finally {
+      await getPrisma().kit.deleteMany({ where: { id: { in: [kitA.id, kitB.id] } } });
+    }
+  });
+
+  it('propagates NotFoundError for an unknown kit number as a tool error', async () => {
     const services = ServiceRegistry.create(getPrisma(), 'MCP');
     const handler = getGenerateLabelsHandler();
 
     await mcpContext.run({ user: fakeUser('QUARTERMASTER'), services }, async () => {
-      const result = await handler({ kit_ids: [999999] });
+      const result = await handler({ kit_numbers: [999999] });
       expect(result.isError).toBe(true);
-      expect(result.content[0].text).toMatch(/Kit 999999 not found/);
+      expect(result.content[0].text).toMatch(/Kit number 999999 not found/);
     });
   });
 });

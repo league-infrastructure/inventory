@@ -6,6 +6,7 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import { hostname } from 'os';
 import { hasQMAccess } from '../contracts';
+import { resolveKitByNumber } from './identifiers';
 
 // MCP clients struggle with anyOf schemas (nullable/optional numbers).
 // This helper accepts number, null, or string — coercing string numbers
@@ -158,10 +159,11 @@ export function registerTools(server: McpServer): void {
     });
   });
 
-  server.tool('get_kit', 'Get a kit by database ID with packs and computers. NOTE: Users refer to kits by their "number" field, not database ID. Use list_kits to find the database ID for a given kit number, then call this tool.', { id: z.number() }, async ({ id }) => {
+  server.tool('get_kit', 'Get a kit by kit number, with packs and computers.', { kit_number: z.number() }, async ({ kit_number }) => {
     return safeCall(async () => {
       const { services } = getContext();
-      return ok(await services.kits.get(id));
+      const kit = await resolveKitByNumber(services.prisma, kit_number);
+      return ok(await services.kits.get(kit.id));
     });
   });
 
@@ -184,9 +186,9 @@ export function registerTools(server: McpServer): void {
   });
 
   server.registerTool('update_kit', {
-    description: 'Update an existing kit. Set siteId/custodianId/categoryId to null to clear. All ID fields expect numeric database IDs — use list tools (list_sites, list_kits, etc.) to look up valid IDs first.',
+    description: 'Update an existing kit, identified by kit_number. Set siteId/custodianId/categoryId to null to clear. All other ID fields (siteId, custodianId, categoryId) expect numeric database IDs — use list tools (list_sites, list_kits, etc.) to look up valid IDs first.',
     inputSchema: {
-      id: z.number(),
+      kit_number: z.number(),
       number: z.number().optional(),
       containerType: z.string().optional(),
       name: z.string().optional(),
@@ -197,25 +199,27 @@ export function registerTools(server: McpServer): void {
       status: z.string().optional(),
     },
     _meta: { requiresQM: true },
-  }, async ({ id, ...input }) => {
+  }, async ({ kit_number, ...input }) => {
     return safeCall(async () => {
       requireQM();
       const { services, user } = getContext();
-      return ok(await services.kits.update(id, input as any, user.id));
+      const kit = await resolveKitByNumber(services.prisma, kit_number);
+      return ok(await services.kits.update(kit.id, input as any, user.id));
     });
   });
 
   server.registerTool('delete_kit', {
-    description: 'Delete a kit (must be retired and have no packs or computers)',
+    description: 'Delete a kit, identified by kit_number (must be retired and have no packs or computers)',
     inputSchema: {
-      id: z.number(),
+      kit_number: z.number(),
     },
     _meta: { requiresQM: true },
-  }, async ({ id }) => {
+  }, async ({ kit_number }) => {
     return safeCall(async () => {
       requireQM();
       const { services } = getContext();
-      const kit = await services.kits.get(id);
+      const resolved = await resolveKitByNumber(services.prisma, kit_number);
+      const kit = await services.kits.get(resolved.id);
       if (kit.status !== 'RETIRED') {
         throw new Error('Cannot delete active kit — retire it first');
       }
@@ -225,23 +229,25 @@ export function registerTools(server: McpServer): void {
       if (kit.computers.length > 0) {
         throw new Error(`Cannot delete kit: ${kit.computers.length} computer(s) still assigned`);
       }
-      await services.prisma.kit.delete({ where: { id } });
+      await services.prisma.kit.delete({ where: { id: resolved.id } });
       return ok({ deleted: true });
     });
   });
 
   server.registerTool('set_kit_last_inventoried', {
-    description: 'Set or clear the last inventoried date for a kit. Pass a date string to set, or "clear" to remove all inventory check records.',
+    description: 'Set or clear the last inventoried date for a kit, identified by kit_number. Pass a date string to set, or "clear" to remove all inventory check records.',
     inputSchema: {
-      kitId: z.number(),
+      kit_number: z.number(),
       date: z.string().describe('ISO date string (e.g. "2026-03-07") to set, or "clear" to remove all inventory checks'),
       notes: z.string().optional().describe('Optional notes for the inventory check'),
     },
     _meta: { requiresQM: true },
-  }, async ({ kitId, date, notes }) => {
+  }, async ({ kit_number, date, notes }) => {
     return safeCall(async () => {
       requireQM();
       const { services, user } = getContext();
+      const resolved = await resolveKitByNumber(services.prisma, kit_number);
+      const kitId = resolved.id;
       await services.kits.get(kitId);
       if (date === 'clear') {
         const { count } = await services.prisma.inventoryCheck.deleteMany({ where: { kitId } });
@@ -263,31 +269,33 @@ export function registerTools(server: McpServer): void {
 
   // ─── Packs ──────────────────────────────────────────────────────────
 
-  server.tool('list_packs', 'List packs. If kitId is provided, lists packs for that kit. If omitted, lists all packs with their kit info.', {
-    kitId: z.number().optional(),
-  }, async ({ kitId }) => {
+  server.tool('list_packs', 'List packs. If kit_number is provided, lists packs for that kit. If omitted, lists all packs with their kit info.', {
+    kit_number: z.number().optional(),
+  }, async ({ kit_number }) => {
     return safeCall(async () => {
       const { services } = getContext();
-      if (kitId != null) {
-        return ok(await services.packs.list(kitId));
+      if (kit_number != null) {
+        const kit = await resolveKitByNumber(services.prisma, kit_number);
+        return ok(await services.packs.list(kit.id));
       }
       return ok(await services.packs.listAll());
     });
   });
 
   server.registerTool('create_pack', {
-    description: 'Create a new pack in a kit',
+    description: 'Create a new pack in a kit, identified by kit_number',
     inputSchema: {
-      kitId: z.number(),
+      kit_number: z.number(),
       name: z.string(),
       description: z.string().optional(),
     },
     _meta: { requiresQM: true },
-  }, async ({ kitId, ...input }) => {
+  }, async ({ kit_number, ...input }) => {
     return safeCall(async () => {
       requireQM();
       const { services, user } = getContext();
-      return ok(await services.packs.create(input, user.id, kitId));
+      const kit = await resolveKitByNumber(services.prisma, kit_number);
+      return ok(await services.packs.create(input, user.id, kit.id));
     });
   });
 
@@ -465,21 +473,27 @@ export function registerTools(server: McpServer): void {
   server.tool(
     'list_computers',
     'List computers, optionally narrowed by filters. IMPORTANT: When presenting computers to users, '
-    + 'identify them by host name or model, never by database ID. Filters: site_id and kit_id narrow to '
-    + 'a specific site/kit (find their IDs via list_sites/list_kits first); disposition narrows to one of '
-    + 'ACTIVE, LOANED, NEEDS_REPAIR, IN_REPAIR, SCRAPPED, LOST, or DECOMMISSIONED; unassigned=true returns '
-    + 'only computers with no site and no kit. Filters compose (e.g. kit_id + disposition narrows on both). '
-    + 'Omitting all filters returns the full computer list, as before.',
+    + 'identify them by host name or model, never by database ID. Filters: site_id narrows to a specific '
+    + 'site (find its ID via list_sites first); kit_number narrows to a specific kit by the number printed '
+    + 'on it; disposition narrows to one of ACTIVE, LOANED, NEEDS_REPAIR, IN_REPAIR, SCRAPPED, LOST, or '
+    + 'DECOMMISSIONED; unassigned=true returns only computers with no site and no kit. Filters compose '
+    + '(e.g. kit_number + disposition narrows on both). Omitting all filters returns the full computer '
+    + 'list, as before.',
     {
       site_id: z.number().optional(),
-      kit_id: z.number().optional(),
+      kit_number: z.number().optional(),
       disposition: z.string().optional().describe('ACTIVE, LOANED, NEEDS_REPAIR, IN_REPAIR, SCRAPPED, LOST, or DECOMMISSIONED'),
       unassigned: z.boolean().optional(),
     },
-    async ({ site_id, kit_id, disposition, unassigned }) => {
+    async ({ site_id, kit_number, disposition, unassigned }) => {
       return safeCall(async () => {
         const { services } = getContext();
-        return ok(await services.computers.list({ siteId: site_id, kitId: kit_id, disposition, unassigned }));
+        let kitId: number | undefined;
+        if (kit_number != null) {
+          const kit = await resolveKitByNumber(services.prisma, kit_number);
+          kitId = kit.id;
+        }
+        return ok(await services.computers.list({ siteId: site_id, kitId, disposition, unassigned }));
       });
     },
   );
@@ -492,7 +506,7 @@ export function registerTools(server: McpServer): void {
   });
 
   server.registerTool('create_computer', {
-    description: 'Create a new computer',
+    description: 'Create a new computer. kit_number identifies the kit by its printed number, not database ID.',
     inputSchema: {
       serialNumber: z.string().optional(),
       serviceTag: z.string().optional(),
@@ -508,22 +522,29 @@ export function registerTools(server: McpServer): void {
       dateReceived: z.string().optional(),
       notes: z.string().optional(),
       siteId: zIdParam(),
-      kitId: zIdParam(),
+      kit_number: zIdParam(),
       osId: zIdParam(),
       custodianId: zIdParam(),
       hostNameId: zIdParam(),
     },
     _meta: { requiresQM: true },
-  }, async (args) => {
+  }, async ({ kit_number, ...args }) => {
     return safeCall(async () => {
       requireQM();
       const { services, user } = getContext();
-      return ok(await services.computers.create(args, user.id));
+      let kitId: number | null | undefined;
+      if (kit_number === null) {
+        kitId = null;
+      } else if (typeof kit_number === 'number') {
+        const kit = await resolveKitByNumber(services.prisma, kit_number);
+        kitId = kit.id;
+      }
+      return ok(await services.computers.create({ ...args, kitId }, user.id));
     });
   });
 
   server.registerTool('update_computer', {
-    description: 'Update an existing computer. For nullable ID fields, pass null or "null" to clear. For lastInventoried, pass "clear" to remove.',
+    description: 'Update an existing computer. For nullable ID fields, pass null or "null" to clear. For lastInventoried, pass "clear" to remove. kit_number identifies the kit by its printed number, not database ID — pass null or "null" to clear it.',
     inputSchema: {
       id: z.number(),
       serialNumber: z.string().optional(),
@@ -541,19 +562,25 @@ export function registerTools(server: McpServer): void {
       lastInventoried: z.string().optional().describe('ISO date string (e.g. "2026-03-07") to set, or "clear" to remove'),
       notes: z.string().optional(),
       siteId: zIdParam(),
-      kitId: zIdParam(),
+      kit_number: zIdParam(),
       osId: zIdParam(),
       custodianId: zIdParam(),
       hostNameId: zIdParam(),
       categoryId: zIdParam(),
     },
     _meta: { requiresQM: true },
-  }, async ({ id, ...input }) => {
+  }, async ({ id, kit_number, ...input }) => {
     return safeCall(async () => {
       requireQM();
       const { services, user } = getContext();
       const cleaned: any = { ...input };
       if (cleaned.lastInventoried === 'clear') cleaned.lastInventoried = null;
+      if (kit_number === null) {
+        cleaned.kitId = null;
+      } else if (typeof kit_number === 'number') {
+        const kit = await resolveKitByNumber(services.prisma, kit_number);
+        cleaned.kitId = kit.id;
+      }
       return ok(await services.computers.update(id, cleaned, user.id));
     });
   });
@@ -591,38 +618,43 @@ export function registerTools(server: McpServer): void {
     + 'kits and packs, 89x28mm for computers — a single PDF never mixes stock sizes, so a '
     + 'mixed kit/pack + computer selection returns two PDFs in one response. Packs may be '
     + 'drawn from different kits in the same call. Set include_kit_packs to true to also '
-    + 'include every pack belonging to each kit in kit_ids (deduped against any pack already '
-    + 'listed in pack_ids). At least one of kit_ids, pack_ids, or computer_ids must be '
-    + 'non-empty, and the total label count (after include_kit_packs expansion) must not '
-    + 'exceed 60 — split larger requests into multiple calls rather than expecting truncation. '
-    + 'Use list_kits, list_packs, and list_computers first to find the numeric database IDs '
-    + 'this tool requires.',
+    + 'include every pack belonging to each kit in kit_numbers (deduped against any pack '
+    + 'already listed in pack_ids). At least one of kit_numbers, pack_ids, or computer_ids '
+    + 'must be non-empty, and the total label count (after include_kit_packs expansion) must '
+    + 'not exceed 60 — split larger requests into multiple calls rather than expecting '
+    + 'truncation. kit_numbers takes the numbers printed on the kits directly; use list_packs '
+    + 'and list_computers to find the numeric database IDs pack_ids and computer_ids require.',
     {
-      kit_ids: z.array(z.number()).optional(),
+      kit_numbers: z.array(z.number()).optional(),
       pack_ids: z.array(z.number()).optional(),
       computer_ids: z.array(z.number()).optional(),
       include_kit_packs: z.boolean().optional(),
     },
-    async ({ kit_ids, pack_ids, computer_ids, include_kit_packs }) => {
+    async ({ kit_numbers, pack_ids, computer_ids, include_kit_packs }) => {
       return safeCall(async () => {
         const { services } = getContext();
 
-        const kitIds = kit_ids ?? [];
+        const kitNumbers = kit_numbers ?? [];
         const packIds = pack_ids ?? [];
         const computerIds = computer_ids ?? [];
         const includeKitPacks = include_kit_packs ?? false;
 
-        if (kitIds.length === 0 && packIds.length === 0 && computerIds.length === 0) {
+        if (kitNumbers.length === 0 && packIds.length === 0 && computerIds.length === 0) {
           return toolError(
-            'No labels requested: provide at least one ID in kit_ids, pack_ids, or computer_ids.',
+            'No labels requested: provide at least one ID in kit_numbers, pack_ids, or computer_ids.',
           );
         }
+
+        const kits = await Promise.all(
+          kitNumbers.map((n) => resolveKitByNumber(services.prisma, n)),
+        );
+        const kitIds = kits.map((k) => k.id);
 
         // Upper-bound label count computed from the raw ID lists, without
         // calling generateLabelSet. Packs are the only part of the
         // selection that can be deduped (explicit pack_ids plus, when
         // include_kit_packs is set, every pack belonging to a listed kit,
-        // matching generateLabelSet's own pack-level Map dedup) — kit_ids
+        // matching generateLabelSet's own pack-level Map dedup) — kit_numbers
         // and computer_ids are counted as given, since generateLabelSet
         // does not dedupe those either.
         const packIdSet = new Set(packIds);
@@ -824,17 +856,18 @@ export function registerTools(server: McpServer): void {
 
   // ─── Transfers ─────────────────────────────────────────────────────
 
-  server.tool('transfer_kit', 'Transfer a kit to a new custodian and/or site', {
-    kitId: z.number(),
+  server.tool('transfer_kit', 'Transfer a kit, identified by kit_number, to a new custodian and/or site', {
+    kit_number: z.number(),
     custodianId: zIdParam(),
     siteId: zIdParam(),
     notes: z.string().optional(),
-  }, async ({ kitId, custodianId, siteId, notes }) => {
+  }, async ({ kit_number, custodianId, siteId, notes }) => {
     return safeCall(async () => {
       const { services, user } = getContext();
+      const kit = await resolveKitByNumber(services.prisma, kit_number);
       return ok(await services.transfers.transfer({
         objectType: 'Kit',
-        objectId: kitId,
+        objectId: kit.id,
         custodianId,
         siteId,
         notes,
@@ -919,30 +952,40 @@ export function registerTools(server: McpServer): void {
 
   // ─── Issues ─────────────────────────────────────────────────────────
 
-  server.tool('list_issues', 'List issues, optionally filtered by status, type, packId, kitId, or computerId', {
+  server.tool('list_issues', 'List issues, optionally filtered by status, type, packId, kit_number, or computerId', {
     status: z.string().optional().describe('OPEN or RESOLVED'),
     type: z.string().optional().describe('MISSING_ITEM, REPLENISHMENT, DAMAGE, MAINTENANCE, or OTHER'),
     packId: z.number().optional(),
-    kitId: z.number().optional(),
+    kit_number: z.number().optional(),
     computerId: z.number().optional(),
-  }, async (args) => {
+  }, async ({ kit_number, ...args }) => {
     return safeCall(async () => {
       const { services } = getContext();
-      return ok(await services.issues.list(args));
+      let kitId: number | undefined;
+      if (kit_number != null) {
+        const kit = await resolveKitByNumber(services.prisma, kit_number);
+        kitId = kit.id;
+      }
+      return ok(await services.issues.list({ ...args, kitId }));
     });
   });
 
-  server.tool('create_issue', 'Create an issue on a pack, kit, or computer. At least one target entity is required.', {
+  server.tool('create_issue', 'Create an issue on a pack, kit, or computer. At least one target entity is required. kit_number identifies the kit by its printed number, not database ID.', {
     type: z.string().describe('MISSING_ITEM, REPLENISHMENT, DAMAGE, MAINTENANCE, or OTHER'),
     packId: z.number().optional(),
     itemId: z.number().optional(),
-    kitId: z.number().optional(),
+    kit_number: z.number().optional(),
     computerId: z.number().optional(),
     notes: z.string().optional(),
-  }, async (args) => {
+  }, async ({ kit_number, ...args }) => {
     return safeCall(async () => {
       const { services, user } = getContext();
-      return ok(await services.issues.create(args, user.id));
+      let kitId: number | undefined;
+      if (kit_number != null) {
+        const kit = await resolveKitByNumber(services.prisma, kit_number);
+        kitId = kit.id;
+      }
+      return ok(await services.issues.create({ ...args, kitId }, user.id));
     });
   });
 

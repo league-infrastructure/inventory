@@ -1,9 +1,12 @@
 ---
 id: '002'
 title: Convert kit-identifying parameters across kit tools
-status: open
-use-cases: [SUC-001, SUC-003]
-depends-on: ['001']
+status: done
+use-cases:
+- SUC-001
+- SUC-003
+depends-on:
+- '001'
 github-issue: ''
 issue: mcp-tools-must-use-user-facing-identifiers-not-database-ids.md
 completes_issue: true
@@ -65,27 +68,27 @@ computer identification is out of scope for this sprint.
 
 ## Acceptance Criteria
 
-- [ ] Every tool listed above takes `kit_number` (or `kit_numbers` for
+- [x] Every tool listed above takes `kit_number` (or `kit_numbers` for
       `generate_labels`) instead of a kit database-id parameter, and no
       longer accepts `id`/`kitId`/`kit_id` for kit identification.
-- [ ] Each converted tool: a valid `kit_number` resolves to and operates
+- [x] Each converted tool: a valid `kit_number` resolves to and operates
       on the correct kit; an unknown `kit_number` returns an explicit
       "Kit number N not found" tool error, not a crash and not silent
       misresolution.
-- [ ] Collision case verified on at least `get_kit` and `generate_labels`:
+- [x] Collision case verified on at least `get_kit` and `generate_labels`:
       `kit_number: 26` (database id 17) and `kit_number: 17` each
       resolve to and operate on their own correct, distinct kit.
-- [ ] `generate_labels(kit_numbers=[17])` produces labels captioned for
+- [x] `generate_labels(kit_numbers=[17])` produces labels captioned for
       Kit 17 — the exact regression named in the sprint issue — not Kit
       26.
-- [ ] `list_computers`'s `kit_id` filter and `generate_labels`'s
+- [x] `list_computers`'s `kit_id` filter and `generate_labels`'s
       `kit_ids` (both added in sprint 008) are converted.
-- [ ] Existing null-clearing behavior for nullable kit-reference fields
+- [x] Existing null-clearing behavior for nullable kit-reference fields
       (e.g. `update_computer`) still works after the rename.
-- [ ] QM-gating on every converted tool is unchanged — the existing
+- [x] QM-gating on every converted tool is unchanged — the existing
       `_meta.requiresQM` assertions in
       `tests/server/services/mcp-tool-metadata.test.ts` still pass.
-- [ ] `pack_ids`/`packId`/computer-identifying parameters on shared
+- [x] `pack_ids`/`packId`/computer-identifying parameters on shared
       tools (`generate_labels`, `list_issues`, `create_issue`,
       `list_computers`) are untouched by this ticket.
 
