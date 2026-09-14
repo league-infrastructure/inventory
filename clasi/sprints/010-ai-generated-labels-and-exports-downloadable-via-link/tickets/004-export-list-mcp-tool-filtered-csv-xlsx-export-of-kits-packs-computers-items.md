@@ -2,9 +2,12 @@
 id: '004'
 title: 'export_list MCP tool: filtered CSV/xlsx export of kits, packs, computers,
   items'
-status: open
-use-cases: [SUC-003]
-depends-on: ['001', '002']
+status: done
+use-cases:
+- SUC-003
+depends-on:
+- '001'
+- '002'
 github-issue: ''
 issue: ai-generated-labels-and-exports-downloadable-via-link.md
 completes_issue: true
@@ -34,7 +37,7 @@ alongside them, it does not refactor the existing ones.
 
 ## Acceptance Criteria
 
-- [ ] `ExportService` gains a filtered, single-entity export capable of
+- [x] `ExportService` gains a filtered, single-entity export capable of
       CSV or xlsx output, for each of: kits (filter: `status`, matching
       `list_kits`), packs (filter: `kit_number`, matching `list_packs`),
       items (filter: `pack` designator, matching `list_items`),
@@ -45,23 +48,23 @@ alongside them, it does not refactor the existing ones.
       do not introduce a second, inconsistent column naming scheme.
       CSV output may use `ExcelJS`'s single-sheet CSV writer (no new
       dependency needed).
-- [ ] New `export_list` MCP tool in `server/src/mcp/tools.ts`: inputs
+- [x] New `export_list` MCP tool in `server/src/mcp/tools.ts`: inputs
       `entity` (`'kits'|'packs'|'computers'|'items'`), `format`
       (`'csv'|'xlsx'`), plus that entity's filter fields (all optional,
       omitting all filters returns the full unfiltered list for that
       entity — same "omit means everything" convention as the `list_*`
       tools).
-- [ ] The tool resolves human-facing filter values the same way the
+- [x] The tool resolves human-facing filter values the same way the
       corresponding `list_*` tool does (e.g. `kit_number` →
       `resolveKitByNumber`, `pack` → `resolvePackByDesignator`) — no
       raw database ids in the tool's own input schema either.
-- [ ] Stores the resulting file via `GeneratedFileService.store` and
+- [x] Stores the resulting file via `GeneratedFileService.store` and
       returns a JSON text block with `download_url`, row count, and the
       entity/format echoed back.
-- [ ] No database id column appears in the generated CSV/xlsx for any
+- [x] No database id column appears in the generated CSV/xlsx for any
       entity (verified by asserting the output header row against an
       explicit allowlist of human-facing column names per entity).
-- [ ] Same access level as the existing `/api/export` REST routes: any
+- [x] Same access level as the existing `/api/export` REST routes: any
       authenticated non-loanee MCP user, no additional quartermaster
       restriction (per sprint.md's explicit security-consistency note —
       this does not change who can already see computer credential
