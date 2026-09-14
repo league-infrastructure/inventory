@@ -52,7 +52,7 @@ let kitNumber = 0;
 function nextKitNumber() { return ++kitNumber + (getSuffix() % 100000) + 70000; }
 
 /** Creates a kit with `n` packs, created in order (so pack 1 gets displayNumber 1, etc). */
-async function createKitWithPacks(n: number, label: string): Promise<{ kitId: number; packIds: number[] }> {
+async function createKitWithPacks(n: number, label: string): Promise<{ kitId: number; kitNumber: number; packIds: number[] }> {
   const kit = await getRegistry().kits.create({
     number: nextKitNumber(),
     name: `svc-test-${getSuffix()}-mcp-renumber-${label}`,
@@ -64,7 +64,16 @@ async function createKitWithPacks(n: number, label: string): Promise<{ kitId: nu
     const pack = await getRegistry().packs.create({ name: `Pack ${i}` }, getUserId(), kit.id);
     packIds.push(pack.id);
   }
-  return { kitId: kit.id, packIds };
+  return { kitId: kit.id, kitNumber: kit.number, packIds };
+}
+
+/**
+ * Packs are created in order above (pack 1 -> displayNumber 1, etc), so the
+ * i-th (1-indexed) pack created in a kit has this designator before any
+ * renumbering.
+ */
+function designatorFor(kitNumber: number, packNumber: number) {
+  return { kit_number: kitNumber, pack_number: packNumber };
 }
 
 type ToolHandler = (args: any) => Promise<{ isError?: boolean; content: { type: string; text: string }[] }>;
@@ -118,12 +127,12 @@ function fakeUser(role: string): User {
 
 describe('renumber_pack MCP tool', () => {
   it('requires Quartermaster access', async () => {
-    const { packIds } = await createKitWithPacks(3, 'access');
+    const { kitNumber } = await createKitWithPacks(3, 'access');
     const services = ServiceRegistry.create(getPrisma(), 'MCP');
     const handler = getRenumberPackHandler();
 
     await mcpContext.run({ user: fakeUser('INSTRUCTOR'), services }, async () => {
-      const result = await handler({ id: packIds[0], displayNumber: 2 });
+      const result = await handler({ pack: designatorFor(kitNumber, 1), displayNumber: 2 });
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toMatch(/Quartermaster access required/);
     });
@@ -134,7 +143,7 @@ describe('renumber_pack MCP tool', () => {
     const handler = getRenumberPackHandler();
 
     await mcpContext.run({ user: fakeUser('QUARTERMASTER'), services }, async () => {
-      const result = await handler({ id: 999999, displayNumber: 1 });
+      const result = await handler({ pack: designatorFor(999999, 1), displayNumber: 1 });
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toMatch(/not found/i);
     });
@@ -155,13 +164,12 @@ describe('renumber_pack MCP tool', () => {
     // MCP path: identical starting shape (7 freshly-created packs) and
     // identical edit (last pack -> 4), driven through the renumber_pack tool.
     const mcpScenario = await createKitWithPacks(7, 'mcp-path');
-    const mcpEdited = mcpScenario.packIds[6];
     const mcpServices = ServiceRegistry.create(getPrisma(), 'MCP');
     const handler = getRenumberPackHandler();
 
     let mcpBody: any;
     await mcpContext.run({ user: fakeUser('QUARTERMASTER'), services: mcpServices }, async () => {
-      const result = await handler({ id: mcpEdited, displayNumber: 4 });
+      const result = await handler({ pack: designatorFor(mcpScenario.kitNumber, 7), displayNumber: 4 });
       expect(result.isError).toBeFalsy();
       mcpBody = JSON.parse(result.content[0].text);
     });
@@ -190,13 +198,12 @@ describe('update_pack MCP tool (ticket 004-002)', () => {
   it('with displayNumber produces the same final assignment as renumber_pack for an equivalent input, sourced MCP', async () => {
     // renumber_pack path (already exercised above): pack 7 of 7 -> 4.
     const renumberScenario = await createKitWithPacks(7, 'update-pack-cmp-renumber');
-    const renumberEdited = renumberScenario.packIds[6];
     const renumberServices = ServiceRegistry.create(getPrisma(), 'MCP');
     const renumberHandler = getRenumberPackHandler();
 
     let renumberBody: any;
     await mcpContext.run({ user: fakeUser('QUARTERMASTER'), services: renumberServices }, async () => {
-      const result = await renumberHandler({ id: renumberEdited, displayNumber: 4 });
+      const result = await renumberHandler({ pack: designatorFor(renumberScenario.kitNumber, 7), displayNumber: 4 });
       expect(result.isError).toBeFalsy();
       renumberBody = JSON.parse(result.content[0].text);
     });
@@ -207,13 +214,12 @@ describe('update_pack MCP tool (ticket 004-002)', () => {
     // update_pack path: identical starting shape and identical edit, driven
     // through update_pack instead of renumber_pack.
     const updateScenario = await createKitWithPacks(7, 'update-pack-cmp-update');
-    const updateEdited = updateScenario.packIds[6];
     const updateServices = ServiceRegistry.create(getPrisma(), 'MCP');
     const updateHandler = getUpdatePackHandler();
 
     let updateBody: any;
     await mcpContext.run({ user: fakeUser('QUARTERMASTER'), services: updateServices }, async () => {
-      const result = await updateHandler({ id: updateEdited, displayNumber: 4 });
+      const result = await updateHandler({ pack: designatorFor(updateScenario.kitNumber, 7), displayNumber: 4 });
       expect(result.isError).toBeFalsy();
       updateBody = JSON.parse(result.content[0].text);
     });
@@ -238,13 +244,15 @@ describe('update_pack MCP tool (ticket 004-002)', () => {
   });
 
   it('with name/description only is unaffected: still returns a single pack record, no renumber', async () => {
-    const { packIds } = await createKitWithPacks(3, 'update-pack-name-only');
+    const { kitNumber, packIds } = await createKitWithPacks(3, 'update-pack-name-only');
     const services = ServiceRegistry.create(getPrisma(), 'MCP');
     const handler = getUpdatePackHandler();
 
     let body: any;
     await mcpContext.run({ user: fakeUser('QUARTERMASTER'), services }, async () => {
-      const result = await handler({ id: packIds[0], name: 'Renamed Pack' });
+      // Combined "kit_number/pack_number" string form, for coverage of both
+      // designator shapes the schema accepts.
+      const result = await handler({ pack: `${kitNumber}/1`, name: 'Renamed Pack' });
       expect(result.isError).toBeFalsy();
       body = JSON.parse(result.content[0].text);
     });
@@ -268,12 +276,12 @@ describe('update_pack MCP tool (ticket 004-002)', () => {
   });
 
   it('rejects an out-of-range displayNumber with no packs changed', async () => {
-    const { kitId, packIds } = await createKitWithPacks(3, 'update-pack-out-of-range');
+    const { kitId, kitNumber } = await createKitWithPacks(3, 'update-pack-out-of-range');
     const services = ServiceRegistry.create(getPrisma(), 'MCP');
     const handler = getUpdatePackHandler();
 
     await mcpContext.run({ user: fakeUser('QUARTERMASTER'), services }, async () => {
-      const result = await handler({ id: packIds[0], displayNumber: 10 });
+      const result = await handler({ pack: designatorFor(kitNumber, 1), displayNumber: 10 });
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toMatch(/must be an integer between/i);
     });

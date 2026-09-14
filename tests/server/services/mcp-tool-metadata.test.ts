@@ -49,6 +49,8 @@ type ToolHandler = (args: any) => Promise<ToolResult>;
 interface CapturedTool {
   name: string;
   meta: Record<string, unknown> | undefined;
+  /** The raw zod shape passed to `.tool()`'s 3rd arg or `.registerTool()`'s `config.inputSchema` — a plain `{ paramName: ZodType }` map, not a `ZodObject` instance. */
+  schema: Record<string, any>;
   handler: ToolHandler;
 }
 
@@ -72,21 +74,53 @@ function fakeUser(role: string): User {
 /**
  * Registers the real tool catalog (via the production `registerTools()`)
  * onto a minimal fake server that records every tool's name, declared
- * `_meta` (from either call shape), and handler.
+ * `_meta` (from either call shape), raw zod schema shape, and handler.
+ *
+ * Every `.tool(name, description, schema, handler)` call in `tools.ts`
+ * uses this exact 4-argument form (verified: all 20 call sites), so the
+ * schema is reliably `rest[rest.length - 2]` regardless of description
+ * length/multi-line formatting.
  */
 function getAllTools(): CapturedTool[] {
   const tools: CapturedTool[] = [];
   const fakeServer = {
     tool: (name: string, ...rest: any[]) => {
-      tools.push({ name, meta: undefined, handler: rest[rest.length - 1] });
+      const schema = rest.length >= 3 ? rest[rest.length - 2] : {};
+      tools.push({ name, meta: undefined, schema, handler: rest[rest.length - 1] });
     },
     registerTool: (name: string, config: any, cb: ToolHandler) => {
-      tools.push({ name, meta: config?._meta, handler: cb });
+      tools.push({ name, meta: config?._meta, schema: config?.inputSchema ?? {}, handler: cb });
     },
     prompt: () => {},
   };
   registerTools(fakeServer as any);
   return tools;
+}
+
+/**
+ * Recursively unwraps zod v4's optional/nullable/default/array/union
+ * wrapper nodes (each exposes its wrapped type at a different `_def` key:
+ * `innerType` for optional/nullable/default, `element` for array,
+ * `options` for union — see `zod`'s `ZodType._def.type` discriminant) to
+ * find every plain-object shape reachable from a given schema node, and
+ * returns the flattened set of key names across all of them. Used below
+ * to check the pack designator's structured variant
+ * (`{kit_number, pack_number}`) regardless of how many layers of
+ * optional/array/union it's wrapped in at any given call site.
+ */
+function collectNestedObjectKeys(node: any, seen: Set<any> = new Set()): string[] {
+  if (!node || typeof node !== 'object' || seen.has(node)) return [];
+  seen.add(node);
+  const type = node._def?.type;
+  if (type === 'object' && node.shape) return Object.keys(node.shape);
+  if (type === 'optional' || type === 'nullable' || type === 'default') {
+    return collectNestedObjectKeys(node._def.innerType, seen);
+  }
+  if (type === 'array') return collectNestedObjectKeys(node._def.element, seen);
+  if (type === 'union') {
+    return (node._def.options ?? []).flatMap((opt: any) => collectNestedObjectKeys(opt, seen));
+  }
+  return [];
 }
 
 beforeAll(async () => {
@@ -153,5 +187,145 @@ describe('MCP tool _meta.requiresQM drift guard (ticket 005-001)', () => {
       expect(tool).toBeDefined();
       expect(tool!.meta?.requiresQM).toBe(true);
     }
+  });
+});
+
+/**
+ * Drift-guard extension for ticket 009-004 (sprint 009: Kit and Pack Tool
+ * Parameters Take User Numbers). Tickets 002/003 renamed every
+ * kit-identifying and pack-identifying MCP tool parameter away from a
+ * database id (`Kit.id` / `Pack.id`) to the user-facing `kit_number` /
+ * pack designator instead — see
+ * `clasi/issues/mcp-tools-must-use-user-facing-identifiers-not-database-ids.md`
+ * for the collision defect this closes (kit number 26 has database id 17;
+ * `generate_labels(kit_ids=[17])` silently printed the wrong kit's
+ * labels). This guard fails if any tool converted in those tickets ever
+ * regresses a kit/pack parameter back to an id-shaped name (e.g. `kitId`,
+ * `id`, `packId`).
+ *
+ * Deliberately scoped to just the converted tools/params, not a blanket
+ * "no schema anywhere may end in id" check: legitimate id-shaped
+ * parameters remain by design on some of these same tools, for
+ * identifiers this sprint does not touch (e.g. `siteId`, `custodianId`,
+ * `categoryId`, `osId`, `hostNameId`, `itemId`, `computerId`, the
+ * computer's own `id` on `update_computer`, and `site_id` on
+ * `list_computers`). `CONVERTED_TOOL_ALLOWED_IDS` below is the explicit
+ * allowlist of those, enumerated directly from each tool's current
+ * `inputSchema` in `server/src/mcp/tools.ts`.
+ */
+const CONVERTED_TOOL_ALLOWED_IDS: Record<string, string[]> = {
+  get_kit: [],
+  update_kit: ['siteId', 'custodianId', 'categoryId'],
+  delete_kit: [],
+  set_kit_last_inventoried: [],
+  list_packs: [],
+  create_pack: [],
+  transfer_kit: ['custodianId', 'siteId'],
+  list_computers: ['site_id'],
+  create_computer: ['siteId', 'osId', 'custodianId', 'hostNameId'],
+  update_computer: ['id', 'siteId', 'osId', 'custodianId', 'hostNameId', 'categoryId'],
+  list_issues: ['computerId'],
+  create_issue: ['itemId', 'computerId'],
+  generate_labels: [],
+  update_pack: [],
+  delete_pack: [],
+  renumber_pack: [],
+  list_items: [],
+  create_item: [],
+};
+
+/**
+ * Each converted tool's kit/pack-identifying parameter name(s) — used
+ * below for a presence check (nothing silently dropped the param) and to
+ * pick which params to walk for the nested pack-designator check.
+ */
+const CONVERTED_TOOL_KITPACK_PARAMS: Record<string, string[]> = {
+  get_kit: ['kit_number'],
+  update_kit: ['kit_number'],
+  delete_kit: ['kit_number'],
+  set_kit_last_inventoried: ['kit_number'],
+  list_packs: ['kit_number'],
+  create_pack: ['kit_number'],
+  transfer_kit: ['kit_number'],
+  list_computers: ['kit_number'],
+  create_computer: ['kit_number'],
+  update_computer: ['kit_number'],
+  list_issues: ['kit_number', 'pack'],
+  create_issue: ['kit_number', 'pack'],
+  generate_labels: ['kit_numbers', 'packs'],
+  update_pack: ['pack'],
+  delete_pack: ['pack'],
+  renumber_pack: ['pack'],
+  list_items: ['pack'],
+  create_item: ['pack'],
+};
+
+describe('kit/pack identifier drift guard (ticket 009-004)', () => {
+  it('sanity check: every tool converted in tickets 002/003 is present with a captured schema', () => {
+    const tools = getAllTools();
+    const byName = new Map(tools.map((t) => [t.name, t]));
+    for (const name of Object.keys(CONVERTED_TOOL_ALLOWED_IDS)) {
+      const tool = byName.get(name);
+      expect(tool).toBeDefined();
+      expect(tool!.schema && typeof tool!.schema === 'object').toBe(true);
+    }
+  });
+
+  it('every converted tool still declares its kit_number/pack parameter (no accidental removal)', () => {
+    const tools = getAllTools();
+    const byName = new Map(tools.map((t) => [t.name, t]));
+    for (const [name, params] of Object.entries(CONVERTED_TOOL_KITPACK_PARAMS)) {
+      const tool = byName.get(name)!;
+      for (const param of params) {
+        expect(Object.keys(tool.schema)).toContain(param);
+      }
+    }
+  });
+
+  it('no kit- or pack-identifying parameter on a converted tool is registered with an id-shaped name (/id$/i)', () => {
+    const tools = getAllTools();
+    const byName = new Map(tools.map((t) => [t.name, t]));
+    const violations: string[] = [];
+
+    for (const [name, allowedIds] of Object.entries(CONVERTED_TOOL_ALLOWED_IDS)) {
+      const tool = byName.get(name);
+      if (!tool) {
+        violations.push(`${name}: tool not found in captured catalog`);
+        continue;
+      }
+      for (const key of Object.keys(tool.schema)) {
+        if (/id$/i.test(key) && !allowedIds.includes(key)) {
+          violations.push(`${name}.${key}`);
+        }
+      }
+    }
+
+    expect(violations).toEqual([]);
+  });
+
+  it('the pack designator\'s nested keys (kit_number, pack_number) are not id-shaped either', () => {
+    const tools = getAllTools();
+    const byName = new Map(tools.map((t) => [t.name, t]));
+    const violations: string[] = [];
+    let sawNestedKeys = false;
+
+    for (const [name, params] of Object.entries(CONVERTED_TOOL_KITPACK_PARAMS)) {
+      const tool = byName.get(name)!;
+      for (const param of params) {
+        if (param !== 'pack' && param !== 'packs') continue;
+        const nestedKeys = collectNestedObjectKeys(tool.schema[param]);
+        if (nestedKeys.length > 0) sawNestedKeys = true;
+        for (const key of nestedKeys) {
+          if (/id$/i.test(key)) violations.push(`${name}.${param}.${key}`);
+        }
+      }
+    }
+
+    expect(violations).toEqual([]);
+    // Sanity: confirm the recursive walk actually reached the nested
+    // {kit_number, pack_number} object at least once, so an empty
+    // `violations` list above isn't just the walk silently finding
+    // nothing (e.g. a zod internals shape change breaking the unwrap).
+    expect(sawNestedKeys).toBe(true);
   });
 });

@@ -74,7 +74,7 @@ let kitNumber = 0;
 function nextKitNumber() { return ++kitNumber + (getSuffix() % 100000) + 80000; }
 
 /** Creates a kit with `n` packs, created in order (pack 1 -> displayNumber 1, etc). */
-async function createKitWithPacks(n: number, label: string): Promise<{ kitId: number; packIds: number[] }> {
+async function createKitWithPacks(n: number, label: string): Promise<{ kitId: number; kitNumber: number; packIds: number[] }> {
   const kit = await getRegistry().kits.create({
     number: nextKitNumber(),
     name: `svc-test-${getSuffix()}-chat-unify-${label}`,
@@ -86,7 +86,17 @@ async function createKitWithPacks(n: number, label: string): Promise<{ kitId: nu
     const pack = await getRegistry().packs.create({ name: `Pack ${i}` }, getUserId(), kit.id);
     packIds.push(pack.id);
   }
-  return { kitId: kit.id, packIds };
+  return { kitId: kit.id, kitNumber: kit.number, packIds };
+}
+
+/**
+ * Packs are created in order above (pack 1 -> displayNumber 1, etc), so the
+ * i-th (1-indexed) pack created in a kit has this designator before any
+ * renumbering — the pack-designator shape `update_pack`/`delete_pack`/
+ * `renumber_pack` now take instead of a database id (sprint 009, ticket 003).
+ */
+function designatorFor(kitNumber: number, packNumber: number) {
+  return { kit_number: kitNumber, pack_number: packNumber };
 }
 
 function fakeUser(role: string): User {
@@ -178,11 +188,11 @@ describe('AiChatService: MCP catalog unification (ticket 005-002)', () => {
 
   describe('QM enforcement through the chat execution path (new call-time check)', () => {
     it('rejects an INSTRUCTOR-role chat user calling renumber_pack, with the same message the MCP path produces', async () => {
-      const { packIds } = await createKitWithPacks(3, 'qm-gate');
+      const { kitNumber, packIds } = await createKitWithPacks(3, 'qm-gate');
       const services = ServiceRegistry.create(getPrisma(), 'MCP');
 
       const result = await service.withMcpClient(fakeUser('INSTRUCTOR'), services, (client) =>
-        client.callTool({ name: 'renumber_pack', arguments: { id: packIds[0], displayNumber: 2 } }),
+        client.callTool({ name: 'renumber_pack', arguments: { pack: designatorFor(kitNumber, 1), displayNumber: 2 } }),
       ) as ChatToolResult;
 
       expect(result.isError).toBe(true);
@@ -202,11 +212,10 @@ describe('AiChatService: MCP catalog unification (ticket 005-002)', () => {
 
       // Direct MCP path (fake-collector convention, per mcp-renumber-pack.test.ts).
       const directScenario = await createKitWithPacks(7, 'renumber-direct');
-      const directEdited = directScenario.packIds[6];
       const directServices = ServiceRegistry.create(getPrisma(), 'MCP');
       let directBody: any;
       await mcpContext.run({ user: fakeUser('QUARTERMASTER'), services: directServices }, async () => {
-        const result = await directHandler({ id: directEdited, displayNumber: 4 });
+        const result = await directHandler({ pack: designatorFor(directScenario.kitNumber, 7), displayNumber: 4 });
         expect(result.isError).toBeFalsy();
         directBody = JSON.parse(result.content[0].text);
       });
@@ -217,10 +226,9 @@ describe('AiChatService: MCP catalog unification (ticket 005-002)', () => {
       // Chat path: identical starting shape and edit, driven through
       // AiChatService.withMcpClient() + client.callTool() instead.
       const chatScenario = await createKitWithPacks(7, 'renumber-chat');
-      const chatEdited = chatScenario.packIds[6];
       const chatServices = ServiceRegistry.create(getPrisma(), 'MCP');
       const chatResult = await service.withMcpClient(fakeUser('QUARTERMASTER'), chatServices, (client) =>
-        client.callTool({ name: 'renumber_pack', arguments: { id: chatEdited, displayNumber: 4 } }),
+        client.callTool({ name: 'renumber_pack', arguments: { pack: designatorFor(chatScenario.kitNumber, 7), displayNumber: 4 } }),
       ) as ChatToolResult;
       expect(chatResult.isError).toBeFalsy();
       const chatBody = JSON.parse(chatResult.content![0].text!);
@@ -239,11 +247,10 @@ describe('AiChatService: MCP catalog unification (ticket 005-002)', () => {
 
     it('update_pack with displayNumber via chat returns the kit\'s full contiguous pack list, audited as MCP', async () => {
       const scenario = await createKitWithPacks(7, 'update-with-number');
-      const edited = scenario.packIds[6];
       const services = ServiceRegistry.create(getPrisma(), 'MCP');
 
       const result = await service.withMcpClient(fakeUser('QUARTERMASTER'), services, (client) =>
-        client.callTool({ name: 'update_pack', arguments: { id: edited, displayNumber: 4 } }),
+        client.callTool({ name: 'update_pack', arguments: { pack: designatorFor(scenario.kitNumber, 7), displayNumber: 4 } }),
       ) as ChatToolResult;
       expect(result.isError).toBeFalsy();
       const body = JSON.parse(result.content![0].text!);
@@ -261,11 +268,11 @@ describe('AiChatService: MCP catalog unification (ticket 005-002)', () => {
     });
 
     it('update_pack with only name/description via chat is unaffected: single record, no renumber side effect', async () => {
-      const { packIds } = await createKitWithPacks(3, 'update-name-only');
+      const { kitNumber, packIds } = await createKitWithPacks(3, 'update-name-only');
       const services = ServiceRegistry.create(getPrisma(), 'MCP');
 
       const result = await service.withMcpClient(fakeUser('QUARTERMASTER'), services, (client) =>
-        client.callTool({ name: 'update_pack', arguments: { id: packIds[0], name: 'Renamed via chat' } }),
+        client.callTool({ name: 'update_pack', arguments: { pack: designatorFor(kitNumber, 1), name: 'Renamed via chat' } }),
       ) as ChatToolResult;
       expect(result.isError).toBeFalsy();
       const body = JSON.parse(result.content![0].text!);
@@ -284,7 +291,7 @@ describe('AiChatService: MCP catalog unification (ticket 005-002)', () => {
     });
 
     it('delete_pack via chat calls services.packs.delete(): the kit\'s remaining packs compact to a contiguous 1..N', async () => {
-      const { kitId, packIds } = await createKitWithPacks(4, 'delete-compaction');
+      const { kitId, kitNumber, packIds } = await createKitWithPacks(4, 'delete-compaction');
       const services = ServiceRegistry.create(getPrisma(), 'MCP');
 
       // Delete the 2nd of 4 packs — the middle of the sequence, so a
@@ -292,7 +299,7 @@ describe('AiChatService: MCP catalog unification (ticket 005-002)', () => {
       // as a gap at displayNumber 2.
       const deletedPackId = packIds[1];
       const result = await service.withMcpClient(fakeUser('QUARTERMASTER'), services, (client) =>
-        client.callTool({ name: 'delete_pack', arguments: { id: deletedPackId } }),
+        client.callTool({ name: 'delete_pack', arguments: { pack: designatorFor(kitNumber, 2) } }),
       ) as ChatToolResult;
       expect(result.isError).toBeFalsy();
       const body = JSON.parse(result.content![0].text!);
@@ -318,7 +325,7 @@ describe('AiChatService: MCP catalog unification (ticket 005-002)', () => {
       const services = ServiceRegistry.create(getPrisma(), 'MCP');
 
       const result = await service.withMcpClient(fakeUser('QUARTERMASTER'), services, (client) =>
-        client.callTool({ name: 'renumber_pack', arguments: { id: 999999, displayNumber: 1 } }),
+        client.callTool({ name: 'renumber_pack', arguments: { pack: designatorFor(999999, 1), displayNumber: 1 } }),
       ) as ChatToolResult;
 
       expect(result.isError).toBe(true);

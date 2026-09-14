@@ -12,20 +12,19 @@ const MCP_INSTRUCTIONS = `CRITICAL RULES FOR COMMUNICATING WITH USERS:
    unless they explicitly ask for them. Users do not know or care about
    internal database identifiers.
 
-2. Kits have a user-facing "number" field AND a database "id". These are
-   NOT the same. When a user says "Kit 17", they mean the kit whose number
-   is 17, NOT database ID 17. Always look up and refer to kits by their
-   number field.
+2. Kit tools take the kit's printed/spoken number directly (kit_number) —
+   there is no separate database id to look up or map to. When a user says
+   "Kit 17", pass kit_number: 17 exactly as said. Pack tools work the same
+   way: they take a pack designator — the kit number and pack number as a
+   pair, or the combined "kit_number/pack_number" form printed on the
+   label (e.g. "26/1") — again, exactly as said or printed, with no id
+   lookup step.
 
 3. Computers are identified by their host name (e.g. "Aho") or model, not
    by database ID. Sites are identified by name, not ID.
 
 4. All sorting, searching, and reporting should use human-meaningful fields
-   (number, name, host name), not database IDs.
-
-5. Use database IDs internally to call tools, but NEVER surface them in
-   responses to the user. The only exception is when the user explicitly
-   asks for database IDs.`;
+   (number, name, host name), not database IDs.`;
 
 export function createMcpServer(): McpServer {
   const server = new McpServer(
