@@ -30,6 +30,7 @@ import { imageRouter } from './routes/images';
 import { categoriesRouter } from './routes/categories';
 import { manufacturersRouter } from './routes/manufacturers';
 import { notesRouter } from './routes/notes';
+import { downloadsRouter } from './routes/downloads';
 import { errorHandler } from './middleware/errorHandler';
 import { logBuffer } from './services/logBuffer';
 import { prisma } from './services/prisma';
@@ -166,6 +167,7 @@ app.use('/api', imageRouter(services));
 app.use('/api', categoriesRouter(services));
 app.use('/api', manufacturersRouter(services));
 app.use('/api', notesRouter(services));
+app.use('/api', downloadsRouter(services));
 app.use('/api', schedulerRouter(schedulerService));
 app.use('/api', adminRouter);
 

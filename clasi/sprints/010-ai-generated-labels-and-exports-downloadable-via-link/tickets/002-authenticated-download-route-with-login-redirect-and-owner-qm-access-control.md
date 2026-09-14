@@ -1,9 +1,12 @@
 ---
 id: '002'
 title: Authenticated download route with login-redirect and owner/QM access control
-status: open
-use-cases: [SUC-004, SUC-005]
-depends-on: ['001']
+status: done
+use-cases:
+- SUC-004
+- SUC-005
+depends-on:
+- '001'
 github-issue: ''
 issue: ai-generated-labels-and-exports-downloadable-via-link.md
 completes_issue: true
@@ -33,25 +36,25 @@ Rationale.
 
 ## Acceptance Criteria
 
-- [ ] `server/src/routes/downloads.ts` exports a router mounted at
+- [x] `server/src/routes/downloads.ts` exports a router mounted at
       `/api/downloads/:token` in `app.ts` (alongside the other `/api`
       mounts).
-- [ ] Logged-out request: redirects (302) to
+- [x] Logged-out request: redirects (302) to
       `/api/auth/google?returnTo=/api/downloads/<token>` — not a JSON
       401. After a successful Google login, the browser lands back on
       the same download URL (exercised as an integration test, not
       just unit-tested in isolation).
-- [ ] Logged-in request, valid token, requesting user is the owner or
+- [x] Logged-in request, valid token, requesting user is the owner or
       has QM access (`hasQMAccess`): responds 200 with the file bytes,
       `Content-Type` set to the stored `mimeType`, and
       `Content-Disposition: attachment; filename="<stored filename>"`.
-- [ ] Logged-in request, valid token, requesting user is neither owner
+- [x] Logged-in request, valid token, requesting user is neither owner
       nor QM: 403, no bytes returned.
-- [ ] Logged-in request, unknown or expired token: 404 — expired and
+- [x] Logged-in request, unknown or expired token: 404 — expired and
       never-existed tokens are indistinguishable to the caller (no
       existence/timing leak, per ticket 001's
       `resolveForDownload` contract).
-- [ ] A loanee-role user (`STUDENT`/`PARTNER`, per
+- [x] A loanee-role user (`STUDENT`/`PARTNER`, per
       `LOANEE_ROLES`/`requireAuth`'s existing restriction) is denied
       the same way `requireAuth`-gated routes deny them today — confirm
       this is either inherited for free (if using `requireAuth`-style
