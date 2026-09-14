@@ -2,6 +2,7 @@ import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react
 import { useNavigate, useLocation } from 'react-router-dom';
 import { MessageSquare, Send, X } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import { isInAppRoute } from '../lib/downloadLinks';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -63,10 +64,14 @@ export default function AiChat() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Intercept internal links in markdown and use client-side navigation
+  // Intercept internal links in markdown and use client-side navigation.
+  // Download links (`/api/downloads/<token>`, from generate_labels /
+  // export_list) must NOT be intercepted this way even if ever emitted as
+  // a relative path — they have no SPA route and need a real browser
+  // navigation to trigger the file download. See isInAppRoute().
   const markdownComponents = useCallback(() => ({
     a: ({ href, children, ...props }: any) => {
-      if (href && href.startsWith('/')) {
+      if (href && isInAppRoute(href)) {
         return (
           <a
             {...props}

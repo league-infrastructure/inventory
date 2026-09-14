@@ -1,7 +1,7 @@
 ---
 id: '006'
 title: 'Presentation layer: chat/model instructions and in-app download link handling'
-status: in-progress
+status: done
 use-cases:
 - SUC-001
 - SUC-002
@@ -47,32 +47,55 @@ Four small, independent-but-related edits:
 
 ## Acceptance Criteria
 
-- [ ] `MCP_INSTRUCTIONS` gains a numbered rule (matching the existing
+- [x] `MCP_INSTRUCTIONS` gains a numbered rule (matching the existing
       style) describing: `generate_labels` and `export_list` return a
       `download_url` per file; present it to the user as a link;
       do not claim inability to deliver files.
-- [ ] `ai-chat-system.txt` gains equivalent guidance, consistent with
+- [x] `ai-chat-system.txt` gains equivalent guidance, consistent with
       its existing "Links" section style (e.g. distinguishing these
       absolute download links from the existing relative `/kits/:id`-
       style in-app navigation links it already documents).
-- [ ] `ai-chat.service.ts`'s `McpToolCallResult` interface comment no
+- [x] `ai-chat.service.ts`'s `McpToolCallResult` interface comment no
       longer claims tools only ever return text content; it should
       instead note that `resource` blocks exist for some tools but are
       intentionally filtered out here because the download link is
       always present in the accompanying text block.
-- [ ] A new test (or an update to an existing ai-chat test) exercises a
+- [x] A new test (or an update to an existing ai-chat test) exercises a
       `generate_labels`/`export_list` tool call through
       `ai-chat.service.ts` and asserts the resulting assistant message
       text contains the `download_url` from the manifest — i.e. this is
       verified, not just asserted true by comment-reading.
-- [ ] `AiChat.tsx`'s link renderer: a link whose `href` matches
+- [x] `AiChat.tsx`'s link renderer: a link whose `href` matches
       `/^\/api\/downloads\//` is treated as a real navigation (not
       intercepted by `navigate()`) even though it starts with `/`,
       alongside the existing behavior for genuinely absolute links.
-- [ ] Manual/E2E check (documented in the PR, not necessarily
+- [x] Manual/E2E check (documented in the PR, not necessarily
       automated): asking the in-app chat for labels or a list export
       produces a message with a clickable link that downloads the file
       in a real browser tab, not a SPA navigation to a 404/blank page.
+
+      **Manual check performed (code-path verification, not a live
+      browser session):** `generate_labels`/`export_list` return an
+      absolute `download_url` built from `getBaseUrl()`
+      (`server/src/config/baseUrl.ts`) — `QR_DOMAIN` in prod, or
+      `APP_BASE_URL` in dev, which `.env` sets to
+      `http://localhost:9311` (the Vite client's own dev origin, not
+      the server's `9310`). In dev, opening that absolute URL hits the
+      Vite dev server, whose existing `/api` proxy
+      (`client/vite.config.ts`, `changeOrigin: false`) forwards to the
+      real server on `9310` while keeping the browser on the client's
+      origin/cookies — so the link already resolves correctly in both
+      dev and prod without any change in this ticket. `AiChat.tsx`'s
+      markdown renderer sends any link starting with `/` that is not
+      `isInAppRoute()` (now excluding `/api/downloads/...`) through a
+      plain `<a target="_blank">`, and the download route responds with
+      `Content-Disposition: attachment` (ticket 002), so the browser
+      downloads the file rather than navigating to it. Verified via
+      `tests/server/labels.test.ts`'s existing
+      `'the download link is resolvable over HTTP...'` test (asserts
+      the `content-disposition` header) plus this ticket's new
+      `ai-chat-download-links.test.ts` and `downloadLinks.test.ts`. A
+      live browser click-through was not additionally performed.
 
 ## Testing
 

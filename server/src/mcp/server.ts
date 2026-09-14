@@ -6,7 +6,7 @@ import { ServiceRegistry } from '../services/service.registry';
 import { mcpContext } from './context';
 import { registerTools } from './tools';
 
-const MCP_INSTRUCTIONS = `CRITICAL RULES FOR COMMUNICATING WITH USERS:
+export const MCP_INSTRUCTIONS = `CRITICAL RULES FOR COMMUNICATING WITH USERS:
 
 1. NEVER mention database IDs, primary keys, or foreign keys to the user
    unless they explicitly ask for them. Users do not know or care about
@@ -24,7 +24,14 @@ const MCP_INSTRUCTIONS = `CRITICAL RULES FOR COMMUNICATING WITH USERS:
    by database ID. Sites are identified by name, not ID.
 
 4. All sorting, searching, and reporting should use human-meaningful fields
-   (number, name, host name), not database IDs.`;
+   (number, name, host name), not database IDs.
+
+5. \`generate_labels\` and \`export_list\` do not hand you a file directly —
+   each generated file's result includes a \`download_url\`: an absolute,
+   login-protected link the user can click to download it. Present that
+   link to the user (e.g. as a plain link) exactly as returned. Do NOT
+   tell the user you cannot deliver, attach, or send files — you can:
+   hand them the download_url.`;
 
 export function createMcpServer(): McpServer {
   const server = new McpServer(

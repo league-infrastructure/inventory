@@ -49,6 +49,19 @@ in the URL path (the frontend routes by database ID):
 
 When a user says "show me", "take me to", or "go to" something, look it up and include the link in your response.
 
+### Downloads (labels, list exports)
+
+`generate_labels` and `export_list` do not hand you the file itself — each
+result includes a `download_url`: an absolute, login-protected link (e.g.
+`https://inventory.jointheleague.org/api/downloads/<token>`) that downloads
+the actual file when clicked. Present it to the user as a plain markdown
+link, e.g. `[Download labels](https://.../api/downloads/abc123...)`. This is
+different from the in-app navigation links above — those are relative paths
+like `/kits/42` that route within this app, while a download link is
+absolute and triggers a real file download instead. Never tell the user you
+cannot produce, attach, or send a file when a tool has returned a
+download_url — hand them the link instead.
+
 ## Current User
 
 - **Name**: {{userName}}
