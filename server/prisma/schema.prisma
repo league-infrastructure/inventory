@@ -64,6 +64,7 @@ model User {
   auditLogs          AuditLog[]
   apiTokens          ApiToken[]
   authoredNotes      Note[]
+  generatedFiles     GeneratedFile[]
 }
 
 model Site {
@@ -456,6 +457,40 @@ model Image {
   computers Computer[]
   kits      Kit[]
   packs     Pack[]
+}
+
+// A server-generated, downloadable file (label PDF, list export, ...)
+// with a token-keyed, time-limited download link. See sprint 010
+// sprint.md Step 3 for the GeneratedFileService/FileStorage split this
+// backs — bytes live wherever FileStorage.put() wrote them (Spaces, or
+// GeneratedFileBlob below in dev/test), this row only records who owns
+// the file, its metadata, and until when it may be downloaded.
+model GeneratedFile {
+  id        Int      @id @default(autoincrement())
+  ownerId   Int
+  filename  String
+  mimeType  String
+  size      Int
+  objectKey String
+  tokenHash String   @unique
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId])
+  @@index([expiresAt])
+}
+
+// Dev/test FileStorage fallback: one row per object key, holding the
+// raw bytes a real deployment would instead write to Spaces. Kept
+// separate from GeneratedFile (rather than a `data Bytes?` column on
+// it, cf. Image.data) so FileStorage stays a pure key/bytes store with
+// no knowledge of ownership, tokens, or expiry — see file-storage.ts.
+model GeneratedFileBlob {
+  key       String   @id
+  data      Bytes
+  createdAt DateTime @default(now())
 }
 
 model SlackConversation {

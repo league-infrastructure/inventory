@@ -648,7 +648,10 @@ export function registerTools(server: McpServer): void {
     + 'not exceed 60 — split larger requests into multiple calls rather than expecting '
     + 'truncation. kit_numbers takes the numbers printed on the kits directly; packs takes pack '
     + 'designators (structured {kit_number, pack_number}, or the combined "kit_number/pack_number" '
-    + 'string, e.g. "26/1"); use list_computers to find the numeric database IDs computer_ids requires.',
+    + 'string, e.g. "26/1"); use list_computers to find the numeric database IDs computer_ids requires. '
+    + 'The JSON manifest includes a download_url per bundle — an absolute, login-protected link '
+    + 'the user can click to download that bundle\'s PDF — alongside the inline base64 resource '
+    + 'block for clients that render it directly.',
     {
       kit_numbers: z.array(z.number()).optional(),
       packs: z.array(zPackDesignator()).optional(),
@@ -657,7 +660,7 @@ export function registerTools(server: McpServer): void {
     },
     async ({ kit_numbers, packs, computer_ids, include_kit_packs }) => {
       return safeCall(async () => {
-        const { services } = getContext();
+        const { services, user } = getContext();
 
         const kitNumbers = kit_numbers ?? [];
         const packDesignators = packs ?? [];
@@ -711,8 +714,26 @@ export function registerTools(server: McpServer): void {
           includeKitPacks,
         });
 
+        // Store each bundle's PDF so the manifest can carry a real,
+        // clickable download link — filenames reflect stock size and
+        // label count (human-meaningful), never a database id, per
+        // sprint 009's identifier convention.
+        const stored = await Promise.all(
+          bundles.map((b) => services.generatedFiles.store(
+            user.id,
+            b.pdf,
+            `labels-${b.stock}-${b.labelCount}.pdf`,
+            'application/pdf',
+          )),
+        );
+
         const manifest = {
-          bundles: bundles.map((b) => ({ stock: b.stock, labelCount: b.labelCount, contents: b.contents })),
+          bundles: bundles.map((b, i) => ({
+            stock: b.stock,
+            labelCount: b.labelCount,
+            contents: b.contents,
+            download_url: stored[i].downloadUrl,
+          })),
         };
 
         const content: CallToolResult['content'] = [
@@ -730,6 +751,96 @@ export function registerTools(server: McpServer): void {
         }
 
         return { content };
+      });
+    },
+  );
+
+  // ─── List Exports ───────────────────────────────────────────────────
+
+  server.tool(
+    'export_list',
+    '"I need a list of X": export a filtered CSV or xlsx of kits, packs, computers, or items, '
+    + 'using human-facing identifiers only (kit numbers, pack designators, host names) — never '
+    + 'database ids. Stores the file and returns a download_url the user can click to download '
+    + 'it. Filters mirror the corresponding list_* tool exactly, and compose the same way: '
+    + 'entity="kits" accepts status (matching list_kits); entity="packs" accepts kit_number '
+    + '(matching list_packs); entity="items" accepts pack, a pack designator — structured '
+    + '{kit_number, pack_number}, or the combined "kit_number/pack_number" string, e.g. "26/1" '
+    + '(matching list_items); entity="computers" accepts site_id, kit_number, disposition '
+    + '(ACTIVE, LOANED, NEEDS_REPAIR, IN_REPAIR, SCRAPPED, LOST, or DECOMMISSIONED), and '
+    + 'unassigned (matching list_computers). Omitting all filters for the chosen entity exports '
+    + 'the full unfiltered list for that entity, same as the corresponding list_* tool with no '
+    + 'arguments. No row/size cap — unlike generate_labels, the whole point of a download link '
+    + 'is that size is no longer a tool-response concern.',
+    {
+      entity: z.enum(['kits', 'packs', 'computers', 'items']),
+      format: z.enum(['csv', 'xlsx']),
+      status: z.string().optional().describe('kits only: filter by status, matching list_kits'),
+      kit_number: z.number().optional().describe('packs/computers only: filter by the kit\'s printed number, matching list_packs/list_computers'),
+      pack: zPackDesignator().optional().describe('items only: filter by pack designator, matching list_items'),
+      site_id: z.number().optional().describe('computers only: filter by site id, matching list_computers (find it via list_sites first)'),
+      disposition: z.string().optional().describe('computers only: ACTIVE, LOANED, NEEDS_REPAIR, IN_REPAIR, SCRAPPED, LOST, or DECOMMISSIONED, matching list_computers'),
+      unassigned: z.boolean().optional().describe('computers only: true returns only computers with no site and no kit, matching list_computers'),
+    },
+    async ({ entity, format, status, kit_number, pack, site_id, disposition, unassigned }) => {
+      return safeCall(async () => {
+        const { services, user } = getContext();
+
+        let result;
+        switch (entity) {
+          case 'kits': {
+            result = await services.exports.exportKitsList(format, { status });
+            break;
+          }
+          case 'packs': {
+            let kitId: number | undefined;
+            if (kit_number != null) {
+              const kit = await resolveKitByNumber(services.prisma, kit_number);
+              kitId = kit.id;
+            }
+            result = await services.exports.exportPacksList(format, { kitId });
+            break;
+          }
+          case 'items': {
+            let packId: number | undefined;
+            if (pack != null) {
+              const resolved = await resolvePackByDesignator(services.prisma, toPackDesignator(pack));
+              packId = resolved.id;
+            }
+            result = await services.exports.exportItemsList(format, { packId });
+            break;
+          }
+          case 'computers': {
+            let kitId: number | undefined;
+            if (kit_number != null) {
+              const kit = await resolveKitByNumber(services.prisma, kit_number);
+              kitId = kit.id;
+            }
+            result = await services.exports.exportComputersList(format, {
+              siteId: site_id,
+              kitId,
+              disposition,
+              unassigned,
+            });
+            break;
+          }
+        }
+
+        const mimeType = format === 'csv'
+          ? 'text/csv'
+          : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+        // Filename reflects entity + format only — human-meaningful, never
+        // a database id, per sprint 009's identifier convention.
+        const filename = `${entity}-export.${format}`;
+
+        const stored = await services.generatedFiles.store(user.id, result.buffer, filename, mimeType);
+
+        return ok({
+          entity,
+          format,
+          rowCount: result.rowCount,
+          download_url: stored.downloadUrl,
+        });
       });
     },
   );

@@ -39,16 +39,41 @@ export type OnDelta = (text: string) => void;
 export type OnToolUse = (name: string, input: Record<string, unknown>) => void;
 
 /**
- * The shape every tool in `mcp/tools.ts` actually returns (via its `ok()` /
- * `toolError()` helpers): a text-content array plus an optional `isError`
- * flag. The MCP SDK's `callTool()` return type is a wider union that also
- * covers a structured `toolResult` shape no registered tool here produces;
- * narrowing to this shape keeps the mapping to Anthropic's tool-result
- * block straightforward.
+ * The shape every tool in `mcp/tools.ts` returns (via its `ok()` /
+ * `toolError()` helpers): a content-block array plus an optional `isError`
+ * flag. Most tools return only `text` blocks, but some (e.g.
+ * `generate_labels`) also include `resource` blocks carrying inline base64
+ * file data — this is NOT text-only content, despite what an earlier
+ * version of this comment claimed. `extractTextContent()` below
+ * intentionally filters `resource` blocks out here, since the in-app chat
+ * has no way to turn one into a download; every tool that emits a
+ * `resource` block also always includes a `download_url` inside its
+ * accompanying `text` block's JSON manifest (sprint 010), so nothing
+ * reachable by the user is lost by dropping it. The MCP SDK's `callTool()`
+ * return type is a wider union that also covers a structured `toolResult`
+ * shape no registered tool here produces; narrowing to this shape keeps
+ * the mapping to Anthropic's tool-result block straightforward.
  */
 interface McpToolCallResult {
   content?: Array<{ type: string; text?: string }>;
   isError?: boolean;
+}
+
+/**
+ * Reduce an MCP tool-call result to the plain text Anthropic's
+ * `tool_result` content expects, dropping any non-text (e.g. `resource`)
+ * blocks — see `McpToolCallResult`'s doc comment above for why that's safe.
+ * Exported so tests can verify that a download link — carried inside a
+ * tool's JSON `text` manifest — survives this filter into the model's
+ * final reply, without driving a real Anthropic conversation.
+ */
+export function extractTextContent(result: McpToolCallResult): string {
+  return Array.isArray(result.content)
+    ? result.content
+      .filter((c): c is { type: 'text'; text: string } => c.type === 'text')
+      .map(c => c.text)
+      .join('\n')
+    : '';
 }
 
 /**
@@ -308,12 +333,7 @@ export class AiChatService {
             name: block.name,
             arguments: block.input as Record<string, unknown>,
           }) as McpToolCallResult;
-          const content = Array.isArray(result.content)
-            ? result.content
-              .filter((c): c is { type: 'text'; text: string } => c.type === 'text')
-              .map(c => c.text)
-              .join('\n')
-            : '';
+          const content = extractTextContent(result);
           toolResults.push({
             type: 'tool_result',
             tool_use_id: block.id,

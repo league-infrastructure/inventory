@@ -172,7 +172,15 @@ describe('MCP tool _meta.requiresQM drift guard (ticket 005-001)', () => {
   it('never declares requiresQM on a tool with no _meta at all (explicit negative check on known non-QM tools)', () => {
     const tools = getAllTools();
     const byName = new Map(tools.map((t) => [t.name, t]));
-    for (const name of ['list_sites', 'get_kit', 'transfer_kit', 'transfer_computer', 'get_version']) {
+    // export_list (ticket 010-004) is included here deliberately, not just
+    // implicitly covered by the blanket check above: sprint 010's
+    // architecture is explicit that it must stay at the same access level
+    // as the existing unfiltered /api/export REST routes (any authenticated
+    // non-loanee user, no QM requirement) even though its computers entity
+    // carries the same admin/student password columns as that existing
+    // export — this is a deliberate non-change to who can see those
+    // fields, not an oversight, so it gets its own named assertion.
+    for (const name of ['list_sites', 'get_kit', 'transfer_kit', 'transfer_computer', 'get_version', 'export_list']) {
       const tool = byName.get(name);
       expect(tool).toBeDefined();
       expect(tool!.meta?.requiresQM).not.toBe(true);

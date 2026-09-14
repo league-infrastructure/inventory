@@ -3,6 +3,7 @@ import QRCode from 'qrcode';
 import * as path from 'path';
 import { PrismaClient } from '@prisma/client';
 import { NotFoundError } from './errors';
+import { getBaseUrl } from '../config/baseUrl';
 
 const FLAG_IMAGE_PATH = path.join(__dirname, '..', 'assets', 'flag.png');
 
@@ -81,7 +82,7 @@ export class LabelService {
   private baseUrl: string;
 
   constructor(private prisma: PrismaClient, baseUrl?: string) {
-    const raw = baseUrl ?? process.env.QR_DOMAIN ?? process.env.APP_BASE_URL ?? 'http://localhost:9311';
+    const raw = baseUrl ?? getBaseUrl();
     this.baseUrl = raw.replace(/\/+$/, '');
   }
 

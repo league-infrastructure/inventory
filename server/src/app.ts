@@ -30,6 +30,7 @@ import { imageRouter } from './routes/images';
 import { categoriesRouter } from './routes/categories';
 import { manufacturersRouter } from './routes/manufacturers';
 import { notesRouter } from './routes/notes';
+import { downloadsRouter } from './routes/downloads';
 import { errorHandler } from './middleware/errorHandler';
 import { logBuffer } from './services/logBuffer';
 import { prisma } from './services/prisma';
@@ -141,6 +142,12 @@ const backupRotation = new BackupRotationService(backupService);
 schedulerService.registerHandler('daily-backup', () => backupRotation.runDaily());
 schedulerService.registerHandler('weekly-backup', () => backupRotation.runWeekly());
 
+// Cleanup of expired generated files (labels PDFs, list exports) — the
+// ScheduledJob row is seeded by the GeneratedFile migration
+// (20260914052524_add_generated_file_storage), same pattern as
+// daily-backup/weekly-backup above.
+schedulerService.registerHandler('cleanup-generated-files', async () => { await services.generatedFiles.deleteExpired(); });
+
 // Routes
 app.use('/api', healthRouter);
 app.use('/api', authRouter);
@@ -166,6 +173,7 @@ app.use('/api', imageRouter(services));
 app.use('/api', categoriesRouter(services));
 app.use('/api', manufacturersRouter(services));
 app.use('/api', notesRouter(services));
+app.use('/api', downloadsRouter(services));
 app.use('/api', schedulerRouter(schedulerService));
 app.use('/api', adminRouter);
 
