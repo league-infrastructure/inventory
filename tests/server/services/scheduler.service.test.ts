@@ -196,9 +196,19 @@ describe('SchedulerService', () => {
  * 001's migration (`20260914052524_add_generated_file_storage`) — not a
  * throwaway `test-*` job like the isolated-instance tests above. Only
  * this one row's `nextRunAt` is ever moved into the past, and it is
- * restored afterward, so `daily-backup`/`weekly-backup` (registered on
- * the same singleton, backed by real Spaces calls) are never made due by
- * this test and are left untouched.
+ * restored afterward.
+ *
+ * This calls `tickJobByName('cleanup-generated-files')` rather than
+ * `tick()`. `tick()` runs every due, enabled job on the singleton —
+ * including `daily-backup`/`weekly-backup`, which call real DigitalOcean
+ * Spaces — and those rows' due dates are outside this test's control (a
+ * prior version of this test relied on them staying in the future, which
+ * silently stopped holding once real time passed their `nextRunAt`).
+ * `tickJobByName` looks the job up by name and scopes its row-level lock
+ * to that one row's id, so it is structurally incapable of selecting,
+ * locking, or invoking the handler for any other job — the backup jobs
+ * can never run from this test, regardless of the current date or the
+ * state of their `ScheduledJob` rows.
  */
 describe('cleanup-generated-files (wired in app.ts)', () => {
   const suffix = getSuffix();
@@ -256,7 +266,8 @@ describe('cleanup-generated-files (wired in app.ts)', () => {
       data: { nextRunAt: new Date(Date.now() - 60000) },
     });
 
-    await appSchedulerService.tick();
+    const executed = await appSchedulerService.tickJobByName('cleanup-generated-files');
+    expect(executed).toBe(1);
 
     const expiredResolved = await registry.generatedFiles.resolveForDownload(expired.token, { id: ownerId, role: 'INSTRUCTOR' });
     expect(expiredResolved.outcome).toBe('not-found');

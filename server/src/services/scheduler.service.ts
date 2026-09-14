@@ -26,58 +26,91 @@ export class SchedulerService {
     });
 
     for (const job of dueJobs) {
-      // Try to lock and execute each job in its own transaction
-      try {
-        await this.prisma.$transaction(async (tx) => {
-          // Attempt row-level lock — skip if another process holds it
-          const locked = await tx.$queryRaw<{ id: number }[]>`
-            SELECT id FROM "ScheduledJob"
-            WHERE id = ${job.id} AND "nextRunAt" <= NOW() AND enabled = true
-            FOR UPDATE SKIP LOCKED
-          `;
+      if (await this.executeIfDue(job)) executed++;
+    }
 
-          if (locked.length === 0) return; // Another process has it
+    return executed;
+  }
 
-          const handler = this.handlers.get(job.name);
-          if (!handler) {
-            await tx.scheduledJob.update({
-              where: { id: job.id },
-              data: {
-                lastError: `No handler registered for job "${job.name}"`,
-                nextRunAt: this.computeNextRun(job.frequency, job.nextRunAt),
-              },
-            });
-            return;
-          }
+  /**
+   * Runs exactly one named job, but only if it is currently due — same
+   * per-job locking, handler dispatch, and bookkeeping as a `tick()` pass,
+   * scoped to a single `ScheduledJob` row.
+   *
+   * Unlike `tick()`, this never reads or locks any other row: the job is
+   * looked up by name and the row-level lock is scoped to that row's id,
+   * so no other job (e.g. `daily-backup`/`weekly-backup`) can be selected,
+   * locked, or have its handler invoked by this call — regardless of
+   * whether those jobs are also due. Not used by production scheduling
+   * (that always goes through `tick()`); intended for tests that need to
+   * exercise one job's wiring without any risk of running unrelated jobs.
+   *
+   * Returns 1 if the job executed, 0 if it was not found or not due.
+   */
+  async tickJobByName(name: string): Promise<number> {
+    const job = await this.prisma.scheduledJob.findUnique({ where: { name } });
+    if (!job) return 0;
+    return (await this.executeIfDue(job)) ? 1 : 0;
+  }
 
-          try {
-            await handler();
-            await tx.scheduledJob.update({
-              where: { id: job.id },
-              data: {
-                lastRunAt: new Date(),
-                lastError: null,
-                nextRunAt: this.computeNextRun(job.frequency, job.nextRunAt),
-              },
-            });
-            executed++;
-            console.log(`Scheduled job "${job.name}" executed successfully`);
-          } catch (err: any) {
-            const errorMsg = err.message || String(err);
-            await tx.scheduledJob.update({
-              where: { id: job.id },
-              data: {
-                lastError: errorMsg,
-                nextRunAt: this.computeNextRun(job.frequency, job.nextRunAt),
-              },
-            });
-            console.error(`Scheduled job "${job.name}" failed:`, errorMsg);
-          }
-        });
-      } catch (err: any) {
-        // Transaction-level failure (e.g., connection lost) — log and continue
-        console.error(`Scheduler transaction failed for "${job.name}":`, err.message);
-      }
+  /**
+   * Attempts to lock and run a single job's handler, applying the same
+   * due/enabled re-check (via `FOR UPDATE SKIP LOCKED`) and bookkeeping
+   * used by `tick()`. Shared by `tick()` and `tickJobByName()`.
+   */
+  private async executeIfDue(job: { id: number; name: string; frequency: string; nextRunAt: Date }): Promise<boolean> {
+    let executed = false;
+
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        // Attempt row-level lock — skip if another process holds it
+        const locked = await tx.$queryRaw<{ id: number }[]>`
+          SELECT id FROM "ScheduledJob"
+          WHERE id = ${job.id} AND "nextRunAt" <= NOW() AND enabled = true
+          FOR UPDATE SKIP LOCKED
+        `;
+
+        if (locked.length === 0) return; // Another process has it, or it isn't due
+
+        const handler = this.handlers.get(job.name);
+        if (!handler) {
+          await tx.scheduledJob.update({
+            where: { id: job.id },
+            data: {
+              lastError: `No handler registered for job "${job.name}"`,
+              nextRunAt: this.computeNextRun(job.frequency, job.nextRunAt),
+            },
+          });
+          return;
+        }
+
+        try {
+          await handler();
+          await tx.scheduledJob.update({
+            where: { id: job.id },
+            data: {
+              lastRunAt: new Date(),
+              lastError: null,
+              nextRunAt: this.computeNextRun(job.frequency, job.nextRunAt),
+            },
+          });
+          executed = true;
+          console.log(`Scheduled job "${job.name}" executed successfully`);
+        } catch (err: any) {
+          const errorMsg = err.message || String(err);
+          await tx.scheduledJob.update({
+            where: { id: job.id },
+            data: {
+              lastError: errorMsg,
+              nextRunAt: this.computeNextRun(job.frequency, job.nextRunAt),
+            },
+          });
+          console.error(`Scheduled job "${job.name}" failed:`, errorMsg);
+        }
+      });
+    } catch (err: any) {
+      // Transaction-level failure (e.g., connection lost) — log and continue
+      console.error(`Scheduler transaction failed for "${job.name}":`, err.message);
     }
 
     return executed;

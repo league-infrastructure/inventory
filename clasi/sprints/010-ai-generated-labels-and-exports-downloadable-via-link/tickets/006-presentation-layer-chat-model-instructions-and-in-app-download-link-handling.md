@@ -1,9 +1,14 @@
 ---
 id: '006'
 title: 'Presentation layer: chat/model instructions and in-app download link handling'
-status: open
-use-cases: [SUC-001, SUC-002, SUC-003]
-depends-on: ['003', '004']
+status: in-progress
+use-cases:
+- SUC-001
+- SUC-002
+- SUC-003
+depends-on:
+- '003'
+- '004'
 github-issue: ''
 issue: ai-generated-labels-and-exports-downloadable-via-link.md
 completes_issue: true
