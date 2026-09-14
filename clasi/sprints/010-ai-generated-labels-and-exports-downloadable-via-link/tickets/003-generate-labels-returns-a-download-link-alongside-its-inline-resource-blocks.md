@@ -1,9 +1,13 @@
 ---
 id: '003'
 title: generate_labels returns a download link alongside its inline resource blocks
-status: open
-use-cases: [SUC-001, SUC-002]
-depends-on: ['001', '002']
+status: done
+use-cases:
+- SUC-001
+- SUC-002
+depends-on:
+- '001'
+- '002'
 github-issue: ''
 issue: ai-generated-labels-and-exports-downloadable-via-link.md
 completes_issue: true
@@ -25,22 +29,22 @@ download; the in-app chat drops `resource` blocks entirely). The
 
 ## Acceptance Criteria
 
-- [ ] For each `LabelBundle` returned by `services.labels.generateLabelSet`,
+- [x] For each `LabelBundle` returned by `services.labels.generateLabelSet`,
       the tool stores the PDF via `GeneratedFileService.store` (owner =
       the requesting MCP-context user) and adds a `download_url` field
       to that bundle's entry in the JSON manifest text block (alongside
       the existing `stock`/`labelCount`/`contents` fields).
-- [ ] The existing per-bundle `resource` content block (base64 PDF) is
+- [x] The existing per-bundle `resource` content block (base64 PDF) is
       still returned unchanged, for clients that do render it.
-- [ ] The 60-label cap check and the pre-existing "no labels requested"
+- [x] The 60-label cap check and the pre-existing "no labels requested"
       / cap-exceeded error paths are unaffected — they run before any
       storage call, as today.
-- [ ] `generate_labels`'s tool description is updated to mention that
+- [x] `generate_labels`'s tool description is updated to mention that
       the manifest includes a download link per bundle (the model needs
       to know this exists in order to present it — see ticket 006 for
       the broader instruction/prompt update, but this tool's own
       description should not go stale relative to its actual output).
-- [ ] Stored filenames are human-meaningful (e.g. reflect the stock
+- [x] Stored filenames are human-meaningful (e.g. reflect the stock
       size / contents), not database ids, consistent with sprint 009's
       identifier convention.
 

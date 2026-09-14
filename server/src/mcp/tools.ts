@@ -648,7 +648,10 @@ export function registerTools(server: McpServer): void {
     + 'not exceed 60 — split larger requests into multiple calls rather than expecting '
     + 'truncation. kit_numbers takes the numbers printed on the kits directly; packs takes pack '
     + 'designators (structured {kit_number, pack_number}, or the combined "kit_number/pack_number" '
-    + 'string, e.g. "26/1"); use list_computers to find the numeric database IDs computer_ids requires.',
+    + 'string, e.g. "26/1"); use list_computers to find the numeric database IDs computer_ids requires. '
+    + 'The JSON manifest includes a download_url per bundle — an absolute, login-protected link '
+    + 'the user can click to download that bundle\'s PDF — alongside the inline base64 resource '
+    + 'block for clients that render it directly.',
     {
       kit_numbers: z.array(z.number()).optional(),
       packs: z.array(zPackDesignator()).optional(),
@@ -657,7 +660,7 @@ export function registerTools(server: McpServer): void {
     },
     async ({ kit_numbers, packs, computer_ids, include_kit_packs }) => {
       return safeCall(async () => {
-        const { services } = getContext();
+        const { services, user } = getContext();
 
         const kitNumbers = kit_numbers ?? [];
         const packDesignators = packs ?? [];
@@ -711,8 +714,26 @@ export function registerTools(server: McpServer): void {
           includeKitPacks,
         });
 
+        // Store each bundle's PDF so the manifest can carry a real,
+        // clickable download link — filenames reflect stock size and
+        // label count (human-meaningful), never a database id, per
+        // sprint 009's identifier convention.
+        const stored = await Promise.all(
+          bundles.map((b) => services.generatedFiles.store(
+            user.id,
+            b.pdf,
+            `labels-${b.stock}-${b.labelCount}.pdf`,
+            'application/pdf',
+          )),
+        );
+
         const manifest = {
-          bundles: bundles.map((b) => ({ stock: b.stock, labelCount: b.labelCount, contents: b.contents })),
+          bundles: bundles.map((b, i) => ({
+            stock: b.stock,
+            labelCount: b.labelCount,
+            contents: b.contents,
+            download_url: stored[i].downloadUrl,
+          })),
         };
 
         const content: CallToolResult['content'] = [

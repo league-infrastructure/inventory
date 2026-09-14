@@ -187,6 +187,10 @@ describe('generate_labels MCP tool', () => {
       // Raw PDF bytes must be omitted from the text manifest.
       expect(JSON.stringify(manifest)).not.toMatch(/%PDF-/);
 
+      // download_url: absolute, human-meaningful filename (stock + label
+      // count), never a database id.
+      expect(manifest.bundles[0].download_url).toMatch(/^https?:\/\/.+\/api\/downloads\/[0-9a-f]{64}$/);
+
       expect(result.content[1].type).toBe('resource');
       const resource = result.content[1].resource!;
       expect(resource.uri).toBe('inventory://labels/102x59.pdf');
@@ -210,10 +214,68 @@ describe('generate_labels MCP tool', () => {
       const stocks = manifest.bundles.map((b: any) => b.stock).sort();
       expect(stocks).toEqual(['102x59', '89x28']);
 
+      // Each bundle gets its own download_url, minted from a distinct token.
+      const downloadUrls = manifest.bundles.map((b: any) => b.download_url);
+      expect(downloadUrls.every((u: string) => /^https?:\/\/.+\/api\/downloads\/[0-9a-f]{64}$/.test(u))).toBe(true);
+      expect(new Set(downloadUrls).size).toBe(2);
+
       const resourceBlocks = result.content.slice(1);
       expect(resourceBlocks.every((b) => b.type === 'resource')).toBe(true);
       const uris = resourceBlocks.map((b) => b.resource!.uri).sort();
       expect(uris).toEqual(['inventory://labels/102x59.pdf', 'inventory://labels/89x28.pdf'].sort());
+    });
+  });
+
+  describe('generate_labels download_url', () => {
+    it('resolveForDownload returns bytes identical to the inline resource block, stored under the requesting user', async () => {
+      const services = ServiceRegistry.create(getPrisma(), 'MCP');
+      const handler = getGenerateLabelsHandler();
+      const uid = getUserId();
+
+      await mcpContext.run({ user: fakeUser('QUARTERMASTER'), services }, async () => {
+        const result = await handler({ kit_numbers: [kitNumber], include_kit_packs: true });
+        expect(result.isError).toBeFalsy();
+
+        const manifest = JSON.parse(result.content[0].text as string);
+        const downloadUrl: string = manifest.bundles[0].download_url;
+        const token = new URL(downloadUrl).pathname.split('/').pop()!;
+
+        const resolution = await services.generatedFiles.resolveForDownload(token, { id: uid, role: 'QUARTERMASTER' });
+        expect(resolution.outcome).toBe('ok');
+        if (resolution.outcome !== 'ok') return;
+
+        expect(resolution.mimeType).toBe('application/pdf');
+        // Human-meaningful filename: reflects stock size + label count, no database id.
+        expect(resolution.filename).toBe(`labels-${manifest.bundles[0].stock}-${manifest.bundles[0].labelCount}.pdf`);
+        expect(resolution.filename).not.toMatch(new RegExp(`\\b${kitId}\\b`));
+
+        const resourceBlob = result.content[1].resource!.blob;
+        expect(resolution.data.equals(Buffer.from(resourceBlob, 'base64'))).toBe(true);
+      });
+    });
+
+    it('the download link is resolvable over HTTP, returning the same bytes as the inline resource block', async () => {
+      const services = ServiceRegistry.create(getPrisma(), 'MCP');
+      const handler = getGenerateLabelsHandler();
+
+      const result = await mcpContext.run({ user: fakeUser('QUARTERMASTER'), services }, () =>
+        handler({ kit_numbers: [kitNumber], include_kit_packs: true }));
+      expect(result.isError).toBeFalsy();
+
+      const manifest = JSON.parse(result.content[0].text as string);
+      const downloadUrl: string = manifest.bundles[0].download_url;
+      const downloadPath = new URL(downloadUrl).pathname;
+
+      const agent = request.agent(app);
+      await agent.post('/api/test/login').send({ role: 'QUARTERMASTER' });
+
+      const res = await agent.get(downloadPath);
+      expect(res.status).toBe(200);
+      expect(res.headers['content-type']).toMatch(/application\/pdf/);
+      expect(res.headers['content-disposition']).toContain(`labels-${manifest.bundles[0].stock}-${manifest.bundles[0].labelCount}.pdf`);
+
+      const resourceBlob = result.content[1].resource!.blob;
+      expect(Buffer.from(res.body).equals(Buffer.from(resourceBlob, 'base64'))).toBe(true);
     });
   });
 
