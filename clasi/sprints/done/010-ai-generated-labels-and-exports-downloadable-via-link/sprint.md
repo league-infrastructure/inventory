@@ -1,7 +1,7 @@
 ---
 id: '010'
 title: AI-Generated Labels and Exports Downloadable via Link
-status: executing
+status: done
 branch: sprint/010-ai-generated-labels-and-exports-downloadable-via-link
 use-cases:
 - SUC-001
