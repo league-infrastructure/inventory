@@ -80,7 +80,17 @@ export class ServiceRegistry {
     // Selected once here (composition root), by whether Spaces
     // credentials are configured — dev/test never needs real
     // DO_SPACES_KEY/DO_SPACES_SECRET to exercise generated-file code.
-    this.fileStorage = (process.env.DO_SPACES_KEY && process.env.DO_SPACES_SECRET)
+    //
+    // The `NODE_ENV !== 'test'` check is a second, independent guard
+    // against real Spaces uploads during tests (layer 1 is jest's
+    // setupFiles stripping the credentials entirely — see
+    // tests/server/jest.setup-env.js). This one holds even if a test
+    // deliberately re-sets DO_SPACES_KEY/DO_SPACES_SECRET on
+    // process.env, e.g. to prove the guard itself works.
+    const useSpaces = process.env.NODE_ENV !== 'test'
+      && !!process.env.DO_SPACES_KEY
+      && !!process.env.DO_SPACES_SECRET;
+    this.fileStorage = useSpaces
       ? new SpacesFileStorage()
       : new DbFileStorage(prisma);
     this.generatedFiles = new GeneratedFileService(prisma, this.fileStorage);

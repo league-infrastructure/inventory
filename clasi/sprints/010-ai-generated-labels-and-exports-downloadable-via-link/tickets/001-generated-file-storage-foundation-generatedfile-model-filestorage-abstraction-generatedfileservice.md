@@ -110,3 +110,58 @@ storage split and why authorization lives in the service, not the route.
 - **Verification command**: `cd server && npx jest --config
   ../tests/server/jest.config.js src/services/generated-file.service`
   (adjust path to match actual test file location).
+
+## Follow-up fix (reopened)
+
+**Defect**: `ServiceRegistry` (`server/src/services/service.registry.ts`,
+commit 74d2960) selected `SpacesFileStorage` whenever
+`DO_SPACES_KEY`/`DO_SPACES_SECRET` were present in `process.env` — true
+on a developer machine with the project `.env` sourced (needed for
+`SESSION_SECRET` by token-auth suites). This caused `labels.test.ts`,
+`export-list.test.ts`, and the downloads/scheduler suites to upload 131
+real objects into the production DigitalOcean Spaces bucket under
+`generated-files/` over the course of the sprint. The bucket has been
+cleaned up by the team-lead. This violated this ticket's own acceptance
+criterion that no test in the sprint requires or uses real Spaces
+credentials.
+
+**Fix**: two independent guards, so no single missed setup step can
+reintroduce the defect:
+
+1. `tests/server/jest.setup-env.js`, wired in via jest's `setupFiles`
+   (`tests/server/jest.config.js`), deletes `DO_SPACES_KEY`/
+   `DO_SPACES_SECRET` from `process.env` before any test file's own
+   code runs — this runs regardless of whether a given test file sets
+   `NODE_ENV` itself.
+2. `ServiceRegistry`'s selection now also requires
+   `NODE_ENV !== 'test'` before choosing `SpacesFileStorage`, so the
+   guard holds even if a test deliberately re-sets the Spaces env vars
+   (as the new regression test below does, to prove the guard).
+
+Production selection (`NODE_ENV` unset/`production` +
+real credentials → `SpacesFileStorage`) is unchanged.
+
+**New test**: `tests/server/services/service-registry-file-storage.test.ts`
+proves (a) the shell-inherited credentials never reach a test file's
+`process.env`, (b) `ServiceRegistry.create()` still selects
+`DbFileStorage` and never calls `getS3Client()` even when a test
+explicitly re-sets `DO_SPACES_KEY`/`DO_SPACES_SECRET` under
+`NODE_ENV=test`, and (c) the production path (`NODE_ENV=production`)
+still selects `SpacesFileStorage`, confirming no behavior change there.
+Verified this test fails without the fix (reverted both guards
+locally, saw both assertions fail with `SpacesFileStorage` selected)
+and passes with it.
+
+**Verification run** (no real Spaces/DB credentials):
+`cd server && env -u DATABASE_URL SESSION_SECRET=test-session-secret
+DO_SPACES_KEY=fake DO_SPACES_SECRET=fake npx jest --config
+../tests/server/jest.config.js --runInBand --forceExit
+../tests/server/labels.test.ts ../tests/server/export-list.test.ts
+../tests/server/downloads.test.ts
+../tests/server/services/generated-file.service.test.ts
+../tests/server/services/scheduler.service.test.ts
+../tests/server/services/service-registry-file-storage.test.ts` — 6
+suites, 55 tests, all passing. Full server suite also run: only the
+pre-existing known-flaky suites (`app`, `auth`, `github`, `pike13`,
+`integrations`, `services/issue.service`) fail, matching this ticket's
+documented baseline — no regressions.
