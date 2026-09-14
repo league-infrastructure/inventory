@@ -22,6 +22,8 @@ import { ImageService } from './image.service';
 import { CategoryService } from './category.service';
 import { ManufacturerService } from './manufacturer.service';
 import { NoteService } from './note.service';
+import { FileStorage, SpacesFileStorage, DbFileStorage } from './file-storage';
+import { GeneratedFileService } from './generated-file.service';
 
 export class ServiceRegistry {
   readonly prisma: PrismaClient;
@@ -47,6 +49,8 @@ export class ServiceRegistry {
   readonly categories: CategoryService;
   readonly manufacturers: ManufacturerService;
   readonly notes: NoteService;
+  readonly fileStorage: FileStorage;
+  readonly generatedFiles: GeneratedFileService;
 
   private constructor(prisma: PrismaClient, source: AuditSource = 'UI') {
     this.prisma = prisma;
@@ -72,6 +76,14 @@ export class ServiceRegistry {
     this.categories = new CategoryService(prisma, this.audit);
     this.manufacturers = new ManufacturerService(prisma, this.audit);
     this.notes = new NoteService(prisma);
+
+    // Selected once here (composition root), by whether Spaces
+    // credentials are configured — dev/test never needs real
+    // DO_SPACES_KEY/DO_SPACES_SECRET to exercise generated-file code.
+    this.fileStorage = (process.env.DO_SPACES_KEY && process.env.DO_SPACES_SECRET)
+      ? new SpacesFileStorage()
+      : new DbFileStorage(prisma);
+    this.generatedFiles = new GeneratedFileService(prisma, this.fileStorage);
   }
 
   static create(prisma?: PrismaClient, source?: AuditSource): ServiceRegistry {

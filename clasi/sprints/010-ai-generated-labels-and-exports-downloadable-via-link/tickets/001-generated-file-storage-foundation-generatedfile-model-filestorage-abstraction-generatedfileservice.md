@@ -2,8 +2,10 @@
 id: '001'
 title: 'Generated-file storage foundation: GeneratedFile model, FileStorage abstraction,
   GeneratedFileService'
-status: open
-use-cases: [SUC-005, SUC-006]
+status: done
+use-cases:
+- SUC-005
+- SUC-006
 depends-on: []
 github-issue: ''
 issue: ai-generated-labels-and-exports-downloadable-via-link.md
@@ -35,13 +37,13 @@ storage split and why authorization lives in the service, not the route.
 
 ## Acceptance Criteria
 
-- [ ] `server/src/config/baseUrl.ts` exports a function implementing the
+- [x] `server/src/config/baseUrl.ts` exports a function implementing the
       existing `QR_DOMAIN ?? APP_BASE_URL ?? localhost` fallback chain,
       with no `Request` parameter.
-- [ ] `LabelService`'s constructor is refactored to call this helper
+- [x] `LabelService`'s constructor is refactored to call this helper
       instead of inlining the chain; `LabelService`'s existing tests
       pass unchanged (no behavior change).
-- [ ] `server/src/services/file-storage.ts` exports a `FileStorage`
+- [x] `server/src/services/file-storage.ts` exports a `FileStorage`
       interface (`put`, `get`, `delete` by string key, `Buffer` in/out)
       and two implementations:
       - `SpacesFileStorage`: writes to the existing Spaces bucket
@@ -56,14 +58,14 @@ storage split and why authorization lives in the service, not the route.
       Selection between them happens once, at composition root
       (`ServiceRegistry` or `app.ts`), based on whether
       `DO_SPACES_KEY`/`DO_SPACES_SECRET` are both set.
-- [ ] A `GeneratedFile` Prisma model exists with: `id`, `ownerId` (FK to
+- [x] A `GeneratedFile` Prisma model exists with: `id`, `ownerId` (FK to
       `User`), `filename`, `mimeType`, `size`, `objectKey`, `tokenHash`
       (`@unique`), `createdAt`, `expiresAt`. The migration also seeds a
       `ScheduledJob` row named `cleanup-generated-files` (daily
       frequency, enabled), following the exact pattern of
       `20260310190000_add_scheduled_job_table`'s `daily-backup`/
       `weekly-backup` seed rows.
-- [ ] `server/src/services/generated-file.service.ts` exports
+- [x] `server/src/services/generated-file.service.ts` exports
       `GeneratedFileService` with at minimum:
       - `store(ownerId, buffer, filename, mimeType, expiresInMs?)` →
         persists via `FileStorage`, creates the `GeneratedFile` row,
@@ -87,8 +89,8 @@ storage split and why authorization lives in the service, not the route.
         deletes their backing object via `FileStorage.delete`, then
         deletes the rows. Returns a count (ticket 005 wires this to the
         scheduler and needs something to log).
-- [ ] Default retention is 7 days when `expiresInMs` is omitted.
-- [ ] No test in this ticket (or anywhere in the sprint) requires real
+- [x] Default retention is 7 days when `expiresInMs` is omitted.
+- [x] No test in this ticket (or anywhere in the sprint) requires real
       `DO_SPACES_KEY`/`DO_SPACES_SECRET` to pass.
 
 ## Testing
