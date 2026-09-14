@@ -1,7 +1,7 @@
 ---
 id: 009
 title: Kit and Pack Tool Parameters Take User Numbers
-status: executing
+status: done
 branch: sprint/009-kit-and-pack-tool-parameters-take-user-numbers
 use-cases:
 - SUC-001
