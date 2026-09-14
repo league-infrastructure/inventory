@@ -1,9 +1,11 @@
 ---
 id: '005'
 title: Scheduled cleanup of expired generated files
-status: open
-use-cases: [SUC-006]
-depends-on: ['001']
+status: done
+use-cases:
+- SUC-006
+depends-on:
+- '001'
 github-issue: ''
 issue: ai-generated-labels-and-exports-downloadable-via-link.md
 completes_issue: true
@@ -25,21 +27,21 @@ registration pattern `server/src/app.ts` already uses for
 
 ## Acceptance Criteria
 
-- [ ] `server/src/app.ts` registers a `cleanup-generated-files` handler
+- [x] `server/src/app.ts` registers a `cleanup-generated-files` handler
       on the existing `schedulerService` instance
       (`schedulerService.registerHandler('cleanup-generated-files', ()
       => generatedFileService.deleteExpired())`), same call shape as
       the two existing `registerHandler` calls.
-- [ ] Running the scheduler's `tick()` when a `GeneratedFile` row's
+- [x] Running the scheduler's `tick()` when a `GeneratedFile` row's
       `expiresAt` is in the past: the row is deleted, its backing
       object is deleted via `FileStorage.delete`, and
       `ScheduledJob.lastRunAt`/`lastError` are updated exactly as they
       are for the existing backup jobs (no special-casing needed if
       `deleteExpired()` just returns/throws normally — `SchedulerService.tick()`
       already handles success/failure bookkeeping generically).
-- [ ] A `GeneratedFile` row not yet past `expiresAt` is left untouched
+- [x] A `GeneratedFile` row not yet past `expiresAt` is left untouched
       by a `tick()` call.
-- [ ] After cleanup, resolving that file's (now-deleted) token via
+- [x] After cleanup, resolving that file's (now-deleted) token via
       `GeneratedFileService.resolveForDownload` or `GET
       /api/downloads/:token` behaves as not-found, same as an
       already-expired-but-not-yet-cleaned-up row (ticket 001/002 already

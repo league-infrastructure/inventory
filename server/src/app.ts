@@ -142,6 +142,12 @@ const backupRotation = new BackupRotationService(backupService);
 schedulerService.registerHandler('daily-backup', () => backupRotation.runDaily());
 schedulerService.registerHandler('weekly-backup', () => backupRotation.runWeekly());
 
+// Cleanup of expired generated files (labels PDFs, list exports) — the
+// ScheduledJob row is seeded by the GeneratedFile migration
+// (20260914052524_add_generated_file_storage), same pattern as
+// daily-backup/weekly-backup above.
+schedulerService.registerHandler('cleanup-generated-files', async () => { await services.generatedFiles.deleteExpired(); });
+
 // Routes
 app.use('/api', healthRouter);
 app.use('/api', authRouter);

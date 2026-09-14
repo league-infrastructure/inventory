@@ -1,5 +1,6 @@
-import { getPrisma, setupTestUser, teardown } from './setup';
+import { getPrisma, getRegistry, setupTestUser, teardown, getSuffix } from './setup';
 import { SchedulerService } from '../../../server/src/services/scheduler.service';
+import { schedulerService as appSchedulerService } from '../../../server/src/app';
 
 beforeAll(async () => { await setupTestUser(); });
 afterAll(async () => {
@@ -185,5 +186,97 @@ describe('SchedulerService', () => {
 
       await prisma.scheduledJob.delete({ where: { id: job.id } });
     });
+  });
+});
+
+/**
+ * Exercises the real `cleanup-generated-files` wiring: the actual
+ * `schedulerService` singleton exported by `app.ts` (ticket 005 registers
+ * the handler on it) and the actual `ScheduledJob` row seeded by ticket
+ * 001's migration (`20260914052524_add_generated_file_storage`) — not a
+ * throwaway `test-*` job like the isolated-instance tests above. Only
+ * this one row's `nextRunAt` is ever moved into the past, and it is
+ * restored afterward, so `daily-backup`/`weekly-backup` (registered on
+ * the same singleton, backed by real Spaces calls) are never made due by
+ * this test and are left untouched.
+ */
+describe('cleanup-generated-files (wired in app.ts)', () => {
+  const suffix = getSuffix();
+  const prisma = getPrisma();
+  let ownerId: number;
+  let original: { nextRunAt: Date; lastRunAt: Date | null; lastError: string | null };
+
+  beforeAll(async () => {
+    await setupTestUser();
+    const owner = await prisma.user.create({
+      data: {
+        email: `sched-cleanup-owner-${suffix}@example.com`,
+        googleId: `sched-cleanup-owner-${suffix}`,
+        displayName: 'Scheduler Cleanup Owner',
+        role: 'INSTRUCTOR',
+      },
+    });
+    ownerId = owner.id;
+
+    const job = await prisma.scheduledJob.findUniqueOrThrow({ where: { name: 'cleanup-generated-files' } });
+    original = { nextRunAt: job.nextRunAt, lastRunAt: job.lastRunAt, lastError: job.lastError };
+  });
+
+  afterAll(async () => {
+    // Restore the singleton job row so this test leaves no trace on the
+    // shared dev database's real schedule.
+    await prisma.scheduledJob.update({
+      where: { name: 'cleanup-generated-files' },
+      data: original,
+    });
+    await prisma.generatedFile.deleteMany({ where: { ownerId } });
+    await prisma.user.delete({ where: { id: ownerId } });
+    await teardown();
+  });
+
+  it('tick() deletes an expired GeneratedFile row and its backing object, and updates the job bookkeeping', async () => {
+    const registry = getRegistry();
+    const expired = await registry.generatedFiles.store(
+      ownerId,
+      Buffer.from('expired-export-bytes'),
+      'expired-export.csv',
+      'text/csv',
+      -1000, // already expired
+    );
+    const live = await registry.generatedFiles.store(
+      ownerId,
+      Buffer.from('live-export-bytes'),
+      'live-export.csv',
+      'text/csv',
+    );
+
+    // Make the real seeded job due, without touching any other row.
+    await prisma.scheduledJob.update({
+      where: { name: 'cleanup-generated-files' },
+      data: { nextRunAt: new Date(Date.now() - 60000) },
+    });
+
+    await appSchedulerService.tick();
+
+    const expiredResolved = await registry.generatedFiles.resolveForDownload(expired.token, { id: ownerId, role: 'INSTRUCTOR' });
+    expect(expiredResolved.outcome).toBe('not-found');
+    const expiredRow = await prisma.generatedFile.findFirst({ where: { ownerId, filename: 'expired-export.csv' } });
+    expect(expiredRow).toBeNull();
+
+    // The backing blob is gone too, not just the row (DbFileStorage in
+    // test/dev — no Spaces credentials configured).
+    const liveRow = await prisma.generatedFile.findFirst({ where: { ownerId, filename: 'live-export.csv' } });
+    expect(liveRow).not.toBeNull();
+
+    const job = await prisma.scheduledJob.findUniqueOrThrow({ where: { name: 'cleanup-generated-files' } });
+    expect(job.lastError).toBeNull();
+    expect(job.lastRunAt).not.toBeNull();
+    expect(job.nextRunAt.getTime()).toBeGreaterThan(Date.now());
+
+    // Cross-check with the live file's own resolution, confirming the
+    // acceptance criterion "a GeneratedFile row not yet past expiresAt is
+    // left untouched by a tick() call".
+    const liveResolved = await registry.generatedFiles.resolveForDownload(live.token, { id: ownerId, role: 'INSTRUCTOR' });
+    expect(liveResolved.outcome).toBe('ok');
   });
 });
