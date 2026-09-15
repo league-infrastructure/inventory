@@ -124,6 +124,13 @@ number identifier, and the league flag logo. Key changes needed:
 ### Computer label
 
 Computer labels are not shown in the reference image. Current behavior
-(hostname or model as title, serial number and credentials as details)
-can be adapted to the new two-column layout. The number field could
-use the hostname or be omitted — TBD with stakeholder.
+(hostname or model as title, kit/OS/serial number as details) can be
+adapted to the new two-column layout. The number field could use the
+hostname or be omitted — TBD with stakeholder.
+
+The compact 89×28mm computer tag (see `addCompactLabelContent` in
+`label.service.ts`) prints the machine name in a single box spanning
+from the header to the info line, auto-sized (10-28pt) to the largest
+font that fits the box on one line, vertically centered. It never
+prints student credentials — those remain in the database and in
+exports only.

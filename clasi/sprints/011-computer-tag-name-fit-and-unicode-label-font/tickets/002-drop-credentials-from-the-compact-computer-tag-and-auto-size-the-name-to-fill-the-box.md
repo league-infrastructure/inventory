@@ -2,7 +2,7 @@
 id: '002'
 title: Drop credentials from the compact computer tag and auto-size the name to fill
   the box
-status: open
+status: done
 use-cases:
 - SUC-001
 depends-on:
@@ -53,27 +53,27 @@ is out of scope per the issue).
 
 ## Acceptance Criteria
 
-- [ ] No compact 89×28 tag rendering path (`generateComputerLabel89x28`,
+- [x] No compact 89×28 tag rendering path (`generateComputerLabel89x28`,
       `generateComputerBatchLabels`/`buildComputerBundle`, or
       `generateLabelSet`'s 89×28 branch) constructs or prints
       `studentUsername` / `studentPassword` text.
-- [ ] `addCompactLabelContent`'s `credentials` parameter and
+- [x] `addCompactLabelContent`'s `credentials` parameter and
       `ComputerPageRecord.credentials` field are removed (not just
       left unused).
-- [ ] The machine name renders in a single box spanning from the
+- [x] The machine name renders in a single box spanning from the
       header's bottom to the info line's top, full text-column width.
-- [ ] The name's font size is chosen per-name as the largest size
+- [x] The name's font size is chosen per-name as the largest size
       (bounded min 10pt / max 28pt) whose rendered width (checked
       against the full string, since the name is meant to stay on one
       line) and height both fit the box — not the old fixed
       22/17/14pt step function.
-- [ ] The name is vertically centered in the box by default.
-- [ ] QR code, header, and info line positions are pixel-for-pixel
+- [x] The name is vertically centered in the box by default.
+- [x] QR code, header, and info line positions are pixel-for-pixel
       unchanged from before this ticket.
-- [ ] Short names ("Aho") are visibly larger than the old 22pt cap;
+- [x] Short names ("Aho") are visibly larger than the old 22pt cap;
       long names ("Papadimitriou", "WTS IM 05") shrink to fit rather
       than wrapping or overflowing the box.
-- [ ] Rendered sample PNGs (pdftoppm) for "Aho", "Erdős",
+- [x] Rendered sample PNGs (pdftoppm) for "Aho", "Erdős",
       "Papadimitriou", and "WTS IM 05" visually confirm: no
       credentials, correct fit, correct diacritics (this ticket
       should use the font landed by ticket 001).
