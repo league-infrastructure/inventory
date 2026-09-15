@@ -1,7 +1,7 @@
 ---
 id: '001'
 title: Bundle and register a Unicode-capable font for all label PDFs
-status: open
+status: done
 use-cases:
 - SUC-002
 depends-on: []
@@ -38,30 +38,30 @@ computer tag, and relies on the browser's own font handling.
 
 ## Acceptance Criteria
 
-- [ ] Liberation Sans regular and bold TTF files are added under
+- [x] Liberation Sans regular and bold TTF files are added under
       `server/src/assets/fonts/` (or equivalent) with their license
       file, and registered with PDFKit (e.g. via
       `doc.registerFont('LabelSans', ...)` /
       `doc.registerFont('LabelSans-Bold', ...)`).
-- [ ] Every `'Helvetica'` / `'Helvetica-Bold'` string used by
+- [x] Every `'Helvetica'` / `'Helvetica-Bold'` string used by
       `addLabelContent` and `addCompactLabelContent` (org name, contact
       line, number, name, description, credentials-adjacent info line,
       etc.) is replaced with the registered font names. The HTML label
       path is unchanged.
-- [ ] Font file resolution works both when the server runs from `src`
+- [x] Font file resolution works both when the server runs from `src`
       (ts-node / jest) and from compiled `dist` — no hardcoded
       `src`-relative path that breaks after `tsc` output moves to
       `dist`.
-- [ ] `docker/Dockerfile.server` copies the new font asset directory
+- [x] `docker/Dockerfile.server` copies the new font asset directory
       into the built image (an explicit `COPY` alongside the existing
       `dist` / `prisma` / `node_modules` copies), so the registered
       font resolves at runtime in the container the same way it does
       locally.
-- [ ] A kit/pack (102×59) and a computer (89×28) label containing
+- [x] A kit/pack (102×59) and a computer (89×28) label containing
       "Erdős" render the correct glyphs — verified via text extraction
       or a rendered-PNG glyph check (pdftoppm) — not "Erd 0" or similar
       mangling.
-- [ ] Existing label layouts (widths/positions computed against
+- [x] Existing label layouts (widths/positions computed against
       Helvetica metrics) are visually unchanged for ASCII names, since
       Liberation Sans matches Helvetica's advance widths.
 

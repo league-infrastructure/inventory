@@ -43,6 +43,21 @@ The label is divided into two rows and two columns:
 | QR code | Left column, below number | Links to the entity's detail page |
 | Name / description | Right column, large bold centered | The kit or pack name, wrapping to multiple lines |
 
+## Typography
+
+All label PDFs (kit/pack 102×59 and computer 89×28, single or batch) are
+rendered with a bundled Liberation Sans (regular + bold), registered
+with PDFKit as `LabelSans` / `LabelSans-Bold`, instead of PDFKit's
+built-in Helvetica. Liberation Sans is metric-compatible with
+Helvetica (identical advance widths, so existing layout measurements
+are unaffected) but, unlike PDFKit's Helvetica (WinAnsi-only), covers
+the full Latin Extended-A range — e.g. "ő" (U+0151) in "Erdős" — so
+names outside WinAnsi render correctly instead of as mangled glyphs.
+Font files and the SIL Open Font License ship under
+`server/src/assets/fonts/`. The HTML batch-label path
+(`generateBatchHtml`) is unaffected — it renders kit/pack labels only,
+using the browser's own font handling via CSS `font-family`.
+
 ## Numbering Scheme
 
 The prominent number on the label identifies what the label is for.

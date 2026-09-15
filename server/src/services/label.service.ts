@@ -7,6 +7,17 @@ import { getBaseUrl } from '../config/baseUrl';
 
 const FLAG_IMAGE_PATH = path.join(__dirname, '..', 'assets', 'flag.png');
 
+// Liberation Sans is Helvetica-metric-compatible (same advance widths) but,
+// unlike PDFKit's built-in Helvetica (WinAnsi-only), covers the full Latin
+// Extended-A range — e.g. U+0151 "ő" in "Erdős" — so names outside WinAnsi
+// render correctly instead of as mangled glyphs. Registered once per
+// PDFDocument under these names and used everywhere a Helvetica face was
+// previously referenced, across both label sizes.
+const FONT_REGULAR_PATH = path.join(__dirname, '..', 'assets', 'fonts', 'LiberationSans-Regular.ttf');
+const FONT_BOLD_PATH = path.join(__dirname, '..', 'assets', 'fonts', 'LiberationSans-Bold.ttf');
+const FONT_REGULAR = 'LabelSans';
+const FONT_BOLD = 'LabelSans-Bold';
+
 // Dymo large shipping label: 59mm x 102mm — printed landscape
 const LABEL_WIDTH_PT = 102 * 2.83465;  // ~289pt (long edge horizontal)
 const LABEL_HEIGHT_PT = 59 * 2.83465;  // ~167pt (short edge vertical)
@@ -99,12 +110,27 @@ export class LabelService {
     return QRCode.toDataURL(this.buildUrl(path), { width: 120, margin: 1 });
   }
 
+  /**
+   * Register the bundled Liberation Sans faces under FONT_REGULAR /
+   * FONT_BOLD on a freshly-created PDFDocument. Registration is
+   * per-document (not per-page), so this is called once right after
+   * `new PDFDocument(...)` in createDoc() / createCompactDoc() — every
+   * subsequent addPage() on the same document can keep using the names
+   * registered here.
+   */
+  private registerLabelFonts(doc: any): void {
+    doc.registerFont(FONT_REGULAR, FONT_REGULAR_PATH);
+    doc.registerFont(FONT_BOLD, FONT_BOLD_PATH);
+  }
+
   private createDoc(): typeof PDFDocument.prototype {
-    return new PDFDocument({
+    const doc = new PDFDocument({
       size: [LABEL_HEIGHT_PT, LABEL_WIDTH_PT],
       layout: 'landscape',
       margins: { top: MARGIN, bottom: MARGIN, left: MARGIN, right: MARGIN },
     });
+    this.registerLabelFonts(doc);
+    return doc;
   }
 
   private drawFlagLogo(doc: any, x: number, y: number, scale: number = 0.6): void {
@@ -169,19 +195,19 @@ export class LabelService {
 
     // Org name (right of logo)
     const textLeft = MARGIN + 40;
-    doc.fontSize(11).font('Helvetica-Bold')
+    doc.fontSize(11).font(FONT_BOLD)
        .text('The League Of', textLeft, MARGIN + 4, {
          width: LABEL_WIDTH_PT - textLeft - MARGIN,
          align: 'center',
        });
-    doc.fontSize(11).font('Helvetica-Bold')
+    doc.fontSize(11).font(FONT_BOLD)
        .text('Amazing Programmers', textLeft, doc.y, {
          width: LABEL_WIDTH_PT - textLeft - MARGIN,
          align: 'center',
        });
 
     // Contact line
-    doc.fontSize(10.5).font('Helvetica')
+    doc.fontSize(10.5).font(FONT_REGULAR)
        .text(CONTACT_LINE, textLeft, doc.y + 1, {
          width: LABEL_WIDTH_PT - textLeft - MARGIN,
          align: 'center',
@@ -190,7 +216,7 @@ export class LabelService {
     // === CONTENT ROW — LEFT COLUMN (number + QR) ===
     // Large number
     const numberFontSize = number.length <= 2 ? 36 : number.length <= 4 ? 28 : 22;
-    doc.fontSize(numberFontSize).font('Helvetica-Bold')
+    doc.fontSize(numberFontSize).font(FONT_BOLD)
        .text(number, MARGIN, contentTop + 2, {
          width: LEFT_COL_WIDTH,
          align: 'center',
@@ -213,7 +239,7 @@ export class LabelService {
     // Measure description height (fixed font size)
     let descHeight = 0;
     if (descText) {
-      doc.fontSize(descFontSize).font('Helvetica');
+      doc.fontSize(descFontSize).font(FONT_REGULAR);
       descHeight = doc.heightOfString(descText, { width: availWidth }) + 2;
     }
 
@@ -221,7 +247,7 @@ export class LabelService {
     const spaceForName = contentHeight - descHeight;
     let nameFontSize = maxFontSize;
     const words = name.split(/\s+/);
-    doc.font('Helvetica-Bold');
+    doc.font(FONT_BOLD);
     while (nameFontSize > minFontSize) {
       doc.fontSize(nameFontSize);
       const longestWord = words.reduce((max, w) => {
@@ -234,7 +260,7 @@ export class LabelService {
     }
 
     // Vertically center the name + description block
-    doc.fontSize(nameFontSize).font('Helvetica-Bold');
+    doc.fontSize(nameFontSize).font(FONT_BOLD);
     const nameHeight = doc.heightOfString(name, { width: availWidth });
     const totalHeight = nameHeight + descHeight;
     const blockY = contentTop + (contentHeight - totalHeight) / 2;
@@ -245,7 +271,7 @@ export class LabelService {
     });
 
     if (descText) {
-      doc.fontSize(descFontSize).font('Helvetica')
+      doc.fontSize(descFontSize).font(FONT_REGULAR)
          .text(descText, contentLeft + 4, doc.y + 2, {
            width: availWidth,
            align: 'center',
@@ -323,10 +349,12 @@ export class LabelService {
   }
 
   private createCompactDoc(): typeof PDFDocument.prototype {
-    return new PDFDocument({
+    const doc = new PDFDocument({
       size: [COMPACT_WIDTH_PT, COMPACT_HEIGHT_PT],
       margins: { top: COMPACT_MARGIN, bottom: COMPACT_MARGIN, left: COMPACT_MARGIN, right: COMPACT_MARGIN },
     });
+    this.registerLabelFonts(doc);
+    return doc;
   }
 
   private drawTagIcon(doc: any, x: number, y: number, size: number = 6): void {
@@ -372,11 +400,11 @@ export class LabelService {
     }
     const headerTextLeft = rightLeft + flagSize + 3;
     const headerTextWidth = rightWidth - flagSize - 3;
-    doc.fontSize(7.5).font('Helvetica-Bold')
+    doc.fontSize(7.5).font(FONT_BOLD)
        .text('The League Of Amazing Programmers', headerTextLeft, m + 1, {
          width: headerTextWidth,
        });
-    doc.fontSize(6).font('Helvetica')
+    doc.fontSize(6).font(FONT_REGULAR)
        .text(CONTACT_LINE, headerTextLeft, doc.y, {
          width: headerTextWidth,
        });
@@ -384,20 +412,20 @@ export class LabelService {
     // === Machine name (large) ===
     const headerBottom = doc.y + 1;
     const machineNameSize = machineName.length <= 12 ? 22 : machineName.length <= 20 ? 17 : 14;
-    doc.fontSize(machineNameSize).font('Helvetica-Bold')
+    doc.fontSize(machineNameSize).font(FONT_BOLD)
        .text(machineName, rightLeft, headerBottom, {
          width: rightWidth,
        });
 
     // === Credentials + serial: tight below machine name ===
     if (credentials) {
-      doc.fontSize(12).font('Helvetica')
+      doc.fontSize(12).font(FONT_REGULAR)
          .text(credentials, rightLeft, doc.y, {
            width: rightWidth,
          });
     }
     if (infoLine) {
-      doc.fontSize(6).font('Helvetica')
+      doc.fontSize(6).font(FONT_REGULAR)
          .text(infoLine, rightLeft, doc.y, {
            width: rightWidth,
          });
