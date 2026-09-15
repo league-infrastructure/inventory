@@ -448,3 +448,248 @@ describe('LabelService — generateBatchLabels regression baseline', () => {
     expect(pdf.subarray(0, 5).toString()).toBe('%PDF-');
   });
 });
+
+// ─── Sprint 011 ticket 002: drop credentials, auto-fit name box ──────────
+//
+// Covers all three 89x28 rendering paths (generateComputerLabel89x28,
+// generateComputerBatchLabels, generateLabelSet's 89x28 branch) since the
+// ticket removed an independently-duplicated credentials string from each
+// one — a regression in any single call site would only surface if that
+// specific path is exercised.
+describe('LabelService — compact tag: credentials removed, name auto-fit to box', () => {
+  const SHORT_NAME = 'Aho';
+  const TYPICAL_NAME = 'Erdős';
+  const LONG_NAME = 'Papadimitriou';
+  const VERY_LONG_NAME = 'WTS IM 05';
+  const SECRET_USER = 'fitbox-user-secret';
+  const SECRET_PASS = 'fitbox-pass-secret';
+
+  let siteId: number;
+  let kitId2: number;
+  let osId: number;
+  let shortComputerId: number;
+  let typicalComputerId: number;
+  let longComputerId: number;
+  let veryLongComputerId: number;
+  let noInfoComputerId: number;
+
+  function countPages(pdf: Buffer): number {
+    return (pdf.toString('latin1').match(/\/Type \/Page(?!s)/g) || []).length;
+  }
+
+  // Pairs up jest.spyOn(PDFDocument.prototype, 'fontSize') and '...text'
+  // calls in chronological order (via invocationCallOrder) to find the
+  // font size active immediately before a specific rendered string — same
+  // technique as activeFontPerTextCall in label.service.fonts.test.ts.
+  function fontSizeForRenderedString(
+    fontSizeSpy: jest.SpyInstance,
+    textSpy: jest.SpyInstance,
+    target: string,
+  ): number | undefined {
+    const sizeCalls = fontSizeSpy.mock.calls.map((args, i) => ({
+      order: fontSizeSpy.mock.invocationCallOrder[i],
+      size: args[0] as number,
+    }));
+    const match = textSpy.mock.calls
+      .map((args, i) => ({ order: textSpy.mock.invocationCallOrder[i], text: args[0] }))
+      .find((t) => t.text === target);
+    if (!match) return undefined;
+    const prior = sizeCalls.filter((s) => s.order < match.order);
+    return prior.length > 0 ? prior[prior.length - 1].size : undefined;
+  }
+
+  beforeAll(async () => {
+    const reg = getRegistry();
+    const uid = getUserId();
+    const prisma = getPrisma();
+    const suffix = getSuffix();
+
+    const site = await reg.sites.create({ name: `svc-test-${suffix}-fitbox-site` }, uid);
+    siteId = site.id;
+
+    const kit = await reg.kits.create({
+      number: (suffix % 100000) + 975,
+      name: `svc-test-${suffix}-fitbox-kit`,
+      siteId,
+    }, uid);
+    kitId2 = kit.id;
+
+    const os = await reg.os.create({ name: `svc-test-${suffix}-fitbox-os` }, uid);
+    osId = os.id;
+
+    async function makeComputer(label: string, hostName: string, withInfo: boolean): Promise<number> {
+      const computer = await reg.computers.create({
+        model: `svc-test-${suffix}-fitbox-${label}`,
+        serialNumber: withInfo ? `SN-${label.toUpperCase()}` : undefined,
+        kitId: withInfo ? kitId2 : undefined,
+        osId: withInfo ? osId : undefined,
+        siteId,
+        studentUsername: SECRET_USER,
+        studentPassword: SECRET_PASS,
+      } as any, uid);
+      await prisma.hostName.create({ data: { name: hostName, computerId: computer.id } });
+      return computer.id;
+    }
+
+    shortComputerId = await makeComputer('short', SHORT_NAME, true);
+    typicalComputerId = await makeComputer('typical', TYPICAL_NAME, true);
+    longComputerId = await makeComputer('long', LONG_NAME, true);
+    veryLongComputerId = await makeComputer('verylong', VERY_LONG_NAME, true);
+    noInfoComputerId = await makeComputer('noinfo', 'NoInfoHost', false);
+  });
+
+  afterAll(async () => {
+    const prisma = getPrisma();
+    const ids = [shortComputerId, typicalComputerId, longComputerId, veryLongComputerId, noInfoComputerId];
+    await prisma.hostName.deleteMany({ where: { computerId: { in: ids } } });
+    await prisma.computer.deleteMany({ where: { id: { in: ids } } });
+    await prisma.operatingSystem.deleteMany({ where: { id: osId } });
+    await prisma.kit.deleteMany({ where: { id: kitId2 } });
+    await prisma.site.deleteMany({ where: { id: siteId } });
+  });
+
+  it('never renders credentials text on the single compact tag (generateComputerLabel89x28)', async () => {
+    const textSpy = jest.spyOn(PDFDocument.prototype, 'text');
+    let renderedStrings: string[];
+    try {
+      await labelService.generateComputerLabel89x28(shortComputerId);
+      renderedStrings = textSpy.mock.calls.map((a) => a[0]).filter((s): s is string => typeof s === 'string');
+    } finally {
+      textSpy.mockRestore();
+    }
+    const joined = renderedStrings.join(' | ');
+    expect(joined).not.toContain(SECRET_USER);
+    expect(joined).not.toContain(SECRET_PASS);
+    expect(joined).not.toMatch(/user:/i);
+    expect(joined).not.toMatch(/pass:/i);
+  });
+
+  it('never renders credentials text on the batch compact tag path (generateComputerBatchLabels)', async () => {
+    const textSpy = jest.spyOn(PDFDocument.prototype, 'text');
+    let renderedStrings: string[];
+    try {
+      await labelService.generateComputerBatchLabels([shortComputerId, longComputerId]);
+      renderedStrings = textSpy.mock.calls.map((a) => a[0]).filter((s): s is string => typeof s === 'string');
+    } finally {
+      textSpy.mockRestore();
+    }
+    const joined = renderedStrings.join(' | ');
+    expect(joined).not.toContain(SECRET_USER);
+    expect(joined).not.toContain(SECRET_PASS);
+    expect(joined).not.toMatch(/user:/i);
+    expect(joined).not.toMatch(/pass:/i);
+  });
+
+  it("never renders credentials text via generateLabelSet's 89x28 branch", async () => {
+    const textSpy = jest.spyOn(PDFDocument.prototype, 'text');
+    let renderedStrings: string[];
+    try {
+      await labelService.generateLabelSet({ computerIds: [shortComputerId, longComputerId] });
+      renderedStrings = textSpy.mock.calls.map((a) => a[0]).filter((s): s is string => typeof s === 'string');
+    } finally {
+      textSpy.mockRestore();
+    }
+    const joined = renderedStrings.join(' | ');
+    expect(joined).not.toContain(SECRET_USER);
+    expect(joined).not.toContain(SECRET_PASS);
+    expect(joined).not.toMatch(/user:/i);
+    expect(joined).not.toMatch(/pass:/i);
+  });
+
+  it('renders a short name at a visibly larger font size than a long name, both within 10-28pt', async () => {
+    const fontSizeSpy1 = jest.spyOn(PDFDocument.prototype, 'fontSize');
+    const textSpy1 = jest.spyOn(PDFDocument.prototype, 'text');
+    let shortSize: number | undefined;
+    try {
+      await labelService.generateComputerLabel89x28(shortComputerId);
+      shortSize = fontSizeForRenderedString(fontSizeSpy1, textSpy1, SHORT_NAME);
+    } finally {
+      fontSizeSpy1.mockRestore();
+      textSpy1.mockRestore();
+    }
+
+    const fontSizeSpy2 = jest.spyOn(PDFDocument.prototype, 'fontSize');
+    const textSpy2 = jest.spyOn(PDFDocument.prototype, 'text');
+    let longSize: number | undefined;
+    try {
+      await labelService.generateComputerLabel89x28(longComputerId);
+      longSize = fontSizeForRenderedString(fontSizeSpy2, textSpy2, LONG_NAME);
+    } finally {
+      fontSizeSpy2.mockRestore();
+      textSpy2.mockRestore();
+    }
+
+    expect(shortSize).toBeDefined();
+    expect(longSize).toBeDefined();
+    expect(shortSize!).toBeGreaterThan(longSize!);
+    // Short name should exceed the old fixed 22pt step-function cap.
+    expect(shortSize!).toBeGreaterThan(22);
+    expect(shortSize!).toBeLessThanOrEqual(28);
+    expect(longSize!).toBeGreaterThanOrEqual(10);
+  });
+
+  it('keeps every name-box font size within the configured 10-28pt bounds, for short/typical/long/very-long names', async () => {
+    const cases: Array<[string, number]> = [
+      [SHORT_NAME, shortComputerId],
+      [TYPICAL_NAME, typicalComputerId],
+      [LONG_NAME, longComputerId],
+      [VERY_LONG_NAME, veryLongComputerId],
+    ];
+    for (const [name, id] of cases) {
+      const fontSizeSpy = jest.spyOn(PDFDocument.prototype, 'fontSize');
+      const textSpy = jest.spyOn(PDFDocument.prototype, 'text');
+      let size: number | undefined;
+      try {
+        await labelService.generateComputerLabel89x28(id);
+        size = fontSizeForRenderedString(fontSizeSpy, textSpy, name);
+      } finally {
+        fontSizeSpy.mockRestore();
+        textSpy.mockRestore();
+      }
+      expect(size).toBeDefined();
+      expect(size!).toBeGreaterThanOrEqual(10);
+      expect(size!).toBeLessThanOrEqual(28);
+    }
+  });
+
+  it('renders "Erdős" unmangled on the compact tag', async () => {
+    const textSpy = jest.spyOn(PDFDocument.prototype, 'text');
+    let renderedStrings: string[];
+    try {
+      await labelService.generateComputerLabel89x28(typicalComputerId);
+      renderedStrings = textSpy.mock.calls.map((a) => a[0]).filter((s): s is string => typeof s === 'string');
+    } finally {
+      textSpy.mockRestore();
+    }
+    expect(renderedStrings).toContain(TYPICAL_NAME);
+  });
+
+  it('produces exactly one PDF page per computer for single, batch, and generateLabelSet 89x28 renders', async () => {
+    const single = await labelService.generateComputerLabel89x28(longComputerId);
+    expect(countPages(single)).toBe(1);
+
+    const batchIds = [shortComputerId, typicalComputerId, longComputerId, veryLongComputerId];
+    const batch = await labelService.generateComputerBatchLabels(batchIds);
+    expect(countPages(batch)).toBe(batchIds.length);
+
+    const bundles = await labelService.generateLabelSet({ computerIds: [shortComputerId, veryLongComputerId] });
+    const compactBundle = bundles.find((b) => b.stock === '89x28');
+    expect(compactBundle).toBeDefined();
+    expect(countPages(compactBundle!.pdf)).toBe(2);
+  });
+
+  it('omits the info line entirely (and never overflows to a second page) when there is no kit/OS/serial', async () => {
+    const textSpy = jest.spyOn(PDFDocument.prototype, 'text');
+    let renderedStrings: string[];
+    let pdf: Buffer;
+    try {
+      pdf = await labelService.generateComputerLabel89x28(noInfoComputerId);
+      renderedStrings = textSpy.mock.calls.map((a) => a[0]).filter((s): s is string => typeof s === 'string');
+    } finally {
+      textSpy.mockRestore();
+    }
+    expect(renderedStrings).toContain('NoInfoHost');
+    expect(renderedStrings.some((s) => s.startsWith('#') || s.startsWith('SN:'))).toBe(false);
+    expect(countPages(pdf)).toBe(1);
+  });
+});

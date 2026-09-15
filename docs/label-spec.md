@@ -43,6 +43,21 @@ The label is divided into two rows and two columns:
 | QR code | Left column, below number | Links to the entity's detail page |
 | Name / description | Right column, large bold centered | The kit or pack name, wrapping to multiple lines |
 
+## Typography
+
+All label PDFs (kit/pack 102×59 and computer 89×28, single or batch) are
+rendered with a bundled Liberation Sans (regular + bold), registered
+with PDFKit as `LabelSans` / `LabelSans-Bold`, instead of PDFKit's
+built-in Helvetica. Liberation Sans is metric-compatible with
+Helvetica (identical advance widths, so existing layout measurements
+are unaffected) but, unlike PDFKit's Helvetica (WinAnsi-only), covers
+the full Latin Extended-A range — e.g. "ő" (U+0151) in "Erdős" — so
+names outside WinAnsi render correctly instead of as mangled glyphs.
+Font files and the SIL Open Font License ship under
+`server/src/assets/fonts/`. The HTML batch-label path
+(`generateBatchHtml`) is unaffected — it renders kit/pack labels only,
+using the browser's own font handling via CSS `font-family`.
+
 ## Numbering Scheme
 
 The prominent number on the label identifies what the label is for.
@@ -109,6 +124,13 @@ number identifier, and the league flag logo. Key changes needed:
 ### Computer label
 
 Computer labels are not shown in the reference image. Current behavior
-(hostname or model as title, serial number and credentials as details)
-can be adapted to the new two-column layout. The number field could
-use the hostname or be omitted — TBD with stakeholder.
+(hostname or model as title, kit/OS/serial number as details) can be
+adapted to the new two-column layout. The number field could use the
+hostname or be omitted — TBD with stakeholder.
+
+The compact 89×28mm computer tag (see `addCompactLabelContent` in
+`label.service.ts`) prints the machine name in a single box spanning
+from the header to the info line, auto-sized (10-28pt) to the largest
+font that fits the box on one line, vertically centered. It never
+prints student credentials — those remain in the database and in
+exports only.

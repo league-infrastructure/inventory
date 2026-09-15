@@ -7,6 +7,17 @@ import { getBaseUrl } from '../config/baseUrl';
 
 const FLAG_IMAGE_PATH = path.join(__dirname, '..', 'assets', 'flag.png');
 
+// Liberation Sans is Helvetica-metric-compatible (same advance widths) but,
+// unlike PDFKit's built-in Helvetica (WinAnsi-only), covers the full Latin
+// Extended-A range — e.g. U+0151 "ő" in "Erdős" — so names outside WinAnsi
+// render correctly instead of as mangled glyphs. Registered once per
+// PDFDocument under these names and used everywhere a Helvetica face was
+// previously referenced, across both label sizes.
+const FONT_REGULAR_PATH = path.join(__dirname, '..', 'assets', 'fonts', 'LiberationSans-Regular.ttf');
+const FONT_BOLD_PATH = path.join(__dirname, '..', 'assets', 'fonts', 'LiberationSans-Bold.ttf');
+const FONT_REGULAR = 'LabelSans';
+const FONT_BOLD = 'LabelSans-Bold';
+
 // Dymo large shipping label: 59mm x 102mm — printed landscape
 const LABEL_WIDTH_PT = 102 * 2.83465;  // ~289pt (long edge horizontal)
 const LABEL_HEIGHT_PT = 59 * 2.83465;  // ~167pt (short edge vertical)
@@ -34,7 +45,6 @@ interface KitPackPage {
 interface ComputerPageRecord {
   qrPath: string;
   machineName: string;
-  credentials: string | null;
   infoLine: string | null;
 }
 
@@ -99,12 +109,27 @@ export class LabelService {
     return QRCode.toDataURL(this.buildUrl(path), { width: 120, margin: 1 });
   }
 
+  /**
+   * Register the bundled Liberation Sans faces under FONT_REGULAR /
+   * FONT_BOLD on a freshly-created PDFDocument. Registration is
+   * per-document (not per-page), so this is called once right after
+   * `new PDFDocument(...)` in createDoc() / createCompactDoc() — every
+   * subsequent addPage() on the same document can keep using the names
+   * registered here.
+   */
+  private registerLabelFonts(doc: any): void {
+    doc.registerFont(FONT_REGULAR, FONT_REGULAR_PATH);
+    doc.registerFont(FONT_BOLD, FONT_BOLD_PATH);
+  }
+
   private createDoc(): typeof PDFDocument.prototype {
-    return new PDFDocument({
+    const doc = new PDFDocument({
       size: [LABEL_HEIGHT_PT, LABEL_WIDTH_PT],
       layout: 'landscape',
       margins: { top: MARGIN, bottom: MARGIN, left: MARGIN, right: MARGIN },
     });
+    this.registerLabelFonts(doc);
+    return doc;
   }
 
   private drawFlagLogo(doc: any, x: number, y: number, scale: number = 0.6): void {
@@ -169,19 +194,19 @@ export class LabelService {
 
     // Org name (right of logo)
     const textLeft = MARGIN + 40;
-    doc.fontSize(11).font('Helvetica-Bold')
+    doc.fontSize(11).font(FONT_BOLD)
        .text('The League Of', textLeft, MARGIN + 4, {
          width: LABEL_WIDTH_PT - textLeft - MARGIN,
          align: 'center',
        });
-    doc.fontSize(11).font('Helvetica-Bold')
+    doc.fontSize(11).font(FONT_BOLD)
        .text('Amazing Programmers', textLeft, doc.y, {
          width: LABEL_WIDTH_PT - textLeft - MARGIN,
          align: 'center',
        });
 
     // Contact line
-    doc.fontSize(10.5).font('Helvetica')
+    doc.fontSize(10.5).font(FONT_REGULAR)
        .text(CONTACT_LINE, textLeft, doc.y + 1, {
          width: LABEL_WIDTH_PT - textLeft - MARGIN,
          align: 'center',
@@ -190,7 +215,7 @@ export class LabelService {
     // === CONTENT ROW — LEFT COLUMN (number + QR) ===
     // Large number
     const numberFontSize = number.length <= 2 ? 36 : number.length <= 4 ? 28 : 22;
-    doc.fontSize(numberFontSize).font('Helvetica-Bold')
+    doc.fontSize(numberFontSize).font(FONT_BOLD)
        .text(number, MARGIN, contentTop + 2, {
          width: LEFT_COL_WIDTH,
          align: 'center',
@@ -213,7 +238,7 @@ export class LabelService {
     // Measure description height (fixed font size)
     let descHeight = 0;
     if (descText) {
-      doc.fontSize(descFontSize).font('Helvetica');
+      doc.fontSize(descFontSize).font(FONT_REGULAR);
       descHeight = doc.heightOfString(descText, { width: availWidth }) + 2;
     }
 
@@ -221,7 +246,7 @@ export class LabelService {
     const spaceForName = contentHeight - descHeight;
     let nameFontSize = maxFontSize;
     const words = name.split(/\s+/);
-    doc.font('Helvetica-Bold');
+    doc.font(FONT_BOLD);
     while (nameFontSize > minFontSize) {
       doc.fontSize(nameFontSize);
       const longestWord = words.reduce((max, w) => {
@@ -234,7 +259,7 @@ export class LabelService {
     }
 
     // Vertically center the name + description block
-    doc.fontSize(nameFontSize).font('Helvetica-Bold');
+    doc.fontSize(nameFontSize).font(FONT_BOLD);
     const nameHeight = doc.heightOfString(name, { width: availWidth });
     const totalHeight = nameHeight + descHeight;
     const blockY = contentTop + (contentHeight - totalHeight) / 2;
@@ -245,7 +270,7 @@ export class LabelService {
     });
 
     if (descText) {
-      doc.fontSize(descFontSize).font('Helvetica')
+      doc.fontSize(descFontSize).font(FONT_REGULAR)
          .text(descText, contentLeft + 4, doc.y + 2, {
            width: availWidth,
            align: 'center',
@@ -323,10 +348,12 @@ export class LabelService {
   }
 
   private createCompactDoc(): typeof PDFDocument.prototype {
-    return new PDFDocument({
+    const doc = new PDFDocument({
       size: [COMPACT_WIDTH_PT, COMPACT_HEIGHT_PT],
       margins: { top: COMPACT_MARGIN, bottom: COMPACT_MARGIN, left: COMPACT_MARGIN, right: COMPACT_MARGIN },
     });
+    this.registerLabelFonts(doc);
+    return doc;
   }
 
   private drawTagIcon(doc: any, x: number, y: number, size: number = 6): void {
@@ -344,11 +371,52 @@ export class LabelService {
     doc.restore();
   }
 
+  // Bounds for addCompactLabelContent's name-box auto-fit — see
+  // fitFontSizeToBox().
+  private static readonly NAME_MIN_FONT_SIZE = 10;
+  private static readonly NAME_MAX_FONT_SIZE = 28;
+
+  /**
+   * Pick the largest font size in [minSize, maxSize] at which `text`,
+   * rendered on a single line in FONT_BOLD, fits within `maxWidth` and
+   * `maxHeight`. Mutates `doc`'s active font/size as a side effect (the
+   * caller is expected to use the returned size immediately after).
+   *
+   * Mirrors the shrink-until-fit loop in addLabelContent (used there for
+   * the 102x59 kit/pack name), generalized to also bound height, not
+   * just longest-word width — the compact tag's name is meant to stay on
+   * exactly one line, so the whole string's width is checked rather than
+   * per-word.
+   *
+   * If even `minSize` doesn't fit, `minSize` is returned anyway (the
+   * floor is a hard bound, not a guarantee of fit) — the caller draws
+   * with lineBreak:false so an unfit name is clipped/overflows rather
+   * than wrapping or spilling onto a second page.
+   */
+  private fitFontSizeToBox(
+    doc: any,
+    text: string,
+    maxWidth: number,
+    maxHeight: number,
+    minSize: number = LabelService.NAME_MIN_FONT_SIZE,
+    maxSize: number = LabelService.NAME_MAX_FONT_SIZE,
+  ): number {
+    doc.font(FONT_BOLD);
+    let size = maxSize;
+    while (size > minSize) {
+      doc.fontSize(size);
+      const width = doc.widthOfString(text);
+      const height = doc.currentLineHeight();
+      if (width <= maxWidth && height <= maxHeight) break;
+      size -= 1;
+    }
+    return size;
+  }
+
   private addCompactLabelContent(
     doc: any,
     qrBuffer: Buffer,
     machineName: string,
-    credentials: string | null,
     infoLine: string | null,
   ): void {
     const m = COMPACT_MARGIN;
@@ -359,11 +427,12 @@ export class LabelService {
     const qrY = m + (qrFull - qrSize) / 2; // vertically center
     const rightLeft = m + qrFull + 6; // text column stays put
     const rightWidth = COMPACT_WIDTH_PT - rightLeft - m;
+    const contentBottom = m + contentHeight; // bottom of the usable content area
 
     // === LEFT: QR code (95% height, right-edge anchored) ===
     doc.image(qrBuffer, qrX, qrY, { width: qrSize, height: qrSize });
 
-    // === RIGHT TOP: Header (flag image + org + contact) ===
+    // === RIGHT TOP: Header (flag image + org + contact) — unchanged ===
     const flagSize = 16;
     try {
       doc.image(FLAG_IMAGE_PATH, rightLeft, m, { width: flagSize, height: flagSize });
@@ -372,34 +441,61 @@ export class LabelService {
     }
     const headerTextLeft = rightLeft + flagSize + 3;
     const headerTextWidth = rightWidth - flagSize - 3;
-    doc.fontSize(7.5).font('Helvetica-Bold')
+    doc.fontSize(7.5).font(FONT_BOLD)
        .text('The League Of Amazing Programmers', headerTextLeft, m + 1, {
          width: headerTextWidth,
        });
-    doc.fontSize(6).font('Helvetica')
+    doc.fontSize(6).font(FONT_REGULAR)
        .text(CONTACT_LINE, headerTextLeft, doc.y, {
          width: headerTextWidth,
        });
-
-    // === Machine name (large) ===
     const headerBottom = doc.y + 1;
-    const machineNameSize = machineName.length <= 12 ? 22 : machineName.length <= 20 ? 17 : 14;
-    doc.fontSize(machineNameSize).font('Helvetica-Bold')
-       .text(machineName, rightLeft, headerBottom, {
-         width: rightWidth,
-       });
 
-    // === Credentials + serial: tight below machine name ===
-    if (credentials) {
-      doc.fontSize(12).font('Helvetica')
-         .text(credentials, rightLeft, doc.y, {
-           width: rightWidth,
-         });
-    }
+    // === Reserve space for the info line (bottom-anchored) if present, so
+    // the name box below has a fixed bottom edge regardless of the name's
+    // own size. ===
+    const infoLineFontSize = 6;
+    let infoLineHeight = 0;
     if (infoLine) {
-      doc.fontSize(6).font('Helvetica')
-         .text(infoLine, rightLeft, doc.y, {
-           width: rightWidth,
+      doc.fontSize(infoLineFontSize).font(FONT_REGULAR);
+      infoLineHeight = doc.heightOfString(infoLine, { width: rightWidth });
+    }
+    const boxTop = headerBottom;
+    const boxBottom = infoLine ? contentBottom - infoLineHeight : contentBottom;
+    const boxHeight = boxBottom - boxTop;
+
+    // === Machine name: single box reclaiming the old name + credentials
+    // area, auto-sized to the largest font (bounded) that fits the box on
+    // one line in both width and height, vertically centered. ===
+    const fontSize = this.fitFontSizeToBox(doc, machineName, rightWidth, boxHeight);
+    doc.fontSize(fontSize).font(FONT_BOLD);
+    const nameHeight = doc.currentLineHeight();
+    const nameY = boxTop + (boxHeight - nameHeight) / 2;
+    // No `width` option here, deliberately: pdfkit's text() only runs its
+    // LineWrapper (word-wrap AND automatic addPage-on-overflow) when a
+    // `width` is supplied — passing `lineBreak: false` alone does *not*
+    // suppress the page-add, since LineWrapper.wrap() checks document.y
+    // against the page's bottom margin before it ever looks at
+    // lineBreak. Omitting `width` takes the plain single-line-per-'\n'
+    // path instead, which never calls addPage(). The fit loop above
+    // already guarantees machineName's rendered width fits rightWidth,
+    // so wrapping was never needed anyway — this just also guarantees a
+    // name box sitting flush against the box's bottom edge can never
+    // spill onto a second PDF page.
+    doc.text(machineName, rightLeft, nameY, {
+      lineBreak: false,
+    });
+
+    // === Info line: bottom-anchored, position pinned above ===
+    if (infoLine) {
+      // Same reasoning as the name draw above: no `width`, so this can
+      // never trigger pdfkit's addPage-on-overflow even though boxBottom
+      // sits exactly at the content area's bottom edge. infoLine strings
+      // (kit #, OS name, serial) are short enough at 6pt to fit
+      // comfortably within rightWidth in practice.
+      doc.fontSize(infoLineFontSize).font(FONT_REGULAR)
+         .text(infoLine, rightLeft, boxBottom, {
+           lineBreak: false,
          });
     }
   }
@@ -429,16 +525,13 @@ export class LabelService {
     doc.on('data', (chunk: Buffer) => buffers.push(chunk));
 
     const machineName = computer.hostName?.name || computer.model || `#${computerId}`;
-    const credentials = (computer.studentUsername || computer.studentPassword)
-      ? `user: ${computer.studentUsername || '—'}  pass: ${computer.studentPassword || '—'}`
-      : null;
     const infoLine = this.buildInfoLine(
       computer.kit?.number ?? null,
       computer.os?.name ?? null,
       computer.serialNumber,
     );
 
-    this.addCompactLabelContent(doc, qrBuffer, machineName, credentials, infoLine);
+    this.addCompactLabelContent(doc, qrBuffer, machineName, infoLine);
 
     doc.end();
     return new Promise((resolve) => {
@@ -468,7 +561,7 @@ export class LabelService {
       }
 
       const qrBuffer = await this.generateQrBuffer(record.qrPath);
-      this.addCompactLabelContent(doc, qrBuffer, record.machineName, record.credentials, record.infoLine);
+      this.addCompactLabelContent(doc, qrBuffer, record.machineName, record.infoLine);
     }
 
     doc.end();
@@ -493,16 +586,13 @@ export class LabelService {
       if (!computer) throw new NotFoundError(`Computer ${computerId} not found`);
 
       const machineName = computer.hostName?.name || computer.model || `#${computerId}`;
-      const credentials = (computer.studentUsername || computer.studentPassword)
-        ? `user: ${computer.studentUsername || '—'}  pass: ${computer.studentPassword || '—'}`
-        : null;
       const infoLine = this.buildInfoLine(
         computer.kit?.number ?? null,
         computer.os?.name ?? null,
         computer.serialNumber,
       );
 
-      records.push({ qrPath: `/qr/c/${computerId}`, machineName, credentials, infoLine });
+      records.push({ qrPath: `/qr/c/${computerId}`, machineName, infoLine });
     }
 
     return this.buildComputerBundle(records);
@@ -692,16 +782,13 @@ export class LabelService {
 
       for (const computer of sortedComputers) {
         const machineName = computer.hostName?.name || computer.model || `#${computer.id}`;
-        const credentials = (computer.studentUsername || computer.studentPassword)
-          ? `user: ${computer.studentUsername || '—'}  pass: ${computer.studentPassword || '—'}`
-          : null;
         const infoLine = this.buildInfoLine(
           computer.kit?.number ?? null,
           computer.os?.name ?? null,
           computer.serialNumber,
         );
 
-        records.push({ qrPath: `/qr/c/${computer.id}`, machineName, credentials, infoLine });
+        records.push({ qrPath: `/qr/c/${computer.id}`, machineName, infoLine });
         contents.push(machineName);
       }
 
