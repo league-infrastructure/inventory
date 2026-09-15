@@ -1,7 +1,7 @@
 ---
 id: '011'
 title: Computer Tag Name Fit and Unicode Label Font
-status: executing
+status: done
 branch: sprint/011-computer-tag-name-fit-and-unicode-label-font
 use-cases:
 - SUC-001
